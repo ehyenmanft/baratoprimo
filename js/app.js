@@ -317,13 +317,32 @@
       btn.disabled = true;
       btn.textContent = 'Entrando…';
       try {
-        const r = await INV.db.sesion.entrar($('#acceso-email').value, $('#acceso-clave').value);
+        /* Se limpia el correo: un espacio al pegarlo o una mayúscula
+           suelta no deben costar el acceso. La contraseña no se toca,
+           que ahí los espacios pueden ser intencionales. */
+        const correo = $('#acceso-email').value.trim().toLowerCase();
+        $('#acceso-email').value = correo;
+
+        const r = await INV.db.sesion.entrar(correo, $('#acceso-clave').value);
         await mostrarApp(r.session);
       } catch (e) {
-        /* Sin pistas sobre si falló el correo o la contraseña: quien no
-           entra debe hablar con quien administra, no adivinar. */
+        /* En pantalla, sin pistas sobre si falló el correo o la contraseña:
+           quien no entra debe hablar con quien administra, no adivinar.
+           En la consola sí va el motivo real, porque quien administra
+           necesita distinguir una clave equivocada de un correo sin
+           confirmar, y no tiene por qué adivinarlo. */
         const credenciales = /invalid login|invalid credentials|email not confirmed|user not found|incorrect/i;
-        err.textContent = credenciales.test(e.message)
+        const generico = credenciales.test(e.message);
+
+        console.warn('[BaratoPrimo] No se pudo iniciar sesión con "' +
+          $('#acceso-email').value.trim() + '": ' + e.message +
+          (/email not confirmed/i.test(e.message)
+            ? '\n→ La cuenta existe pero no está confirmada. Authentication → Users, o desactiva "Confirm email".'
+            : /invalid login|invalid credentials/i.test(e.message)
+              ? '\n→ El correo no existe o la contraseña no coincide. Revisa que el correo sea idéntico al registrado, sin puntos ni espacios de más.'
+              : ''));
+
+        err.textContent = generico
           ? 'No fue posible iniciar sesión. Comuníquese con el administrador.'
           : e.message;
         err.hidden = false;
