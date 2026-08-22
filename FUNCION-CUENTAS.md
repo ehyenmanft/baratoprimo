@@ -79,33 +79,73 @@ abriera el código fuente tendría acceso total a la base. La función corre en
 Supabase, guarda la llave como variable de entorno y comprueba en el servidor
 que quien pide es realmente administrador.
 
-### Desplegarla
+### Desplegarla desde el panel, sin instalar nada
 
-Necesitas la CLI de Supabase:
+Desde 2025 el panel trae un editor propio: no hacen falta ni la CLI ni Docker.
 
-```bash
-npm install -g supabase
-supabase login
-supabase link --project-ref goqqmcibcdaeuienjmuy
+1. Panel de Supabase → **Edge Functions** (menú de la izquierda)
+2. **Deploy a new function** → **Via Editor**
+3. Nombre de la función: `cuentas`
 
-# El código ya está en supabase/functions/cuentas/index.ts
-supabase functions deploy cuentas
-```
+   Es importante que se llame exactamente así: la URL sale de ese nombre.
+4. Borra el código de ejemplo y pega entero el contenido de
+   `supabase/functions/cuentas/index.ts`
+5. **Deploy**
 
-Al terminar te dará la URL, con esta forma:
+En un minuto queda publicada en:
 
 ```
 https://goqqmcibcdaeuienjmuy.supabase.co/functions/v1/cuentas
 ```
 
-Pégala en `js/config.js`:
+Pega esa dirección en `js/config.js`:
 
 ```js
 FUNCION_CUENTAS: 'https://goqqmcibcdaeuienjmuy.supabase.co/functions/v1/cuentas',
 ```
 
-Las variables `SUPABASE_URL`, `SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY`
-las inyecta Supabase sola: no hay que configurarlas.
+Sube el archivo a GitHub y listo: al editar un operador ya podrás cambiarle la
+contraseña.
+
+**Las variables las inyecta Supabase sola** —`SUPABASE_URL`,
+`SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY`—, no hay que configurarlas. Si
+al probar responde *"Faltan las variables del proyecto"*, añádelas a mano en
+Edge Functions → **Secrets**.
+
+**Deja activada la verificación de JWT** si te la ofrece. La aplicación manda el
+token del administrador en cada llamada, así que Supabase lo comprueba antes
+incluso de ejecutar la función. Es una barrera de más, gratis.
+
+### Probarla sin salir del panel
+
+El editor trae un probador. Con la función abierta, pestaña **Test**, envía:
+
+```json
+{ "accion": "crear", "correo": "prueba@ejemplo.com", "clave": "ClaveDePrueba1" }
+```
+
+Sin cabecera de autorización debe responder **401 · Falta la sesión**. Eso ya te
+confirma que la función corre y que no acepta a cualquiera. La prueba de verdad
+hazla desde la aplicación, que sí manda el token.
+
+### Un aviso sobre el editor del panel
+
+El editor del panel **no guarda versiones ni permite volver atrás**. Para un
+proyecto pequeño no importa, y en tu caso menos: el código vive en el
+repositorio de GitHub, así que si algo se rompe se vuelve a pegar desde ahí.
+
+### Alternativa: la CLI, sin instalarla
+
+Si prefieres la línea de comandos pero no quieres instalar nada global, con Node
+ya instalado:
+
+```bash
+npx supabase login
+npx supabase link --project-ref goqqmcibcdaeuienjmuy
+npx supabase functions deploy cuentas --use-api
+```
+
+El `--use-api` evita Docker.
 
 ### Qué comprueba antes de tocar nada
 
