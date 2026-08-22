@@ -17,9 +17,15 @@ Qué se puede y qué no:
 
 | | Sin la función | Con la función |
 |---|---|---|
-| Crear la cuenta de un operador nuevo | Sí | Sí |
-| Cambiarle la contraseña después | **No** | Sí |
+| Crear la cuenta al dar de alta el operador | Sí | Sí |
+| Crearla después, editando su ficha | Sí | Sí |
+| **Cambiar** una contraseña que ya existe | No | Sí |
 | Entrar sin confirmar el correo | Depende del proyecto | Sí, siempre |
+
+Los campos de contraseña **nunca están bloqueados**. Si el operador todavía no
+tiene cuenta, escribir ahí se la crea, aunque estés editando su ficha. Solo
+falla cuando la cuenta ya existe y no hay función desplegada, y entonces el
+mensaje lo dice con esas palabras.
 
 Dos cosas que conviene revisar en el panel de Supabase, en
 **Authentication → Providers → Email**:
