@@ -84,14 +84,25 @@
     }
   }
 
-  document.addEventListener('DOMContentLoaded', () => {
+  let yaEnlazado = false;
+
+  function enlazar() {
+    if (yaEnlazado) return;
+    yaEnlazado = true;
+
     $('#modal-cerrar').addEventListener('click', cerrarModal);
     modal().addEventListener('click', e => { if (e.target === modal()) cerrarModal(); });
     document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarModal(); });
 
     $$('.tema button').forEach(b => b.addEventListener('click', () => aplicarTema(b.dataset.tema)));
     aplicarTema(temaGuardado());
-  });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', enlazar);
+  } else {
+    enlazar();
+  }
 
   /* ---------------- Tema claro / oscuro ---------------- */
   const CLAVE_TEMA = 'inventario-tema';

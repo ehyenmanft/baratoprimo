@@ -30,6 +30,7 @@
        tiene permisos: la base se los va a negar igual, y la interfaz no
        debe ofrecerle botones que no funcionan. En demo y en Drive no hay
        control de acceso real, así que se asume administrador. */
+    sinComercioAsignado = false;
     const conControlDeAcceso = INV.db.etiqueta === 'supabase';
     let rol = conControlDeAcceso ? INV.permisos.SIN_ACCESO.id : 'administrador';
 
@@ -56,12 +57,21 @@
        administrador eso es normal —supervisa, no opera—, así que se le
        lleva a elegir uno. Para el resto es una instalación a medias. */
     if (!INV.comercio.hay() && rol !== INV.permisos.SIN_ACCESO.id) {
-      const supervisa = INV.permisos.puede('comercios.gestionar');
-      if (supervisa) {
-        if (!location.hash || location.hash === '#/inicio') location.hash = '#/comercios';
+      const alInicio = !location.hash || location.hash === '#/inicio';
+
+      if (INV.permisos.puede('comercios.gestionar')) {
+        // Supervisa: solo tiene que elegir dónde situarse
+        if (alInicio) location.hash = '#/comercios';
+
+      } else if (INV.permisos.puede('ajustes.comercio')) {
+        // Puede crearlo él mismo: allí está el formulario
+        if (alInicio) location.hash = '#/comercio';
+
       } else if (INV.db.etiqueta === 'supabase') {
-        INV.ui.avisar('Tu operador no tiene un comercio asignado', 'error');
-        if (!location.hash || location.hash === '#/inicio') location.hash = '#/comercio';
+        /* No puede crearlo ni entra a esa pantalla: el aviso se da aquí
+           mismo, sin mandarlo a una sección que su rol no abre. */
+        INV.ui.avisar('Tu cuenta no tiene comercio asignado', 'error');
+        sinComercioAsignado = true;
       }
     }
 
@@ -77,6 +87,14 @@
     // El menú solo muestra lo que el rol puede abrir
     $$('.rail__link').forEach(a =>
       a.hidden = !INV.permisos.puedeVer(a.dataset.vista));
+
+    if (sinComercioAsignado) {
+      $('#contenido').innerHTML =
+        '<div class="vacio"><h4>Tu cuenta no tiene comercio asignado</h4>' +
+        '<p>Entraste bien, pero tu cuenta todavía no está ligada a ningún comercio, ' +
+        'así que no hay datos que mostrar. Pide a un administrador que te asigne ' +
+        'uno desde Operadores.</p></div>';
+    }
 
     if (rol === INV.permisos.SIN_ACCESO.id) {
       $('#contenido').innerHTML =
@@ -97,6 +115,10 @@
      En pantallas estrechas el menú se retira fuera de la vista y entra al
      pulsar el logo, tanto el de la barra superior como el del propio panel
      (que ahí sirve para cerrarlo). */
+
+  /* Marca de sesión sin comercio para roles que no pueden resolverlo:
+     el mensaje sustituye a cualquier vista, porque ninguna tendría datos. */
+  let sinComercioAsignado = false;
 
   const menuAbierto = () => $('#menu-lateral').classList.contains('abierto');
 
@@ -201,6 +223,20 @@
     const vista = INV.vistas[nombre];
     if (!vista) { location.hash = '#/inicio'; return; }
 
+    // Sin comercio y sin poder crearlo, ninguna vista tiene datos
+    if (sinComercioAsignado) {
+      $('#vista-titulo').textContent = 'Sin comercio';
+      $('#vista-eyebrow').textContent = 'Configuración pendiente';
+      $('#vista-acciones').innerHTML = '';
+      $('#contenido').innerHTML =
+        '<div class="vacio"><h4>Tu cuenta no tiene comercio asignado</h4>' +
+        '<p>Entraste bien, pero tu cuenta todavía no está ligada a ningún comercio, ' +
+        'así que no hay datos que mostrar. Pide a un administrador que te asigne ' +
+        'uno desde Operadores.</p></div>';
+      $$('.rail__link').forEach(a => a.classList.remove('activo'));
+      return;
+    }
+
     // Escribir la ruta a mano no salta los permisos
     if (!INV.permisos.puedeVer(nombre)) {
       $('#vista-titulo').textContent = 'Sin permiso';
@@ -269,7 +305,11 @@
 
   /* ============ Enlaces ============ */
 
-  document.addEventListener('DOMContentLoaded', () => {
+  let yaIniciado = false;
+
+  function iniciar() {
+    if (yaIniciado) return;   // registrar dos veces alternaría cada botón dos veces
+    yaIniciado = true;
     $('#btn-entrar').addEventListener('click', async () => {
       const btn = $('#btn-entrar');
       const err = $('#acceso-error');
@@ -295,6 +335,30 @@
 
     $('#acceso-clave').addEventListener('keydown', e => {
       if (e.key === 'Enter') $('#btn-entrar').click();
+    });
+
+    /* Ver la contraseña mientras se escribe. Se devuelve el cursor al
+       campo y en la misma posición: alternar no debe costar el sitio. */
+    $('#ver-clave').addEventListener('click', () => {
+      const campo = $('#acceso-clave');
+      const boton = $('#ver-clave');
+      const visible = campo.type === 'text';
+      const posicion = campo.selectionStart;
+
+      campo.type = visible ? 'password' : 'text';
+      boton.setAttribute('aria-pressed', String(!visible));
+      const etiqueta = visible ? 'Mostrar la contraseña' : 'Ocultar la contraseña';
+      boton.setAttribute('aria-label', etiqueta);
+      boton.setAttribute('title', etiqueta);
+
+      campo.focus();
+      try { campo.setSelectionRange(posicion, posicion); } catch (e) { /* sin soporte */ }
+    });
+
+    // Al salir del acceso la contraseña vuelve a ocultarse
+    $('#btn-entrar').addEventListener('click', () => {
+      const campo = $('#acceso-clave');
+      if (campo.type === 'text') $('#ver-clave').click();
     });
 
     $('#btn-salir').addEventListener('click', async () => {
@@ -329,6 +393,15 @@
       if (window.innerWidth > 820 && menuAbierto()) cerrarMenu();
     });
 
+    /* Al crear su primer comercio, la sesión pasa a tener uno: hay que
+       rehacer el menú y las alertas sin obligar a volver a entrar. */
+    window.addEventListener('sesion-cambiada', async () => {
+      const correo = ($('#usuario-correo').textContent || '').trim();
+      await prepararSesion(correo);
+      enrutar();
+      revisarAlertas();
+    });
+
     window.addEventListener('hashchange', enrutar);
 
     // Las vistas piden recargarse tras guardar; también refrescamos la banda.
@@ -336,5 +409,13 @@
 
     if (INV.db.sesion.alCambiar) INV.db.sesion.alCambiar(s => { if (!s) mostrarAcceso(); });
     arrancar().catch(e => avisar(e.message, 'error'));
-  });
+  }
+
+  /* Si el documento ya está listo se arranca de inmediato: esperar un
+     evento que ya pasó dejaría la aplicación sin escuchadores. */
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', iniciar);
+  } else {
+    iniciar();
+  }
 })();

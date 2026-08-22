@@ -731,6 +731,61 @@ end;
 $$;
 
 
+-- ---------------------------------------------------------------------
+-- Alta del primer comercio por parte de su propio administrador.
+-- Un administrador recién dado de alta no tiene comercio, y sin comercio
+-- no puede leer ni escribir nada: es el problema del huevo y la gallina.
+-- Esta función lo resuelve creando el comercio y asignándoselo en el
+-- mismo acto. Va en security definer porque tiene que saltarse las
+-- políticas que precisamente le impiden empezar, con los controles
+-- escritos aquí dentro: solo administradores, y solo si no tienen uno.
+-- ---------------------------------------------------------------------
+
+create or replace function crear_mi_comercio(p jsonb)
+returns bigint
+language plpgsql security definer
+set search_path = public
+as $$
+declare
+  op    operadores;
+  v_id  bigint;
+begin
+  op := operador_actual();
+
+  if op.id is null then
+    raise exception 'Tu cuenta no está registrada como operador';
+  end if;
+  if op.rol not in ('super_admin', 'administrador') then
+    raise exception 'Tu rol no permite crear comercios';
+  end if;
+  -- El administrador solo puede estrenarse una vez; el super admin, las
+  -- que quiera, porque no pertenece a ninguno.
+  if op.rol = 'administrador' and op.comercio_id is not null then
+    raise exception 'Ya tienes un comercio asignado';
+  end if;
+
+  insert into comercios (nombre, rif, direccion, telefono, correo, mensaje,
+                         iva_tasa, moneda, tasa_usd, tasa_eur, ticket_ancho)
+  values (
+    coalesce(nullif(trim(p->>'nombre'), ''), 'Mi Comercio'),
+    coalesce(p->>'rif', ''), coalesce(p->>'direccion', ''),
+    coalesce(p->>'telefono', ''), coalesce(p->>'correo', ''),
+    coalesce(nullif(p->>'mensaje', ''), '¡Gracias por su compra!'),
+    coalesce((p->>'iva_tasa')::numeric, 16),
+    coalesce(nullif(p->>'moneda', ''), 'Bs'),
+    coalesce((p->>'tasa_usd')::numeric, 0),
+    coalesce((p->>'tasa_eur')::numeric, 0),
+    coalesce(nullif(p->>'ticket_ancho', ''), '80')
+  )
+  returning id into v_id;
+
+  update operadores set comercio_id = v_id where id = op.id;
+
+  return v_id;
+end;
+$$;
+
+
 -- =====================================================================
 -- 11. SEGURIDAD
 -- El aislamiento entre comercios vive aquí. Leer, escribir o borrar

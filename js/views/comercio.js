@@ -21,10 +21,18 @@
       const c = await INV.db.comercio.obtener();
 
       if (!c) {
-        contenedor.innerHTML = INV.permisos.puede('comercios.gestionar')
-          ? sinSeleccion() : sinComercio();
-        const ir = $('#mc-ir-comercios');
-        if (ir) ir.addEventListener('click', () => { location.hash = '#/comercios'; });
+        if (INV.permisos.puede('comercios.gestionar')) {
+          // Supervisa: no le falta nada, solo no ha elegido dónde situarse
+          contenedor.innerHTML = sinSeleccion();
+          $('#mc-ir-comercios').addEventListener('click', () => { location.hash = '#/comercios'; });
+        } else if (INV.permisos.puede('ajustes.comercio')) {
+          // Puede resolverlo solo: se le da el formulario, no una consulta SQL
+          contenedor.innerHTML = formularioPrimerComercio();
+          $('#pc-crear').addEventListener('click', btn => crearPrimero(btn));
+          $('#pc-nombre').focus();
+        } else {
+          contenedor.innerHTML = sinComercio();
+        }
         return;
       }
 
@@ -160,34 +168,110 @@
       </div>`;
   }
 
-  /* Instalación a medias: el operador existe pero no cuelga de ningún
-     comercio. Se explica y se da la instrucción exacta para arreglarlo. */
+  /* Un administrador sin comercio puede crearlo él mismo: el formulario
+     lo da de alta y se lo asigna en el mismo acto. */
+  function formularioPrimerComercio() {
+    return `
+      <div class="ficha anim" style="max-width:640px">
+        <div class="detalle__encabezado">
+          <div>
+            <h2 class="detalle__titulo">Crea tu comercio</h2>
+            <div class="detalle__meta"><span>Primer paso</span></div>
+          </div>
+        </div>
+
+        <div class="ficha__cuerpo" style="padding-top:18px">
+          <p style="font-size:14px; color:var(--tinta-2); margin:0 0 18px">
+            Tu cuenta todavía no está ligada a ningún comercio. Complétalo aquí y
+            queda asignado a tu nombre: a partir de ese momento el catálogo, el
+            inventario y las ventas que registres serán suyos.
+          </p>
+
+          <div class="campo">
+            <label for="pc-nombre">Razón social</label>
+            <input id="pc-nombre" type="text" placeholder="Bodega La Esquina, C.A.">
+          </div>
+          <div class="campos-fila">
+            <div class="campo">
+              <label for="pc-rif">RIF</label>
+              <input id="pc-rif" type="text" placeholder="J-00000000-0">
+            </div>
+            <div class="campo">
+              <label for="pc-telefono">Teléfono</label>
+              <input id="pc-telefono" type="tel" placeholder="0251-0000000">
+            </div>
+          </div>
+          <div class="campo">
+            <label for="pc-direccion">Dirección fiscal</label>
+            <textarea id="pc-direccion" rows="2" placeholder="Calle, local, ciudad"></textarea>
+          </div>
+          <div class="campos-fila">
+            <div class="campo">
+              <label for="pc-iva">IVA (%)</label>
+              <input id="pc-iva" type="number" min="0" max="100" step="0.01" value="16">
+            </div>
+            <div class="campo">
+              <label for="pc-usd">Tasa USD — opcional</label>
+              <input id="pc-usd" type="number" min="0" step="0.0001" value="0">
+            </div>
+          </div>
+
+          <p id="pc-error" class="error" hidden></p>
+          <button class="btn btn--primario btn--ancho" id="pc-crear">
+            Crear el comercio y empezar
+          </button>
+          <p class="subida__nota" style="margin-top:12px; text-align:center">
+            Todo esto se puede cambiar después desde esta misma pantalla.
+          </p>
+        </div>
+      </div>`;
+  }
+
+  async function crearPrimero(btn) {
+    const err = $('#pc-error');
+    err.hidden = true;
+
+    const nombre = $('#pc-nombre').value.trim();
+    if (!nombre) {
+      err.textContent = 'La razón social es obligatoria.'; err.hidden = false; return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Creando…';
+    try {
+      await INV.db.comercios.crearMio({
+        nombre,
+        rif:       $('#pc-rif').value.trim(),
+        telefono:  $('#pc-telefono').value.trim(),
+        direccion: $('#pc-direccion').value.trim(),
+        iva_tasa:  Number($('#pc-iva').value || 16),
+        tasa_usd:  Number($('#pc-usd').value || 0),
+      });
+      await INV.comercio.recargar();
+      avisar(nombre + ' quedó asignado a tu cuenta');
+      // La sesión ya tiene comercio: se recarga el menú y se entra a operar
+      window.dispatchEvent(new Event('sesion-cambiada'));
+      location.hash = '#/inicio';
+    } catch (e) {
+      err.textContent = e.message; err.hidden = false;
+      btn.disabled = false;
+      btn.textContent = 'Crear el comercio y empezar';
+    }
+  }
+
+  /* Roles que no pueden crear comercios: solo se les dice qué falta y a
+     quién pedírselo. Nada de instrucciones de base de datos. */
   function sinComercio() {
-    const correo = ($('#usuario-correo') || {}).textContent || 'tu@correo.com';
     return `
       <div class="ficha anim">
         <div class="ficha__cabecera">
-          <h3 class="ficha__titulo">Tu operador no tiene comercio asignado</h3>
+          <h3 class="ficha__titulo">Tu cuenta no tiene comercio asignado</h3>
         </div>
         <div class="ficha__cuerpo">
-          <p style="font-size:14px; color:var(--tinta-2); margin:0 0 14px">
-            Entraste bien, pero tu cuenta no cuelga de ningún comercio, así que
-            no hay datos que mostrar en ninguna pantalla. Pasa cuando se registra
-            el operador antes de crear el comercio.
-          </p>
-          <p style="font-size:14px; color:var(--tinta-2); margin:0 0 10px">
-            ${INV.permisos.puede('comercios.gestionar')
-              ? 'Puedes arreglarlo desde <b>Comercios</b>, creando uno y pulsando <b>Trabajar aquí</b>. Si la lista está vacía, ejecuta esto en el editor SQL de Supabase:'
-              : 'Pide a un administrador que te asigne uno, o ejecuta esto en el editor SQL de Supabase:'}
-          </p>
-          <pre class="compartir__previa">insert into comercios (nombre, rif)
-values ('Mi Comercio', 'J-00000000-0');
-
-update operadores
-   set comercio_id = (select id from comercios order by id limit 1)
- where correo = '${esc(correo.trim())}';</pre>
-          <p class="subida__nota" style="margin-top:12px">
-            Después vuelve a entrar para que la sesión tome el comercio.
+          <p style="font-size:14px; color:var(--tinta-2); margin:0">
+            Entraste bien, pero tu cuenta todavía no está ligada a ningún
+            comercio, así que no hay datos que mostrar. Pide a un administrador
+            que te asigne uno desde <b>Operadores</b>.
           </p>
         </div>
       </div>`;

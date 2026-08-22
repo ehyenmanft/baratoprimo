@@ -58,6 +58,12 @@ values ('tu@correo.com', 'Tu nombre', 'super_admin',
 en el selector son indistinguibles; en ese caso renombra uno o elimínalo desde
 **Comercios**.
 
+Si prefieres no crear el comercio desde SQL, puedes registrarte como
+`administrador` sin `comercio_id` y crearlo desde la propia aplicación: al
+entrar te recibe el formulario y el comercio queda asignado a tu cuenta. El
+`super_admin` sí conviene crearlo con este `insert`, porque es quien reparte los
+comercios entre los demás.
+
 El `comercio_id` del super administrador es solo el comercio en el que entra
 situado: no pertenece a él y puede salirse con la opción *Ninguno · solo
 supervisión*.
@@ -173,7 +179,14 @@ el paso 3: registrarte en `operadores` con el mismo correo del usuario de
 Authentication.
 
 **Entras, pero todas las pantallas están vacías** — Tu operador no tiene
-comercio asignado. `verificar.html` lo detecta y da el `update` para arreglarlo.
+comercio asignado. Según tu rol, la aplicación reacciona distinto:
+
+- **Administrador**: te recibe el formulario para crear tu comercio, que queda
+  asignado a tu cuenta al guardarlo. No hace falta tocar SQL.
+- **Super administrador**: te lleva a *Comercios* para que elijas en cuál
+  situarte. No perteneces a ninguno, los supervisas todos.
+- **Resto de roles**: se te avisa de que no tienes comercio; solo un
+  administrador puede asignártelo desde *Operadores*.
 
 **"Tu operador no tiene un comercio asignado"** — Tu cuenta existe y tu rol se
 reconoce, pero no cuelga de ningún comercio, así que la base no devuelve datos

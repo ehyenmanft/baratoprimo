@@ -168,6 +168,14 @@
 
       /* Cambiar de comercio es mover el propio registro de operador: solo
          el super admin tiene permiso para hacerlo. */
+      /* Alta del primer comercio por su propio administrador: la función
+         del esquema lo crea y se lo asigna en el mismo acto. */
+      crearMio: datos => sb.rpc('crear_mi_comercio', { p: datos })
+        .then(({ data, error }) => {
+          if (error) throw new Error(error.message);
+          return sb.from('comercios').select('*').eq('id', data).single().then(ok);
+        }),
+
       /* null significa salir de todos: el super administrador supervisa
          sin estar dentro de ninguno. */
       cambiar: async id => {

@@ -137,6 +137,13 @@ Nadie por debajo puede ver su ficha, modificarla, eliminarla ni nombrar a otro.
 Los demás roles sí pertenecen a un comercio y es obligatorio asignárselo: solo
 verán ese.
 
+**Un administrador sin comercio puede crearlo él mismo.** Es el problema del
+huevo y la gallina: sin comercio no se lee ni se escribe nada, así que tampoco
+podría crear el suyo. La función `crear_mi_comercio()` lo resuelve dándolo de
+alta y asignándoselo en el mismo acto; corre en `security definer` para saltarse
+las políticas que precisamente le impiden empezar, con los controles escritos
+dentro: solo administradores, y solo si todavía no tienen uno.
+
 La interfaz oculta lo que el rol no puede hacer, pero eso es cortesía, no
 seguridad: la barrera real son las políticas RLS del esquema, que se aplican
 aunque alguien llame a la API a mano. La restricción del operador mixto va en un

@@ -690,6 +690,29 @@
       },
 
       /* El super administrador cambia el comercio sobre el que trabaja. */
+      /* Réplica de crear_mi_comercio(): crea el comercio y se lo asigna
+         a quien lo pide, para que un administrador recién dado de alta
+         pueda empezar sin depender de nadie. */
+      crearMio: async datos => {
+        const o = operador();
+        if (!o) throw new Error('Tu cuenta no está registrada como operador');
+        if (!['super_admin', 'administrador'].includes(o.rol))
+          throw new Error('Tu rol no permite crear comercios');
+        if (o.rol === 'administrador' && o.comercio_id)
+          throw new Error('Ya tienes un comercio asignado');
+
+        const c = {
+          id: siguienteId(bd.comercios), activo: true,
+          nombre: 'Mi Comercio', rif: '', direccion: '', telefono: '', correo: '',
+          mensaje: '¡Gracias por su compra!', iva_tasa: 16, moneda: 'Bs',
+          tasa_usd: 0, tasa_eur: 0, ticket_ancho: '80', ...datos,
+        };
+        bd.comercios.push(c);
+        o.comercio_id = c.id;
+        persistir();
+        return c;
+      },
+
       /* null significa salir de todos: el super administrador supervisa
          sin estar dentro de ninguno. */
       cambiar: async id => {
