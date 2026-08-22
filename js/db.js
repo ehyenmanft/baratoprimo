@@ -48,7 +48,9 @@
   function traducirAlta(mensaje) {
     const m = (mensaje || '').toLowerCase();
     if (m.includes('already registered') || m.includes('already been registered'))
-      return 'Ya existe una cuenta con ese correo. Para cambiarle la contraseña hace falta la función de administración.';
+      return 'Ese correo ya tiene cuenta de acceso. Para cambiarle la contraseña ' +
+             'hay que desplegar la función de administración (FUNCION-CUENTAS.md) ' +
+             'o hacerlo desde Supabase → Authentication → Users.';
     if (m.includes('password') && m.includes('least'))
       return 'La contraseña es demasiado corta para lo que exige el proyecto.';
     if (m.includes('signups not allowed') || m.includes('disabled'))
@@ -262,6 +264,27 @@
         ? { crear: true, cambiar: true }
         : { crear: true, cambiar: false },
 
+      /* Asigna la contraseña sin preguntar antes si la cuenta existe: no
+         hay forma de saberlo desde el navegador, y preguntar de más
+         permitiría averiguar qué correos están registrados. Se intenta y
+         se traduce la respuesta. */
+      asignar: async (correo, clave) => {
+        if (INV.db.cuentas.conFuncion())
+          return llamarFuncion('crear', { correo, clave });   // crea o cambia
+
+        const aparte = window.supabase.createClient(INV.config.SUPABASE_URL, INV.config.SUPABASE_ANON, {
+          auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+        });
+        const { data, error } = await aparte.auth.signUp({ email: correo, password: clave });
+        if (error) throw new Error(traducirAlta(error.message));
+        return {
+          creada: true,
+          requiereConfirmacion: !data.session,
+          // Sirve para atar el operador a su cuenta en la tabla
+          usuario_id: data.user ? data.user.id : null,
+        };
+      },
+
       crear: async (correo, clave) => {
         if (INV.db.cuentas.conFuncion())
           return llamarFuncion('crear', { correo, clave });
@@ -275,7 +298,11 @@
         const { data, error } = await aparte.auth.signUp({ email: correo, password: clave });
         if (error) throw new Error(traducirAlta(error.message));
         // Sin confirmación de correo la cuenta ya sirve; con ella, hay que abrir el enlace
-        return { creada: true, requiereConfirmacion: !data.session };
+        return {
+          creada: true,
+          requiereConfirmacion: !data.session,
+          usuario_id: data.user ? data.user.id : null,
+        };
       },
 
       cambiar: async (correo, clave) => {

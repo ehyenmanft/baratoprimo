@@ -789,6 +789,11 @@
     cuentas: {
       conFuncion: () => false,
       capacidad: () => ({ crear: true, cambiar: true }),
+      asignar: async correo => {
+        const o = bd.operadores.find(x => x.correo.toLowerCase() === String(correo).toLowerCase());
+        if (o) { o.tiene_clave = true; persistir(); }
+        return { creada: true, requiereConfirmacion: false, simulado: true };
+      },
       crear: async correo => {
         const o = bd.operadores.find(x => x.correo.toLowerCase() === String(correo).toLowerCase());
         if (o) { o.tiene_clave = true; persistir(); }
