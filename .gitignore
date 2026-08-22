@@ -1,0 +1,10 @@
+# Nada de esto debe llegar al repositorio
+node_modules/
+*.log
+.DS_Store
+Thumbs.db
+
+# Configuración con credenciales propias de cada instalación.
+# Si prefieres no publicar tus llaves, quita el guión de la línea de abajo
+# y sube en su lugar config.ejemplo.js.
+# js/config.js
