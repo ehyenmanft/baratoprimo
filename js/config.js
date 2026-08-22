@@ -44,7 +44,7 @@ INV.config = {
      administrador puede además cambiar la contraseña de un operador que
      ya existe. Sin ella se usa el alta normal, que solo sirve para
      cuentas nuevas. */
-  FUNCION_CUENTAS: '',
+  FUNCION_CUENTAS: 'https://goqqmcibcdaeuienjmuy.supabase.co/functions/v1/cuentas',
 
   /* Para MODO 'drive': ID de cliente OAuth de Google Cloud, tipo
      "aplicación web", con tu dominio en los orígenes autorizados. */
