@@ -35,9 +35,21 @@ Deno.serve(async (peticion) => {
   if (peticion.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   if (peticion.method !== 'POST') return responder({ error: 'Método no permitido' }, 405);
 
-  const URL_PROYECTO = Deno.env.get('SUPABASE_URL');
-  const LLAVE_SERVICIO = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-  const LLAVE_PUBLICA = Deno.env.get('SUPABASE_ANON_KEY');
+  /* Supabase inyecta estas variables sola. Los nombres han cambiado con
+     el tiempo, así que se prueban los que ha usado: si el proyecto es
+     nuevo puede traer las llaves con la nomenclatura moderna. */
+  const primera = (...nombres) => nombres.map(n => Deno.env.get(n)).find(v => v);
+
+  const URL_PROYECTO   = primera('SUPABASE_URL', 'PROJECT_URL');
+  const LLAVE_SERVICIO = primera('SUPABASE_SERVICE_ROLE_KEY', 'SB_SECRET_KEY', 'SERVICE_ROLE_KEY');
+  const LLAVE_PUBLICA  = primera('SUPABASE_ANON_KEY', 'SB_PUBLISHABLE_KEY', 'ANON_KEY');
+
+  if (!URL_PROYECTO || !LLAVE_SERVICIO) {
+    return responder({
+      error: 'Faltan las variables del proyecto. Añade SUPABASE_SERVICE_ROLE_KEY ' +
+             'en Edge Functions → Secrets.',
+    }, 500);
+  }
 
   try {
     const { accion, correo, clave } = await peticion.json();
