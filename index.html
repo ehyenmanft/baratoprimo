@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BaratoPrimo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="icon" type="image/svg+xml" href="img/logo.svg">
+<link rel="stylesheet" href="css/app.css">
+<script>
+  /* Antes del primer pintado: evita el destello blanco al abrir en oscuro. */
+  (function () {
+    var t;
+    try { t = localStorage.getItem('inventario-tema'); } catch (e) {}
+    if (!t) {
+      try { t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro'; }
+      catch (e) { t = 'claro'; }
+    }
+    document.documentElement.dataset.tema = t;
+  })();
+</script>
+</head>
+<body>
+
+<!-- ============ ACCESO ============ -->
+<section id="pantalla-acceso" class="acceso" hidden>
+  <div class="acceso__caja">
+    <img class="acceso__logo" src="img/logo.svg" alt="" width="56" height="56">
+    <h1 class="acceso__titulo">BaratoPrimo</h1>
+    <p class="acceso__nota" id="acceso-nota">Entra con tu correo y contraseña para ver el stock y registrar movimientos.</p>
+    <div id="acceso-campos">
+      <div class="campo">
+        <label for="acceso-email">Correo</label>
+        <input id="acceso-email" type="email" autocomplete="username" placeholder="tu@correo.com">
+      </div>
+      <div class="campo">
+        <label for="acceso-clave">Contraseña</label>
+        <input id="acceso-clave" type="password" autocomplete="current-password" placeholder="********">
+      </div>
+    </div>
+    <button id="btn-entrar" class="btn btn--primario btn--ancho">Entrar</button>
+    <p id="acceso-error" class="error" hidden></p>
+  </div>
+</section>
+
+<!-- ============ APLICACIÓN ============ -->
+<div id="pantalla-app" class="capa" hidden>
+
+  <aside class="rail">
+    <div class="rail__marca">
+      <img class="rail__logo" src="img/logo.svg" alt="" width="34" height="34">
+      <span class="rail__nombre">BaratoPrimo</span>
+    </div>
+
+    <!-- Comercio en el que se está trabajando -->
+    <div class="rail__comercio" id="rail-comercio" hidden>
+      <span class="rail__comercio-etiqueta">Comercio</span>
+      <span class="rail__comercio-nombre" id="comercio-actual">—</span>
+      <select id="selector-comercio" hidden aria-label="Cambiar de comercio"></select>
+    </div>
+    <p class="rail__grupo">Operación</p>
+    <nav class="rail__nav">
+      <a href="#/inicio"      class="rail__link" data-vista="inicio">Inicio</a>
+      <a href="#/ventas"      class="rail__link" data-vista="ventas">Ventas</a>
+      <a href="#/clientes"    class="rail__link" data-vista="clientes">Clientes</a>
+    </nav>
+    <p class="rail__grupo">Almacén</p>
+    <nav class="rail__nav">
+      <a href="#/movimientos" class="rail__link" data-vista="movimientos">Movimientos</a>
+      <a href="#/productos"   class="rail__link" data-vista="productos">Productos</a>
+      <a href="#/graficas"    class="rail__link" data-vista="graficas">Gráficas</a>
+      <a href="#/kardex"      class="rail__link" data-vista="kardex">Kardex</a>
+    </nav>
+    <p class="rail__grupo">Administración</p>
+    <nav class="rail__nav">
+      <a href="#/comercios"   class="rail__link" data-vista="comercios">Comercios</a>
+      <a href="#/comercio"    class="rail__link" data-vista="comercio">Mi comercio</a>
+      <a href="#/operadores"  class="rail__link" data-vista="operadores">Operadores</a>
+    </nav>
+    <div class="rail__pie">
+      <div class="tema" role="group" aria-label="Tema de la interfaz">
+        <button data-tema="claro" type="button">Claro</button>
+        <button data-tema="oscuro" type="button">Oscuro</button>
+      </div>
+      <span id="rol-actual" class="rol-marca"></span>
+      <span id="usuario-correo" class="rail__usuario"></span>
+      <button id="btn-salir" class="btn btn--fantasma btn--chico">Cerrar sesión</button>
+    </div>
+  </aside>
+
+  <main class="lienzo">
+    <div id="cinta-demo" class="cinta-demo" hidden>
+      <span>Modo demo: los datos viven en este navegador, no en Supabase.</span>
+      <button id="btn-reiniciar-demo" class="btn btn--fantasma btn--chico">Restaurar datos de ejemplo</button>
+    </div>
+
+    <header class="cabecera">
+      <div>
+        <p class="eyebrow" id="vista-eyebrow">Resumen del almacén</p>
+        <h2 class="cabecera__titulo" id="vista-titulo">Inicio</h2>
+      </div>
+      <div class="cabecera__acciones" id="vista-acciones"></div>
+    </header>
+
+    <div id="banda-alertas" class="banda" hidden></div>
+    <div id="contenido" class="contenido"></div>
+  </main>
+</div>
+
+<!-- ============ MODAL ============ -->
+<div id="modal" class="modal" hidden>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-titulo">
+    <header class="modal__cabecera">
+      <h3 id="modal-titulo"></h3>
+      <button id="modal-cerrar" class="btn btn--fantasma btn--chico" aria-label="Cerrar">&#10005;</button>
+    </header>
+    <div id="modal-cuerpo" class="modal__cuerpo"></div>
+    <footer id="modal-pie" class="modal__pie"></footer>
+  </div>
+</div>
+
+<div id="avisos" class="avisos" aria-live="polite"></div>
+
+<!-- Ticket de impresión: fuera de la aplicación a propósito, para que al
+     imprimir se pueda ocultar todo lo demás y quede solo el comprobante. -->
+<div id="ticket" aria-hidden="true"></div>
+<style id="estilo-pagina"></style>
+
+<!-- ============ SCRIPTS ============ -->
+<!-- Scripts clásicos, sin módulos ES: así index.html abre con doble clic.
+     El orden importa: config -> supabase -> datos -> ui -> vistas -> app. -->
+<script src="js/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/datos-demo.js"></script>
+<script src="js/drive.js"></script>
+<script src="js/db.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/permisos.js"></script>
+<script src="js/periodos.js"></script>
+<script src="js/graficos.js"></script>
+<script src="js/qr.js"></script>
+<script src="js/views/inicio.js"></script>
+<script src="js/views/movimientos.js"></script>
+<script src="js/views/kardex.js"></script>
+<script src="js/views/productos.js"></script>
+<script src="js/views/producto.js"></script>
+<script src="js/views/graficas.js"></script>
+<script src="js/views/clientes.js"></script>
+<script src="js/views/ventas.js"></script>
+<script src="js/views/comercio.js"></script>
+<script src="js/views/operadores.js"></script>
+<script src="js/views/comercios.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

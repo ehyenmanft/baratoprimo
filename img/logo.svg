@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="BaratoPrimo">
+  <title>BaratoPrimo</title>
+  <defs>
+    <linearGradient id="bp-fondo" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#7B4DF7"/>
+      <stop offset="55%"  stop-color="#6C3BF4"/>
+      <stop offset="100%" stop-color="#0BA5C7"/>
+    </linearGradient>
+    <linearGradient id="bp-brillo" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#FFFFFF" stop-opacity=".22"/>
+      <stop offset="60%"  stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Base: cuadrado redondeado con el violeta de la aplicación -->
+  <rect width="64" height="64" rx="16" fill="url(#bp-fondo)"/>
+  <rect width="64" height="64" rx="16" fill="url(#bp-brillo)"/>
+
+  <!-- Etiqueta de precio: el gesto del comercio. Apunta hacia abajo a la
+       derecha, como colgada de la mercancía. -->
+  <path d="M30.5 13.5h13.2c1.55 0 2.8 1.25 2.8 2.8v13.2c0 .74-.3 1.46-.82 1.98
+           L28.9 48.26c-1.1 1.1-2.87 1.1-3.96 0L15.74 39.06c-1.1-1.1-1.1-2.87 0-3.96
+           L28.52 14.32c.52-.52 1.24-.82 1.98-.82z"
+        fill="#FFFFFF" opacity=".96"/>
+
+  <!-- Perforación de la etiqueta -->
+  <circle cx="39.6" cy="20.4" r="3.5" fill="#6C3BF4"/>
+
+  <!-- La B de Barato, recortada sobre la etiqueta -->
+  <path d="M24.4 41.2V28.6h5.9c2.35 0 3.9 1.15 3.9 3.05 0 1.28-.7 2.2-1.82 2.62
+           1.42.36 2.32 1.42 2.32 2.94 0 2.2-1.68 3.99-4.32 3.99zm2.86-7.52h2.7
+           c1.06 0 1.72-.5 1.72-1.34s-.66-1.32-1.72-1.32h-2.7zm0 5.16h3.02
+           c1.16 0 1.86-.56 1.86-1.48 0-.92-.7-1.48-1.86-1.48h-3.02z"
+        fill="#6C3BF4"/>
+</svg>

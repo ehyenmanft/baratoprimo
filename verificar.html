@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Verificar la conexión — BaratoPrimo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="icon" type="image/svg+xml" href="img/logo.svg">
+<link rel="stylesheet" href="css/app.css">
+<style>
+  body{ padding:28px 20px 64px; }
+  .caja{ width:min(760px,100%); margin:0 auto; }
+  .prueba{
+    display:flex; gap:13px; align-items:flex-start;
+    background:var(--superficie); border-radius:var(--r-s);
+    padding:13px 16px; margin-bottom:8px; box-shadow:var(--sombra);
+  }
+  .marca{
+    width:26px; height:26px; border-radius:50%; flex-shrink:0;
+    display:grid; place-items:center; font-family:var(--dato);
+    font-size:13px; font-weight:700; color:#fff; background:var(--tinta-3);
+  }
+  .marca--ok{ background:var(--esmeralda); }
+  .marca--mal{ background:var(--rosa); }
+  .marca--aviso{ background:var(--naranja); }
+  .prueba b{ display:block; font-size:14px; }
+  .prueba p{ margin:3px 0 0; font-size:13px; color:var(--tinta-2); }
+  .prueba code{ font-family:var(--dato); font-size:12px; word-break:break-all; }
+</style>
+</head>
+<body>
+<div class="caja">
+  <div style="display:flex; align-items:center; gap:14px; margin-bottom:10px">
+    <img src="img/logo.svg" alt="" width="46" height="46" style="border-radius:12px">
+    <div>
+      <p class="eyebrow" style="margin:0">Puesta en marcha</p>
+      <h1 style="font-family:var(--display); font-size:30px; font-weight:600; letter-spacing:-.03em; margin:0">
+        BaratoPrimo</h1>
+    </div>
+  </div>
+  <p style="color:var(--tinta-2); margin:0 0 24px; font-size:14px">
+    Esta página comprueba que Supabase está listo antes de abrir la aplicación.
+    No escribe nada: solo consulta.
+  </p>
+
+  <div class="ficha" style="margin-bottom:18px">
+    <div class="ficha__cuerpo" style="padding-top:16px">
+      <div class="campos-fila">
+        <div class="campo">
+          <label for="correo">Correo del operador</label>
+          <input id="correo" type="email" placeholder="tu@correo.com" autocomplete="username">
+        </div>
+        <div class="campo">
+          <label for="clave">Contraseña</label>
+          <input id="clave" type="password" placeholder="********" autocomplete="current-password">
+        </div>
+      </div>
+      <button class="btn btn--primario btn--ancho" id="probar">Ejecutar la verificación</button>
+    </div>
+  </div>
+
+  <div id="resultados"></div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+(function () {
+  const $ = s => document.querySelector(s);
+  const caja = $('#resultados');
+
+  function apuntar(estado, titulo, detalle) {
+    const iconos = { ok: '✓', mal: '✕', aviso: '!' , espera: '…' };
+    const el = document.createElement('div');
+    el.className = 'prueba';
+    el.innerHTML = `<span class="marca marca--${estado}">${iconos[estado]}</span>
+      <span><b>${titulo}</b>${detalle ? `<p>${detalle}</p>` : ''}</span>`;
+    caja.append(el);
+    return el;
+  }
+
+  const relaciones = [
+    ['comercios', 'Comercios'], ['operadores', 'Operadores'],
+    ['categorias', 'Categorías'], ['productos', 'Catálogo'],
+    ['movimientos', 'Kardex'], ['clientes', 'Clientes'],
+    ['ventas', 'Ventas'], ['venta_items', 'Renglones de venta'],
+    ['venta_pagos', 'Formas de pago'], ['cuotas', 'Cuotas de crédito'],
+    ['anulaciones', 'Anulaciones'],
+  ];
+  const vistas = [
+    ['stock_actual', 'Existencias'], ['alertas_stock', 'Alertas de reposición'],
+    ['kardex', 'Kardex con saldo'], ['ventas_detalle', 'Ventas con cliente'],
+    ['cuotas_pendientes', 'Cobranza'], ['mi_comercio', 'Comercio activo'],
+  ];
+
+  $('#probar').addEventListener('click', async () => {
+    caja.innerHTML = '';
+    const btn = $('#probar');
+    btn.disabled = true;
+    btn.textContent = 'Verificando…';
+
+    const c = INV.config;
+
+    // 1. Configuración
+    if (!c.SUPABASE_URL || c.SUPABASE_URL.includes('TU-PROYECTO')) {
+      apuntar('mal', 'Falta configurar la URL del proyecto', 'Edita js/config.js');
+      btn.disabled = false; btn.textContent = 'Ejecutar la verificación'; return;
+    }
+    apuntar('ok', 'Configuración cargada',
+      `<code>${c.SUPABASE_URL}</code> · modo <b>${c.MODO}</b>`);
+
+    if (c.MODO !== 'supabase') {
+      apuntar('aviso', 'La aplicación no está en modo Supabase',
+        `Ahora mismo usaría <b>${c.MODO}</b>. Cambia MODO a 'supabase' en js/config.js.`);
+    }
+
+    if (location.protocol === 'file:') {
+      apuntar('mal', 'La página está abierta como archivo local',
+        'Supabase no autoriza el origen file://. Súbela a tu servidor y ábrela por https.');
+      btn.disabled = false; btn.textContent = 'Ejecutar la verificación'; return;
+    }
+
+    const sb = window.supabase.createClient(c.SUPABASE_URL, c.SUPABASE_ANON);
+
+    // 2. Alcance del proyecto
+    try {
+      const { error } = await sb.from('comercio').select('id').limit(1);
+      if (error && error.code === 'PGRST301') throw new Error('llave rechazada');
+      apuntar('ok', 'El proyecto responde', 'La URL y la llave son válidas.');
+    } catch (e) {
+      apuntar('mal', 'No se pudo contactar el proyecto', e.message);
+      btn.disabled = false; btn.textContent = 'Ejecutar la verificación'; return;
+    }
+
+    // 3. Sesión
+    let sesion = null;
+    if ($('#correo').value && $('#clave').value) {
+      const { data, error } = await sb.auth.signInWithPassword({
+        email: $('#correo').value.trim(), password: $('#clave').value,
+      });
+      if (error) {
+        apuntar('mal', 'No se pudo iniciar sesión', error.message +
+          '. Crea el usuario en Supabase → Authentication → Users.');
+      } else {
+        sesion = data.session;
+        apuntar('ok', 'Sesión iniciada', data.user.email);
+      }
+    } else {
+      apuntar('aviso', 'Sin sesión',
+        'Escribe correo y contraseña arriba para comprobar el acceso y los permisos.');
+    }
+
+    // 4. Tablas y vistas
+    const faltan = [];
+    for (const [nombre, etiqueta] of [...relaciones, ...vistas]) {
+      const { error } = await sb.from(nombre).select('*', { count: 'exact', head: true });
+      if (error) faltan.push(`${etiqueta} (${nombre}): ${error.message}`);
+    }
+    if (faltan.length) {
+      apuntar('mal', `Faltan ${faltan.length} de ${relaciones.length + vistas.length} tablas o vistas`,
+        faltan.slice(0, 6).join('<br>') + (faltan.length > 6 ? '<br>…' : '') +
+        '<br><br>Ejecuta <code>inventario_schema.sql</code> completo en el editor SQL.');
+    } else {
+      apuntar('ok', 'El esquema está completo',
+        `${relaciones.length} tablas y ${vistas.length} vistas responden.`);
+    }
+
+    // 5. Rol del operador
+    if (sesion) {
+      const { data, error } = await sb.from('operadores')
+        .select('nombre, rol, activo, comercio_id').ilike('correo', sesion.user.email);
+      if (error) {
+        apuntar('mal', 'No se pudo consultar tu rol', error.message);
+      } else if (!data.length) {
+        apuntar('mal', 'Tu cuenta no está registrada como operador',
+          'Ejecuta en el editor SQL:<br><code>' +
+          "insert into comercios (nombre, rif) values ('Mi Comercio', 'J-00000000-0');<br>" +
+          'insert into operadores (correo, nombre, rol, comercio_id) values (' +
+          `'${sesion.user.email}', 'Tu nombre', 'super_admin', ` +
+          '(select id from comercios order by id limit 1));</code>');
+      } else if (!data[0].activo) {
+        apuntar('mal', 'Tu operador está desactivado', 'Un administrador debe reactivarlo.');
+      } else if (!data[0].comercio_id) {
+        apuntar('mal', 'No tienes comercio asignado',
+          'Sin comercio no se puede leer ni escribir nada. Asigna uno con:<br>' +
+          '<code>update operadores set comercio_id = (select id from comercios order by id limit 1) ' +
+          `where correo = '${sesion.user.email}';</code>`);
+      } else {
+        apuntar('ok', `Rol reconocido: ${data[0].rol}`, data[0].nombre);
+      }
+
+      // 6. Datos del comercio en el que se trabaja
+      const { data: com } = await sb.from('mi_comercio').select('*').single();
+      if (com) {
+        const sinConfigurar = !com.rif || com.nombre === 'Mi Comercio';
+        apuntar(sinConfigurar ? 'aviso' : 'ok',
+          sinConfigurar ? 'El comercio aún tiene los datos de fábrica' : 'Comercio configurado',
+          `${com.nombre}${com.rif ? ' · ' + com.rif : ''} · IVA ${com.iva_tasa}%` +
+          (sinConfigurar ? '<br>Complétalo desde Administración → Mi comercio.' : ''));
+
+        const { data: todos } = await sb.from('comercios').select('id');
+        if (todos && todos.length > 1) {
+          apuntar('ok', `${todos.length} comercios en la instalación`,
+            'Sus datos son independientes. Cambia de uno a otro desde el menú.');
+        }
+      }
+
+      // 7. Almacenamiento de imágenes
+      const { error: errBucket } = await sb.storage.from('inventario').list('', { limit: 1 });
+      apuntar(errBucket ? 'aviso' : 'ok',
+        errBucket ? 'El bucket de imágenes no responde' : 'Bucket de imágenes listo',
+        errBucket ? errBucket.message + '. Créalo en Storage con el nombre <code>inventario</code>.'
+                  : 'Las fotos de producto se podrán subir.');
+
+      await sb.auth.signOut();
+    }
+
+    apuntar('ok', 'Verificación terminada',
+      'Si todo está en verde, abre <a href="index.html">index.html</a> y entra con tu correo.');
+
+    btn.disabled = false;
+    btn.textContent = 'Ejecutar la verificación';
+  });
+})();
+</script>
+</body>
+</html>
