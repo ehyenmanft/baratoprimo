@@ -11,7 +11,7 @@ en modo `supabase`.
 ## 1. Ejecutar el esquema
 
 Panel de Supabase → **SQL Editor** → New query. Pega el contenido completo de
-`baratoprimo_schema.sql` y pulsa Run.
+`inventario_schema.sql` y pulsa Run.
 
 Crea once tablas, seis vistas, las funciones de negocio, las políticas de
 seguridad por rol y comercio, y el bucket de imágenes. Al final verás avisos como
@@ -79,7 +79,7 @@ css/app.css
 js/…            (todos los archivos y la subcarpeta views)
 ```
 
-No subas `baratoprimo_schema.sql` ni este archivo: no hacen falta en el servidor
+No subas `inventario_schema.sql` ni este archivo: no hacen falta en el servidor
 y es mejor que no queden accesibles.
 
 **Tiene que servirse por https.** Supabase no autoriza peticiones desde
@@ -167,8 +167,25 @@ Authentication.
 **Entras, pero todas las pantallas están vacías** — Tu operador no tiene
 comercio asignado. `verificar.html` lo detecta y da el `update` para arreglarlo.
 
-**"Tu operador no tiene un comercio asignado" al facturar** — Lo mismo: sin
-comercio no se puede emitir nada.
+**"Tu operador no tiene un comercio asignado"** — Tu cuenta existe y tu rol se
+reconoce, pero no cuelga de ningún comercio, así que la base no devuelve datos
+en ninguna pantalla. Pasa cuando se registra el operador antes de crear el
+comercio. La propia aplicación te lleva a *Mi comercio* y te da el SQL con tu
+correo ya puesto; en resumen:
+
+```sql
+insert into comercios (nombre, rif) values ('Mi Comercio', 'J-00000000-0');
+
+update operadores
+   set comercio_id = (select id from comercios order by id limit 1)
+ where correo = 'tu@correo.com';
+```
+
+Después vuelve a entrar, para que la sesión tome el comercio.
+
+**"Cannot coerce the result to a single JSON object"** — Es el mismo problema
+visto desde PostgREST: una consulta que esperaba una fila recibió cero. Aplica el
+arreglo de arriba.
 
 **"No fue posible iniciar sesión. Comuníquese con el administrador."** — Es el
 mensaje que ve cualquiera que se equivoque de contraseña: no dice si falló el

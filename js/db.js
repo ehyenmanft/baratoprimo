@@ -80,7 +80,7 @@
         if (busqueda) q = q.or(`nombres.ilike.%${busqueda}%,apellidos.ilike.%${busqueda}%,documento.ilike.%${busqueda}%`);
         return q.then(ok).then(filas => filas.map(derivados));
       },
-      obtener: id => sb.from('clientes').select('*').eq('id', id).single()
+      obtener: id => sb.from('clientes').select('*').eq('id', id).maybeSingle()
         .then(ok).then(derivados),
       crear: datos => sb.from('clientes').insert(datos).select().single().then(ok).then(derivados),
       actualizar: (id, datos) => sb.from('clientes').update(datos).eq('id', id)
@@ -98,12 +98,12 @@
       },
       obtener: async id => {
         const [venta, items, pagos, cuotas] = await Promise.all([
-          sb.from('ventas_detalle').select('*').eq('id', id).single().then(ok),
+          sb.from('ventas_detalle').select('*').eq('id', id).maybeSingle().then(ok),
           sb.from('venta_items').select('*').eq('venta_id', id).order('id').then(ok),
           sb.from('venta_pagos').select('*').eq('venta_id', id).order('id').then(ok),
           sb.from('cuotas').select('*').eq('venta_id', id).order('numero').then(ok),
         ]);
-        return { ...venta, items, pagos, cuotas };
+        return venta ? { ...venta, items, pagos, cuotas } : null;
       },
       /* La función del esquema comprueba el rol, marca la anulación y
          devuelve el inventario en una sola transacción. */
@@ -136,10 +136,15 @@
     },
 
     comercio: {
-      // La vista mi_comercio ya devuelve solo el del operador en sesión
-      obtener: () => sb.from('mi_comercio').select('*').single().then(ok),
+      /* La vista mi_comercio devuelve el del operador en sesión. Si no
+         tiene comercio asignado no hay filas, y eso no es un error de la
+         consulta sino una instalación a medias: se devuelve null y quien
+         llama decide qué decir. */
+      obtener: () => sb.from('mi_comercio').select('*').maybeSingle().then(ok),
+
       guardar: async datos => {
-        const actual = await sb.from('mi_comercio').select('id').single().then(ok);
+        const actual = await sb.from('mi_comercio').select('id').maybeSingle().then(ok);
+        if (!actual) throw new Error('Tu operador no tiene un comercio asignado');
         return sb.from('comercios')
           .update({ ...datos, actualizado_en: new Date().toISOString() })
           .eq('id', actual.id).select().single().then(ok);

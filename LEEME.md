@@ -29,7 +29,7 @@ hará la base real.
 
 ## Pasar a producción
 
-1. Corre `baratoprimo_schema.sql` en el SQL Editor de Supabase. Incluye el
+1. Corre `inventario_schema.sql` en el SQL Editor de Supabase. Incluye el
    inventario y el módulo comercial (clientes, ventas y la función
    `registrar_venta`).
 2. En Authentication → Users, crea tu usuario con correo y contraseña.

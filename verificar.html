@@ -192,7 +192,12 @@
       }
 
       // 6. Datos del comercio en el que se trabaja
-      const { data: com } = await sb.from('mi_comercio').select('*').single();
+      const { data: com } = await sb.from('mi_comercio').select('*').maybeSingle();
+      if (!com) {
+        apuntar('mal', 'No hay comercio activo',
+          'La vista mi_comercio no devuelve nada: tu operador no tiene comercio asignado, ' +
+          'o la tabla comercios está vacía.');
+      }
       if (com) {
         const sinConfigurar = !com.rif || com.nombre === 'Mi Comercio';
         apuntar(sinConfigurar ? 'aviso' : 'ok',

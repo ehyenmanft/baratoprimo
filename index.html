@@ -48,11 +48,14 @@
 <!-- ============ APLICACIÓN ============ -->
 <div id="pantalla-app" class="capa" hidden>
 
-  <aside class="rail">
-    <div class="rail__marca">
+  <aside class="rail" id="menu-lateral">
+    <button class="rail__marca" id="btn-menu" type="button"
+            aria-controls="menu-lateral" aria-expanded="false"
+            aria-label="Abrir el menú">
       <img class="rail__logo" src="img/logo.svg" alt="" width="34" height="34">
       <span class="rail__nombre">BaratoPrimo</span>
-    </div>
+      <span class="rail__flecha" aria-hidden="true"></span>
+    </button>
 
     <!-- Comercio en el que se está trabajando -->
     <div class="rail__comercio" id="rail-comercio" hidden>
@@ -90,7 +93,20 @@
     </div>
   </aside>
 
+  <!-- Velo que cierra el menú al tocar fuera, solo en móvil -->
+  <div class="velo" id="velo-menu" hidden></div>
+
   <main class="lienzo">
+    <div class="barra-movil">
+      <button class="barra-movil__boton" id="btn-menu-movil" type="button"
+              aria-controls="menu-lateral" aria-expanded="false"
+              aria-label="Abrir el menú de opciones">
+        <img src="img/logo.svg" alt="">
+        <span>BaratoPrimo</span>
+      </button>
+      <span class="barra-movil__vista" id="vista-movil"></span>
+    </div>
+
     <div id="cinta-demo" class="cinta-demo" hidden>
       <span>Modo demo: los datos viven en este navegador, no en Supabase.</span>
       <button id="btn-reiniciar-demo" class="btn btn--fantasma btn--chico">Restaurar datos de ejemplo</button>

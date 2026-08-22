@@ -19,6 +19,12 @@
     render: async contenedor => {
       contenedor.innerHTML = cargando();
       const c = await INV.db.comercio.obtener();
+
+      if (!c) {
+        contenedor.innerHTML = sinComercio();
+        return;
+      }
+
       const puede = INV.permisos.puede('ajustes.comercio');
 
       contenedor.innerHTML = `
@@ -131,6 +137,39 @@
     },
   };
 
+  /* Instalación a medias: el operador existe pero no cuelga de ningún
+     comercio. Se explica y se da la instrucción exacta para arreglarlo. */
+  function sinComercio() {
+    const correo = ($('#usuario-correo') || {}).textContent || 'tu@correo.com';
+    return `
+      <div class="ficha anim">
+        <div class="ficha__cabecera">
+          <h3 class="ficha__titulo">Tu operador no tiene comercio asignado</h3>
+        </div>
+        <div class="ficha__cuerpo">
+          <p style="font-size:14px; color:var(--tinta-2); margin:0 0 14px">
+            Entraste bien, pero tu cuenta no cuelga de ningún comercio, así que
+            no hay datos que mostrar en ninguna pantalla. Pasa cuando se registra
+            el operador antes de crear el comercio.
+          </p>
+          <p style="font-size:14px; color:var(--tinta-2); margin:0 0 10px">
+            ${INV.permisos.puede('comercios.gestionar')
+              ? 'Puedes arreglarlo desde <b>Comercios</b>, creando uno y pulsando <b>Trabajar aquí</b>. Si la lista está vacía, ejecuta esto en el editor SQL de Supabase:'
+              : 'Pide a un administrador que te asigne uno, o ejecuta esto en el editor SQL de Supabase:'}
+          </p>
+          <pre class="compartir__previa">insert into comercios (nombre, rif)
+values ('Mi Comercio', 'J-00000000-0');
+
+update operadores
+   set comercio_id = (select id from comercios order by id limit 1)
+ where correo = '${esc(correo.trim())}';</pre>
+          <p class="subida__nota" style="margin-top:12px">
+            Después vuelve a entrar para que la sesión tome el comercio.
+          </p>
+        </div>
+      </div>`;
+  }
+
   function previa() {
     $('#co-previa').innerHTML = `
       <div class="previa__papel">
@@ -183,6 +222,14 @@
       catch (e) { INV.comercio.datos = null; }
       return INV.comercio.datos;
     },
-    actual: () => INV.comercio.datos || INV.config.NEGOCIO || {},
+    /* Sin comercio no se inventa uno: mostrar el nombre de fábrica de
+       config.js haría creer que la instalación está bien cuando no lo
+       está. Solo se usa como respaldo donde no hay control de acceso. */
+    actual: () => {
+      if (INV.comercio.datos) return INV.comercio.datos;
+      const conBase = INV.db && INV.db.etiqueta === 'supabase';
+      return conBase ? {} : (INV.config.NEGOCIO || {});
+    },
+    hay: () => !!INV.comercio.datos,
   };
 })();

@@ -52,6 +52,15 @@
     INV.permisos.fijarRol(rol);
     await INV.comercio.recargar();
 
+    /* Operador sin comercio: la base no le devolverá una sola fila en
+       ninguna pantalla, así que se le lleva donde está la explicación en
+       vez de dejar que cada vista falle por su cuenta. */
+    if (INV.db.etiqueta === 'supabase' && rol !== INV.permisos.SIN_ACCESO.id
+        && !INV.comercio.hay()) {
+      INV.ui.avisar('Tu operador no tiene un comercio asignado', 'error');
+      if (!location.hash || location.hash === '#/inicio') location.hash = '#/comercio';
+    }
+
     await pintarComercio(rol);
 
     const d = INV.permisos.definicion(rol);
@@ -79,6 +88,30 @@
         [...nav.querySelectorAll('.rail__link')].every(a => a.hidden));
     });
   }
+
+  /* ---------------- Menú lateral en móvil ----------------
+     En pantallas estrechas el menú se retira fuera de la vista y entra al
+     pulsar el logo, tanto el de la barra superior como el del propio panel
+     (que ahí sirve para cerrarlo). */
+
+  const menuAbierto = () => $('#menu-lateral').classList.contains('abierto');
+
+  function abrirMenu() {
+    $('#menu-lateral').classList.add('abierto');
+    $('#velo-menu').hidden = false;
+    $$('[aria-controls="menu-lateral"]').forEach(b => b.setAttribute('aria-expanded', 'true'));
+    // El fondo no debe desplazarse mientras el panel está encima
+    document.body.style.overflow = 'hidden';
+  }
+
+  function cerrarMenu() {
+    $('#menu-lateral').classList.remove('abierto');
+    $('#velo-menu').hidden = true;
+    $$('[aria-controls="menu-lateral"]').forEach(b => b.setAttribute('aria-expanded', 'false'));
+    document.body.style.overflow = '';
+  }
+
+  const alternarMenu = () => menuAbierto() ? cerrarMenu() : abrirMenu();
 
   /* Nombre del comercio en el menú. El super administrador ve además un
      selector para cambiar de uno a otro sin salir de la pantalla. */
@@ -166,6 +199,8 @@
     const texto = v => typeof v === 'function' ? v(param) : v;
     $('#vista-titulo').textContent = texto(vista.titulo);
     $('#vista-eyebrow').textContent = texto(vista.eyebrow);
+    const enMovil = $('#vista-movil');
+    if (enMovil) enMovil.textContent = texto(vista.titulo);
 
     // El ticket pertenece al comprobante; al cambiar de vista se descarta
     // para que una impresión no saque una venta que ya no está en pantalla.
@@ -252,6 +287,25 @@
       avisar('Datos de ejemplo restaurados');
       enrutar();
       revisarAlertas();
+    });
+
+    // El logo abre y cierra el panel
+    ['#btn-menu', '#btn-menu-movil'].forEach(sel => {
+      const b = $(sel);
+      if (b) b.addEventListener('click', alternarMenu);
+    });
+    $('#velo-menu').addEventListener('click', cerrarMenu);
+
+    // Al elegir una sección el panel se retira solo
+    $$('.rail__link').forEach(a => a.addEventListener('click', cerrarMenu));
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && menuAbierto()) cerrarMenu();
+    });
+
+    // Al ensanchar la ventana el menú vuelve a ser una columna fija
+    window.addEventListener('resize', () => {
+      if (window.innerWidth > 820 && menuAbierto()) cerrarMenu();
     });
 
     window.addEventListener('hashchange', enrutar);
