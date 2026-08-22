@@ -52,13 +52,17 @@
     INV.permisos.fijarRol(rol);
     await INV.comercio.recargar();
 
-    /* Operador sin comercio: la base no le devolverá una sola fila en
-       ninguna pantalla, así que se le lleva donde está la explicación en
-       vez de dejar que cada vista falle por su cuenta. */
-    if (INV.db.etiqueta === 'supabase' && rol !== INV.permisos.SIN_ACCESO.id
-        && !INV.comercio.hay()) {
-      INV.ui.avisar('Tu operador no tiene un comercio asignado', 'error');
-      if (!location.hash || location.hash === '#/inicio') location.hash = '#/comercio';
+    /* Sin comercio en contexto no hay datos que mostrar. Para el super
+       administrador eso es normal —supervisa, no opera—, así que se le
+       lleva a elegir uno. Para el resto es una instalación a medias. */
+    if (!INV.comercio.hay() && rol !== INV.permisos.SIN_ACCESO.id) {
+      const supervisa = INV.permisos.puede('comercios.gestionar');
+      if (supervisa) {
+        if (!location.hash || location.hash === '#/inicio') location.hash = '#/comercios';
+      } else if (INV.db.etiqueta === 'supabase') {
+        INV.ui.avisar('Tu operador no tiene un comercio asignado', 'error');
+        if (!location.hash || location.hash === '#/inicio') location.hash = '#/comercio';
+      }
     }
 
     await pintarComercio(rol);
@@ -120,28 +124,45 @@
     if (!caja) return;
 
     const actual = INV.comercio.actual();
-    if (!actual || !actual.nombre) { caja.hidden = true; return; }
+    const supervisa = rol === 'super_admin';
+    const etiqueta = caja.querySelector('.rail__comercio-etiqueta');
 
+    if (!supervisa) {
+      if (!actual || !actual.nombre) { caja.hidden = true; return; }
+      caja.hidden = false;
+      if (etiqueta) etiqueta.textContent = 'Comercio';
+      $('#comercio-actual').textContent = actual.nombre;
+      $('#selector-comercio').hidden = true;
+      return;
+    }
+
+    // El super administrador no pertenece a un comercio: lo tiene a la vista
     caja.hidden = false;
-    $('#comercio-actual').textContent = actual.nombre;
+    if (etiqueta) etiqueta.textContent = 'Viendo';
+    $('#comercio-actual').textContent = actual && actual.nombre ? actual.nombre : 'Ningún comercio';
 
     const selector = $('#selector-comercio');
-    if (rol !== 'super_admin') { selector.hidden = true; return; }
-
     try {
       const comercios = await INV.db.comercios.listar();
-      if (comercios.length < 2) { selector.hidden = true; return; }
+      if (!comercios.length) { selector.hidden = true; return; }
 
-      selector.innerHTML = comercios.map(c =>
-        `<option value="${c.id}" ${c.id === actual.id ? 'selected' : ''}>${c.nombre}</option>`).join('');
+      const idActual = actual && actual.id ? actual.id : '';
+      selector.innerHTML =
+        `<option value="" ${idActual === '' ? 'selected' : ''}>Ninguno · solo supervisión</option>` +
+        comercios.map(c =>
+          `<option value="${c.id}" ${c.id === idActual ? 'selected' : ''}>${c.nombre}</option>`).join('');
       selector.hidden = false;
       $('#comercio-actual').hidden = true;
 
       selector.onchange = async () => {
         try {
-          await INV.db.comercios.cambiar(selector.value);
+          await INV.db.comercios.cambiar(selector.value || null);
           await INV.comercio.recargar();
-          INV.ui.avisar('Ahora trabajas en ' + INV.comercio.actual().nombre);
+          const c = INV.comercio.actual();
+          INV.ui.avisar(c && c.nombre
+            ? 'Estás viendo ' + c.nombre
+            : 'Fuera de todo comercio: solo supervisión');
+          if (!INV.comercio.hay()) location.hash = '#/comercios';
           enrutar();
           revisarAlertas();
         } catch (e) {

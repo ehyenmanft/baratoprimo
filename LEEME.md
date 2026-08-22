@@ -127,11 +127,15 @@ una fila ajena, no la ve ni la toca.
 | Operador facturador | Solo lectura | No | Sí | No | No | No |
 | Operador mixto | Sí | **No** | Sí | No | No | No |
 
-El **super administrador** está por encima de la jerarquía: crea y elimina
-comercios, asigna operadores a cualquiera de ellos y cambia el comercio sobre el
-que trabaja. Nadie por debajo puede ver su ficha, modificarla, eliminarla ni
-nombrar a otro. Al crearlo hay que asignarle un comercio de partida, que se
-puede crear en ese mismo momento.
+El **super administrador no pertenece a ningún comercio: los supervisa todos.**
+Crea y elimina comercios, asigna operadores a cualquiera de ellos y entra a
+cualquiera cuando lo necesita. El selector del menú dice *Viendo* en vez de
+*Comercio*, e incluye la opción **Ninguno · solo supervisión**, que es su estado
+natural: conserva todas sus facultades sin estar dentro de ninguna operación.
+Nadie por debajo puede ver su ficha, modificarla, eliminarla ni nombrar a otro.
+
+Los demás roles sí pertenecen a un comercio y es obligatorio asignárselo: solo
+verán ese.
 
 La interfaz oculta lo que el rol no puede hacer, pero eso es cortesía, no
 seguridad: la barrera real son las políticas RLS del esquema, que se aplican

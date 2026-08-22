@@ -21,7 +21,10 @@
       const c = await INV.db.comercio.obtener();
 
       if (!c) {
-        contenedor.innerHTML = sinComercio();
+        contenedor.innerHTML = INV.permisos.puede('comercios.gestionar')
+          ? sinSeleccion() : sinComercio();
+        const ir = $('#mc-ir-comercios');
+        if (ir) ir.addEventListener('click', () => { location.hash = '#/comercios'; });
         return;
       }
 
@@ -136,6 +139,26 @@
       previa();
     },
   };
+
+  /* El super administrador no pertenece a ningún comercio: supervisa
+     todos. Cuando no tiene ninguno en contexto, esto no es un fallo sino
+     su estado natural, y basta con decirle dónde elegir. */
+  function sinSeleccion() {
+    return `
+      <div class="ficha anim">
+        <div class="ficha__cabecera">
+          <h3 class="ficha__titulo">No estás dentro de ningún comercio</h3>
+        </div>
+        <div class="ficha__cuerpo">
+          <p style="font-size:14px; color:var(--tinta-2); margin:0 0 14px">
+            Como super administrador no perteneces a un comercio: los supervisas
+            todos. Esta pantalla edita los datos del comercio en el que estés
+            situado, así que primero elige uno.
+          </p>
+          <button class="btn btn--primario" id="mc-ir-comercios">Ver los comercios</button>
+        </div>
+      </div>`;
+  }
 
   /* Instalación a medias: el operador existe pero no cuelga de ningún
      comercio. Se explica y se da la instrucción exacta para arreglarlo. */

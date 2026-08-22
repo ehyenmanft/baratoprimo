@@ -83,6 +83,13 @@
           </div>
         </div>`;
 
+      /* Duplicados exactos: casi siempre es el alta inicial ejecutada dos
+         veces. Se avisa para que se renombre o se elimine uno. */
+      const firmas = comercios.map(c => (c.nombre + '|' + (c.rif || '')).toLowerCase());
+      if (new Set(firmas).size !== firmas.length) {
+        avisar('Hay comercios con el mismo nombre y RIF: renómbralos para distinguirlos', 'error');
+      }
+
       $$('[data-usar]').forEach(b => b.addEventListener('click', () => cambiar(b.dataset.usar)));
       $$('[data-editar]').forEach(b => b.addEventListener('click', () =>
         formulario(comercios.find(c => String(c.id) === b.dataset.editar), enUso)));
@@ -159,6 +166,22 @@
       err.textContent = 'La razón social es obligatoria.'; err.hidden = false; return;
     }
 
+    /* Dos comercios con el mismo nombre y el mismo RIF son imposibles de
+       distinguir en el selector, y es el síntoma de haber ejecutado dos
+       veces el alta inicial. */
+    try {
+      const otros = (await INV.db.comercios.listar())
+        .filter(x => !c || x.id !== c.id);
+      const repetido = otros.find(x =>
+        x.nombre.trim().toLowerCase() === datos.nombre.toLowerCase() &&
+        (x.rif || '').trim() === datos.rif);
+      if (repetido) {
+        err.textContent = 'Ya existe un comercio con esa razón social y ese RIF. ' +
+          'Cámbiale el nombre para poder distinguirlos.';
+        err.hidden = false; return;
+      }
+    } catch (e) { /* si no se puede comprobar, se deja seguir */ }
+
     btn.disabled = true;
     try {
       if (c) await INV.db.comercios.actualizar(c.id, datos);
@@ -194,7 +217,10 @@
         { texto: 'Cancelar', alPulsar: cerrarModal },
         { texto: 'Eliminar definitivamente', estilo: 'btn--primario', alPulsar: async btn => {
           const err = $('#cm-error2');
-          if ($('#cm-confirmar').value.trim() !== c.nombre) {
+          // Se compara sin distinguir mayúsculas ni espacios de sobra: la
+          // fricción debe venir de escribirlo, no de acertar el formato.
+          const escrito = $('#cm-confirmar').value.trim().toLowerCase().replace(/\s+/g, ' ');
+          if (escrito !== c.nombre.trim().toLowerCase().replace(/\s+/g, ' ')) {
             err.textContent = 'El nombre no coincide.'; err.hidden = false; return;
           }
           btn.disabled = true;

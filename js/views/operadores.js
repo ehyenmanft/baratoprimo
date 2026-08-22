@@ -45,7 +45,8 @@
                      data-operador="${o.id}" role="button" tabindex="0">
                   <span class="miniatura miniatura--vacia">${esc(iniciales(o.nombre))}</span>
                   <span class="lista__nombre">${esc(o.nombre)}${o.correo.toLowerCase() === yo ? ' <span class="pastilla pastilla--entrada">tú</span>' : ''}
-                    <span class="lista__sub">${esc(o.correo)}${o.comercio ? ' · ' + esc(o.comercio) : ''}${o.activo ? '' : ' · inactivo'}</span></span>
+                    <span class="lista__sub">${esc(o.correo)}${o.comercio ? ' · ' + esc(o.comercio)
+                      : (o.rol === 'super_admin' ? ' · supervisa todos' : ' · sin comercio')}${o.activo ? '' : ' · inactivo'}</span></span>
                   <span class="rol-marca rol-marca--${esc(o.rol)}">${esc(d.etiqueta)}</span>
                 </div>`;
               }).join('')}
@@ -143,6 +144,7 @@
           <label for="op-comercio">Comercio asignado</label>
           <div style="display:grid; grid-template-columns:1fr auto; gap:8px">
             <select id="op-comercio">
+              <option value="">Ninguno · solo supervisión</option>
               ${comercios.map(c => `<option value="${c.id}" ${o && o.comercio_id === c.id ? 'selected' : ''}>${esc(c.nombre)}</option>`).join('')}
             </select>
             ${INV.permisos.puede('comercios.gestionar')
@@ -173,8 +175,8 @@
       const marcado = $$('input[name="op-rol"]').find(r => r.checked);
       const esSuper = marcado && marcado.value === 'super_admin';
       $('#op-comercio-nota').textContent = esSuper
-        ? 'Un super administrador arranca en este comercio y luego puede cambiar al que quiera.'
-        : 'Solo verá los datos de este comercio.';
+        ? 'Opcional: el super administrador no pertenece a ningún comercio, los supervisa todos. Elegir uno solo decide dónde entra situado.'
+        : 'Obligatorio: solo verá los datos de este comercio.';
     };
     $$('input[name="op-rol"]').forEach(r => r.addEventListener('change', nota));
     nota();
@@ -211,10 +213,9 @@
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(datos.correo)) {
       err.textContent = 'Escribe un correo válido.'; err.hidden = false; return;
     }
-    if (!datos.comercio_id) {
-      err.textContent = datos.rol === 'super_admin'
-        ? 'Un super administrador necesita un comercio de partida: selecciona uno o créalo.'
-        : 'Selecciona el comercio al que pertenece.';
+    // Solo el super administrador puede quedarse sin comercio
+    if (!datos.comercio_id && datos.rol !== 'super_admin') {
+      err.textContent = 'Selecciona el comercio al que pertenece.';
       err.hidden = false; return;
     }
 

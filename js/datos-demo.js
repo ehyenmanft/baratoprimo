@@ -690,11 +690,13 @@
       },
 
       /* El super administrador cambia el comercio sobre el que trabaja. */
+      /* null significa salir de todos: el super administrador supervisa
+         sin estar dentro de ninguno. */
       cambiar: async id => {
         if (INV.permisos && !INV.permisos.puede('comercios.gestionar'))
           throw new Error('Solo el super administrador puede cambiar de comercio');
         const o = operador();
-        o.comercio_id = Number(id);
+        o.comercio_id = (id === null || id === '' || id === undefined) ? null : Number(id);
         persistir();
         return o;
       },
@@ -722,7 +724,9 @@
           id: siguienteId(bd.operadores), activo: true,
           comercio_id: cId(), ...datos,
         };
-        if (!o.comercio_id) throw new Error('Asigna un comercio al operador');
+        // El super administrador puede quedarse sin comercio: supervisa todos
+        if (!o.comercio_id && o.rol !== 'super_admin')
+          throw new Error('Asigna un comercio al operador');
         bd.operadores.push(o); persistir(); return o;
       },
 

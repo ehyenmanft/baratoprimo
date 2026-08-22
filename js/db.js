@@ -168,11 +168,14 @@
 
       /* Cambiar de comercio es mover el propio registro de operador: solo
          el super admin tiene permiso para hacerlo. */
+      /* null significa salir de todos: el super administrador supervisa
+         sin estar dentro de ninguno. */
       cambiar: async id => {
         const { data: sesion } = await sb.auth.getSession();
         const correo = sesion && sesion.session ? sesion.session.user.email : '';
-        return sb.from('operadores').update({ comercio_id: Number(id) })
-          .ilike('correo', correo).select().single().then(ok);
+        const destino = (id === null || id === '' || id === undefined) ? null : Number(id);
+        return sb.from('operadores').update({ comercio_id: destino })
+          .ilike('correo', correo).select().maybeSingle().then(ok);
       },
     },
 

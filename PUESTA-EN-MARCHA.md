@@ -54,6 +54,14 @@ values ('tu@correo.com', 'Tu nombre', 'super_admin',
         (select id from comercios order by id limit 1));
 ```
 
+**Ejecútalo una sola vez.** Si lo repites tendrás dos comercios idénticos, que
+en el selector son indistinguibles; en ese caso renombra uno o elimínalo desde
+**Comercios**.
+
+El `comercio_id` del super administrador es solo el comercio en el que entra
+situado: no pertenece a él y puede salirse con la opción *Ninguno · solo
+supervisión*.
+
 Este es el único operador que se crea a mano. El resto —incluidos otros
 comercios y otros super administradores— los das de alta desde la aplicación.
 
@@ -144,9 +152,9 @@ dos partes, igual que contigo:
 1. Registrarlo en la aplicación (Operadores → Nuevo operador)
 2. Crearle el usuario en Supabase → Authentication → Users, con el mismo correo
 
-Al nombrar otro **super administrador** hay que indicarle un comercio de
-partida —se puede crear en ese mismo momento con el botón *Crear uno*—, y desde
-ahí podrá moverse a cualquier otro.
+Al nombrar otro **super administrador**, el comercio es opcional: no pertenece a
+ninguno, los supervisa todos. Si le eliges uno, solo decide dónde entra situado
+la primera vez.
 
 **La jerarquía no se rompe hacia arriba.** Un administrador manda dentro de su
 comercio, pero no ve ni puede modificar la ficha de un super administrador, ni
