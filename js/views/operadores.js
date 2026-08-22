@@ -46,7 +46,7 @@
                   <span class="miniatura miniatura--vacia">${esc(iniciales(o.nombre))}</span>
                   <span class="lista__nombre">${esc(o.nombre)}${o.correo.toLowerCase() === yo ? ' <span class="pastilla pastilla--entrada">tú</span>' : ''}
                     <span class="lista__sub">${esc(o.correo)}${o.comercio ? ' · ' + esc(o.comercio)
-                      : (o.rol === 'super_admin' ? ' · supervisa todos' : ' · sin comercio')}${o.activo ? '' : ' · inactivo'}${o.tiene_clave ? ' · con acceso' : ''}</span></span>
+                      : (o.rol === 'super_admin' ? ' · supervisa todos' : ' · sin comercio')}${o.activo ? '' : ' · inactivo'}${(o.tiene_clave || o.usuario_id) ? ' · con acceso' : ''}</span></span>
                   <span class="rol-marca rol-marca--${esc(o.rol)}">${esc(d.etiqueta)}</span>
                 </div>`;
               }).join('')}
@@ -156,10 +156,10 @@
           <span class="subida__nota" id="op-comercio-nota" style="margin-top:6px; display:block"></span>
         </div>
         <div class="campo" id="op-caja-clave">
-          <label>${o ? 'Cambiar la contraseña' : 'Contraseña de acceso'}</label>
+          <label>Contraseña de acceso</label>
           <div class="campo campo--clave" style="margin:0 0 10px">
             <input id="op-clave" type="password" autocomplete="new-password"
-                   placeholder="${o ? 'Dejar vacío para no cambiarla' : 'Mínimo 8 caracteres'}">
+                   placeholder="${o ? 'Escríbela para asignarla o cambiarla' : 'Mínimo 8 caracteres'}">
             <button type="button" class="ojo" id="op-ver-clave"
                     aria-label="Mostrar la contraseña" aria-pressed="false">
               <svg class="ojo__abierto" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
@@ -212,24 +212,26 @@
 
     /* La contraseña se comprueba mientras se escribe: enterarse al
        guardar de que las dos no coinciden es perder el trabajo. */
-    const clave = $('#op-clave'), clave2 = $('#op-clave-2'), notaClave = $('#op-clave-nota');
+    const clave = $('#op-clave'), clave2 = $('#op-clave-2');
+    const notaClave = $('#op-clave-nota');
     const capacidad = INV.db.cuentas ? INV.db.cuentas.capacidad() : { crear: false, cambiar: false };
-
-    if (o && !capacidad.cambiar) {
-      // Sin función de administración no se pueden cambiar contraseñas ya creadas
-      clave.disabled = true; clave2.disabled = true;
-      notaClave.innerHTML = 'Para cambiar la contraseña de una cuenta que ya existe hace falta ' +
-        'la función de administración. Mientras tanto se hace desde Supabase → Authentication.';
-    }
+    const tieneCuenta = !!(o && (o.tiene_clave || o.usuario_id));
 
     function revisarClave() {
-      if (clave.disabled) return true;
       const a = clave.value, b = clave2.value;
       if (!a && !b) {
         notaClave.style.color = '';
-        notaClave.textContent = o
-          ? 'Déjala vacía si no quieres cambiarla.'
-          : 'Si la dejas vacía, el operador quedará registrado pero sin poder entrar hasta que alguien le cree la cuenta.';
+        if (!o) {
+          notaClave.textContent = 'Si la dejas vacía, el operador quedará registrado pero ' +
+            'sin poder entrar hasta que alguien le cree la cuenta.';
+        } else if (tieneCuenta) {
+          notaClave.textContent = capacidad.cambiar
+            ? 'Ya tiene acceso. Escribe una contraseña nueva solo si quieres cambiársela.'
+            : 'Ya tiene acceso. Para cambiarle la contraseña hace falta la función de ' +
+              'administración, o hacerlo desde Supabase → Authentication → Users.';
+        } else {
+          notaClave.textContent = 'Todavía no tiene acceso: escribe una contraseña para creárselo.';
+        }
         return true;
       }
       if (a.length < 8) {
@@ -248,7 +250,9 @@
         return false;
       }
       notaClave.style.color = 'var(--esmeralda)';
-      notaClave.textContent = 'Las contraseñas coinciden.';
+      notaClave.textContent = tieneCuenta && !capacidad.cambiar
+        ? 'Coinciden. Si esa cuenta ya existe, el cambio puede requerir la función de administración.'
+        : 'Las contraseñas coinciden.';
       return true;
     }
 
@@ -308,7 +312,7 @@
     // La contraseña se valida antes de tocar nada
     const clave = $('#op-clave').value;
     const clave2 = $('#op-clave-2').value;
-    if (!$('#op-clave').disabled && (clave || clave2)) {
+    if (clave || clave2) {
       if (clave.length < 8) {
         err.textContent = 'La contraseña debe tener al menos 8 caracteres.';
         err.hidden = false; return;
@@ -324,14 +328,25 @@
       /* Primero el operador y después la cuenta: al revés, un fallo al
          registrar el operador dejaría un usuario de acceso huérfano, que
          podría entrar sin permisos y sin figurar en ninguna lista. */
-      o ? await INV.db.operadores.actualizar(o.id, datos) : await INV.db.operadores.crear(datos);
+
+      const guardado = o
+        ? await INV.db.operadores.actualizar(o.id, datos)
+        : await INV.db.operadores.crear(datos);
 
       let avisoCuenta = '';
-      if (clave && !$('#op-clave').disabled) {
+      if (clave) {
         try {
-          const r = o
-            ? await INV.db.cuentas.cambiar(datos.correo, clave)
-            : await INV.db.cuentas.crear(datos.correo, clave);
+          /* Una sola llamada, exista o no la cuenta: desde el navegador no
+             hay forma de saberlo de antemano, y preguntarlo permitiría
+             averiguar qué correos están registrados. */
+          const r = await INV.db.cuentas.asignar(datos.correo, clave);
+
+          // Se ata el operador a su cuenta, para saber después quién tiene acceso
+          if (r && r.usuario_id && guardado && guardado.id) {
+            try { await INV.db.operadores.actualizar(guardado.id, { usuario_id: r.usuario_id }); }
+            catch (e) { /* el acceso ya funciona; la marca es secundaria */ }
+          }
+
           avisoCuenta = r && r.requiereConfirmacion
             ? ' Debe confirmar el correo antes de entrar.'
             : ' Ya puede entrar con esa contraseña.';
