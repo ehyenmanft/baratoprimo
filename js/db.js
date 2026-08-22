@@ -22,6 +22,42 @@
     return data;
   }
 
+  /* Llama a la función de administración con la sesión del administrador:
+     es el servidor quien comprueba que tiene permiso, no el navegador. */
+  async function llamarFuncion(accion, cuerpo) {
+    const { data: sesion } = await sb.auth.getSession();
+    const token = sesion && sesion.session ? sesion.session.access_token : null;
+    if (!token) throw new Error('No hay sesión iniciada');
+
+    const respuesta = await fetch(INV.config.FUNCION_CUENTAS.trim(), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token,
+        'apikey': INV.config.SUPABASE_ANON,
+      },
+      body: JSON.stringify({ accion, ...cuerpo }),
+    });
+
+    const resultado = await respuesta.json().catch(() => ({}));
+    if (!respuesta.ok) throw new Error(resultado.error || 'La función respondió ' + respuesta.status);
+    return resultado;
+  }
+
+  /* Los mensajes de Supabase vienen en inglés y algunos son crípticos. */
+  function traducirAlta(mensaje) {
+    const m = (mensaje || '').toLowerCase();
+    if (m.includes('already registered') || m.includes('already been registered'))
+      return 'Ya existe una cuenta con ese correo. Para cambiarle la contraseña hace falta la función de administración.';
+    if (m.includes('password') && m.includes('least'))
+      return 'La contraseña es demasiado corta para lo que exige el proyecto.';
+    if (m.includes('signups not allowed') || m.includes('disabled'))
+      return 'El proyecto tiene desactivada el alta de usuarios. Actívala en Authentication → Providers, o despliega la función de administración.';
+    if (m.includes('rate limit'))
+      return 'Demasiadas altas seguidas. Espera un momento y vuelve a intentarlo.';
+    return mensaje;
+  }
+
   /* Campos que la vista ventas_detalle calcula y aquí replicamos al leer
      la tabla clientes directamente. */
   const derivados = c => c && ({
@@ -204,6 +240,49 @@
           .select('rol').eq('activo', true).ilike('correo', correo).limit(1);
         if (error || !data || !data.length) return null;
         return data[0].rol;
+      },
+    },
+
+    /* ---------------- Cuentas de acceso ----------------
+       La llave pública no puede crear usuarios con contraseña: eso es
+       cosa de la llave de servicio, que jamás debe estar en el navegador.
+       Hay dos vías:
+
+       1. Función de administración desplegada en Supabase. Es la buena:
+          comprueba en el servidor que quien pide es administrador, y
+          permite además cambiar contraseñas de cuentas existentes.
+       2. Alta normal (signUp), que sí admite la llave pública. Solo sirve
+          para cuentas nuevas, y se hace con un cliente aparte para no
+          arrastrar la sesión del administrador a la del recién creado. */
+    cuentas: {
+      conFuncion: () => !!(INV.config.FUNCION_CUENTAS || '').trim(),
+
+      /* Qué se puede hacer según lo que haya configurado. */
+      capacidad: () => INV.db.cuentas.conFuncion()
+        ? { crear: true, cambiar: true }
+        : { crear: true, cambiar: false },
+
+      crear: async (correo, clave) => {
+        if (INV.db.cuentas.conFuncion())
+          return llamarFuncion('crear', { correo, clave });
+
+        /* Cliente aparte, sin persistir sesión: si usáramos el principal,
+           Supabase cambiaría la sesión a la del operador recién creado y
+           el administrador se quedaría fuera a mitad del trabajo. */
+        const aparte = window.supabase.createClient(INV.config.SUPABASE_URL, INV.config.SUPABASE_ANON, {
+          auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+        });
+        const { data, error } = await aparte.auth.signUp({ email: correo, password: clave });
+        if (error) throw new Error(traducirAlta(error.message));
+        // Sin confirmación de correo la cuenta ya sirve; con ella, hay que abrir el enlace
+        return { creada: true, requiereConfirmacion: !data.session };
+      },
+
+      cambiar: async (correo, clave) => {
+        if (!INV.db.cuentas.conFuncion())
+          throw new Error('Para cambiar contraseñas hace falta la función de administración. ' +
+                          'Mientras tanto, hazlo desde Supabase → Authentication.');
+        return llamarFuncion('cambiar', { correo, clave });
       },
     },
 

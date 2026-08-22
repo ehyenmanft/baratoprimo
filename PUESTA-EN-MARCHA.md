@@ -152,11 +152,18 @@ empieza en F-000001. Como super administrador cambias de uno a otro con
 **Trabajar aquí**, o desde el selector del menú.
 
 **Operadores.** En **Administración → Operadores** das de alta al equipo. Para
-cada uno hay que elegir su rol y su comercio; solo verá ese. El proceso tiene
-dos partes, igual que contigo:
+cada uno eliges su rol, su comercio y **su contraseña**, con los dos campos de
+siempre: escribirla y repetirla. Al guardar, el operador queda registrado y su
+cuenta creada, y ya puede entrar.
 
-1. Registrarlo en la aplicación (Operadores → Nuevo operador)
-2. Crearle el usuario en Supabase → Authentication → Users, con el mismo correo
+Si dejas la contraseña vacía, el operador queda registrado pero sin acceso: útil
+para preparar los permisos antes de repartir claves.
+
+Dos ajustes que conviene revisar en **Authentication → Providers → Email**:
+*Confirm email* desactivado, para que la cuenta sirva de inmediato, y *Enable
+signup* activado, porque es la vía que usa el alta. Si prefieres tenerlo cerrado,
+o quieres poder **cambiar** contraseñas desde la aplicación, despliega la función
+de administración: está en [FUNCION-CUENTAS.md](FUNCION-CUENTAS.md).
 
 Al nombrar otro **super administrador**, el comercio es opcional: no pertenece a
 ninguno, los supervisa todos. Si le eliges uno, solo decide dónde entra situado
@@ -207,6 +214,11 @@ Después vuelve a entrar, para que la sesión tome el comercio.
 **"Cannot coerce the result to a single JSON object"** — Es el mismo problema
 visto desde PostgREST: una consulta que esperaba una fila recibió cero. Aplica el
 arreglo de arriba.
+
+**Un operador olvidó su contraseña** — Desde el panel de Supabase no se puede
+escribir una contraseña nueva: esa opción no existe. Las salidas están en
+[FUNCION-CUENTAS.md](FUNCION-CUENTAS.md); la corta es desplegar la función de
+administración y cambiarla desde la propia aplicación.
 
 **"No fue posible iniciar sesión. Comuníquese con el administrador."** — Es el
 mensaje que ve cualquiera que se equivoque de contraseña: no dice si falló el

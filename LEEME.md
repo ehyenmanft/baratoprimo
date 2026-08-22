@@ -5,6 +5,20 @@ HTML, CSS y JS puros.
 Sin compilación, sin Node, sin dependencias instaladas. Se abre con doble clic
 para validar, y se sube por FTP para producción.
 
+## Aplicación instalable
+
+La aplicación es una PWA: `manifest.webmanifest` y `sw.js` la hacen instalable
+desde el navegador, con su icono y a pantalla completa. El service worker guarda
+el armazón —HTML, estilos, código e iconos— pero **nunca los datos**: todo lo
+que va a Supabase o a Drive pasa de largo. Un inventario servido desde la caché
+es un inventario equivocado.
+
+Sin conexión la aplicación abre y avisa con una franja de que no se puede
+guardar. Al cambiar cualquier archivo hay que subir `VERSION` en `sw.js`, que es
+lo que hace que los dispositivos ya instalados se enteren.
+
+Para generar un APK de Android, ver [APK-ANDROID.md](APK-ANDROID.md).
+
 ## Puesta en producción
 
 Está en `PUESTA-EN-MARCHA.md`: ocho pasos, del editor SQL de Supabase hasta la

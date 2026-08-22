@@ -782,6 +782,25 @@
       },
     },
 
+    /* En modo demo no hay servidor de autenticación: se registra que el
+       operador tiene clave asignada, pero la clave no se guarda. Guardar
+       contraseñas en el navegador sería una mala costumbre aunque esto
+       sea un banco de pruebas. */
+    cuentas: {
+      conFuncion: () => false,
+      capacidad: () => ({ crear: true, cambiar: true }),
+      crear: async correo => {
+        const o = bd.operadores.find(x => x.correo.toLowerCase() === String(correo).toLowerCase());
+        if (o) { o.tiene_clave = true; persistir(); }
+        return { creada: true, requiereConfirmacion: false, simulado: true };
+      },
+      cambiar: async correo => {
+        const o = bd.operadores.find(x => x.correo.toLowerCase() === String(correo).toLowerCase());
+        if (o) { o.tiene_clave = true; persistir(); }
+        return { cambiada: true, simulado: true };
+      },
+    },
+
     archivos: {
       // En demo la miniatura ya viene como data URL desde el formulario.
       subir: async dataUrl => dataUrl,

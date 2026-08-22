@@ -26,6 +26,14 @@ y funciona.
 Abre `index.html` con doble clic. Arranca en modo demo con cuatro meses de
 actividad generada y no necesita servidor ni base de datos.
 
+## Como aplicación de Android
+
+Es una PWA instalable: desde el navegador se añade a la pantalla de inicio y se
+abre a pantalla completa. Para tener además un APK, se envuelve la misma web en
+una Trusted Web Activity — la carcasa no lleva copia del código, así que al
+actualizar la web se actualiza la aplicación instalada. Está en
+[APK-ANDROID.md](APK-ANDROID.md).
+
 ## Cómo ponerlo en producción
 
 Lee [PUESTA-EN-MARCHA.md](PUESTA-EN-MARCHA.md): ocho pasos, del editor SQL de
@@ -41,7 +49,9 @@ index.html                 Aplicación
 verificar.html             Comprobación de la instalación
 baratoprimo_schema.sql     Esquema completo de PostgreSQL
 css/app.css                Sistema visual
-img/logo.svg               Marca
+manifest.webmanifest       Datos de la aplicación instalable
+sw.js                      Service worker: guarda el armazón, nunca los datos
+img/logo.svg               Marca y su juego de iconos
 js/config.js               Credenciales y modo de funcionamiento
 js/db.js                   Capa de datos (demo, Drive o Supabase)
 js/datos-demo.js           Adaptador local con datos de ejemplo
@@ -49,6 +59,7 @@ js/permisos.js             Roles y permisos
 js/qr.js                   Generador de códigos QR propio
 js/graficos.js             Gráficas SVG sin librerías
 js/views/                  Una vista por pantalla
+supabase/functions/        Función opcional para administrar contraseñas
 ```
 
 ## Sobre las llaves
@@ -63,4 +74,5 @@ ningún archivo que se suba al servidor: esa sí salta todas las políticas.
 ## Documentación
 
 - [LEEME.md](LEEME.md) — cómo funciona cada parte y por qué
+- [FUNCION-CUENTAS.md](FUNCION-CUENTAS.md) — contraseñas de los operadores
 - [PUESTA-EN-MARCHA.md](PUESTA-EN-MARCHA.md) — instalación paso a paso

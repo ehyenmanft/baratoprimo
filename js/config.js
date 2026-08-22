@@ -39,6 +39,13 @@ INV.config = {
   /* Alternativa nueva de Supabase; funciona igual que la anon.
      SUPABASE_ANON: 'sb_publishable_q9JPKcBiKjS7B6taOs-keA_weG1gLgl', */
 
+  /* Opcional: URL de la función de administración de cuentas, si la
+     desplegaste en Supabase (ver FUNCION-CUENTAS.md). Con ella el
+     administrador puede además cambiar la contraseña de un operador que
+     ya existe. Sin ella se usa el alta normal, que solo sirve para
+     cuentas nuevas. */
+  FUNCION_CUENTAS: '',
+
   /* Para MODO 'drive': ID de cliente OAuth de Google Cloud, tipo
      "aplicación web", con tu dominio en los orígenes autorizados. */
   GOOGLE: { CLIENT_ID: 'TU-ID-DE-CLIENTE.apps.googleusercontent.com' },

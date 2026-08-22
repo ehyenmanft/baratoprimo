@@ -46,7 +46,7 @@
                   <span class="miniatura miniatura--vacia">${esc(iniciales(o.nombre))}</span>
                   <span class="lista__nombre">${esc(o.nombre)}${o.correo.toLowerCase() === yo ? ' <span class="pastilla pastilla--entrada">tú</span>' : ''}
                     <span class="lista__sub">${esc(o.correo)}${o.comercio ? ' · ' + esc(o.comercio)
-                      : (o.rol === 'super_admin' ? ' · supervisa todos' : ' · sin comercio')}${o.activo ? '' : ' · inactivo'}</span></span>
+                      : (o.rol === 'super_admin' ? ' · supervisa todos' : ' · sin comercio')}${o.activo ? '' : ' · inactivo'}${o.tiene_clave ? ' · con acceso' : ''}</span></span>
                   <span class="rol-marca rol-marca--${esc(o.rol)}">${esc(d.etiqueta)}</span>
                 </div>`;
               }).join('')}
@@ -88,8 +88,10 @@
           <div class="ficha__pie">
             <p class="subida__nota" style="margin:0">
               ${INV.db.etiqueta === 'demo'
-                ? 'En modo demo puedes entrar como cualquier operador desde la pantalla de acceso para probar sus permisos: no hay contraseñas.'
-                : 'El operador entra con el correo registrado aquí. La contraseña se crea desde Supabase → Authentication, o con el enlace de invitación que Supabase le envía.'}
+                ? 'En modo demo puedes entrar como cualquier operador desde la pantalla de acceso para probar sus permisos: no hay contraseñas reales.'
+                : (INV.db.cuentas.conFuncion()
+                  ? 'Al dar de alta un operador puedes asignarle su contraseña aquí mismo, y cambiársela después si hace falta.'
+                  : 'Al dar de alta un operador puedes asignarle su contraseña aquí mismo. Para <b>cambiar</b> la de una cuenta que ya existe hace falta desplegar la función de administración (ver FUNCION-CUENTAS.md) o hacerlo desde Supabase → Authentication.')}
             </p>
           </div>
         </div>`;
@@ -153,6 +155,33 @@
           </div>
           <span class="subida__nota" id="op-comercio-nota" style="margin-top:6px; display:block"></span>
         </div>
+        <div class="campo" id="op-caja-clave">
+          <label>${o ? 'Cambiar la contraseña' : 'Contraseña de acceso'}</label>
+          <div class="campo campo--clave" style="margin:0 0 10px">
+            <input id="op-clave" type="password" autocomplete="new-password"
+                   placeholder="${o ? 'Dejar vacío para no cambiarla' : 'Mínimo 8 caracteres'}">
+            <button type="button" class="ojo" id="op-ver-clave"
+                    aria-label="Mostrar la contraseña" aria-pressed="false">
+              <svg class="ojo__abierto" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"
+                      fill="none" stroke="currentColor" stroke-width="1.7"
+                      stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.7"/>
+              </svg>
+              <svg class="ojo__cerrado" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                <path d="M4 4l16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                <path d="M9.6 5.9A9.6 9.6 0 0112 5.5c6 0 9.5 6.5 9.5 6.5a17 17 0 01-3.4 4.1M6.4 7.9A17 17 0 002.5 12S6 18.5 12 18.5c.9 0 1.7-.1 2.5-.4"
+                      fill="none" stroke="currentColor" stroke-width="1.7"
+                      stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M9.9 9.9a3.2 3.2 0 004.3 4.3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+              </svg>
+            </button>
+          </div>
+          <input id="op-clave-2" type="password" autocomplete="new-password"
+                 placeholder="Repite la contraseña">
+          <span class="subida__nota" id="op-clave-nota" style="margin-top:6px; display:block"></span>
+        </div>
+
         ${o ? `
         <div class="campo" style="margin:0">
           <label for="op-activo">Estado</label>
@@ -180,6 +209,63 @@
     };
     $$('input[name="op-rol"]').forEach(r => r.addEventListener('change', nota));
     nota();
+
+    /* La contraseña se comprueba mientras se escribe: enterarse al
+       guardar de que las dos no coinciden es perder el trabajo. */
+    const clave = $('#op-clave'), clave2 = $('#op-clave-2'), notaClave = $('#op-clave-nota');
+    const capacidad = INV.db.cuentas ? INV.db.cuentas.capacidad() : { crear: false, cambiar: false };
+
+    if (o && !capacidad.cambiar) {
+      // Sin función de administración no se pueden cambiar contraseñas ya creadas
+      clave.disabled = true; clave2.disabled = true;
+      notaClave.innerHTML = 'Para cambiar la contraseña de una cuenta que ya existe hace falta ' +
+        'la función de administración. Mientras tanto se hace desde Supabase → Authentication.';
+    }
+
+    function revisarClave() {
+      if (clave.disabled) return true;
+      const a = clave.value, b = clave2.value;
+      if (!a && !b) {
+        notaClave.style.color = '';
+        notaClave.textContent = o
+          ? 'Déjala vacía si no quieres cambiarla.'
+          : 'Si la dejas vacía, el operador quedará registrado pero sin poder entrar hasta que alguien le cree la cuenta.';
+        return true;
+      }
+      if (a.length < 8) {
+        notaClave.style.color = 'var(--rosa)';
+        notaClave.textContent = `Faltan ${8 - a.length} caracteres para llegar al mínimo de 8.`;
+        return false;
+      }
+      if (!b) {
+        notaClave.style.color = '';
+        notaClave.textContent = 'Repítela abajo para confirmar.';
+        return false;
+      }
+      if (a !== b) {
+        notaClave.style.color = 'var(--rosa)';
+        notaClave.textContent = 'Las dos contraseñas no coinciden.';
+        return false;
+      }
+      notaClave.style.color = 'var(--esmeralda)';
+      notaClave.textContent = 'Las contraseñas coinciden.';
+      return true;
+    }
+
+    clave.addEventListener('input', revisarClave);
+    clave2.addEventListener('input', revisarClave);
+    revisarClave();
+
+    $('#op-ver-clave').addEventListener('click', () => {
+      const boton = $('#op-ver-clave');
+      const visible = clave.type === 'text';
+      clave.type = clave2.type = visible ? 'password' : 'text';
+      boton.setAttribute('aria-pressed', String(!visible));
+      boton.setAttribute('aria-label', visible ? 'Mostrar la contraseña' : 'Ocultar la contraseña');
+      clave.focus();
+    });
+
+    formulario.revisarClave = revisarClave;
 
     const btnNuevo = $('#op-nuevo-comercio');
     if (btnNuevo) btnNuevo.addEventListener('click', async () => {
@@ -219,11 +305,49 @@
       err.hidden = false; return;
     }
 
+    // La contraseña se valida antes de tocar nada
+    const clave = $('#op-clave').value;
+    const clave2 = $('#op-clave-2').value;
+    if (!$('#op-clave').disabled && (clave || clave2)) {
+      if (clave.length < 8) {
+        err.textContent = 'La contraseña debe tener al menos 8 caracteres.';
+        err.hidden = false; return;
+      }
+      if (clave !== clave2) {
+        err.textContent = 'Las dos contraseñas no coinciden.';
+        err.hidden = false; return;
+      }
+    }
+
     btn.disabled = true;
     try {
+      /* Primero el operador y después la cuenta: al revés, un fallo al
+         registrar el operador dejaría un usuario de acceso huérfano, que
+         podría entrar sin permisos y sin figurar en ninguna lista. */
       o ? await INV.db.operadores.actualizar(o.id, datos) : await INV.db.operadores.crear(datos);
+
+      let avisoCuenta = '';
+      if (clave && !$('#op-clave').disabled) {
+        try {
+          const r = o
+            ? await INV.db.cuentas.cambiar(datos.correo, clave)
+            : await INV.db.cuentas.crear(datos.correo, clave);
+          avisoCuenta = r && r.requiereConfirmacion
+            ? ' Debe confirmar el correo antes de entrar.'
+            : ' Ya puede entrar con esa contraseña.';
+        } catch (errCuenta) {
+          /* El operador quedó bien; lo que falló fue la cuenta. Se dice
+             exactamente eso, porque el remedio es distinto. */
+          cerrarModal();
+          avisar('Operador guardado, pero la contraseña no se pudo asignar: ' +
+                 errCuenta.message, 'error');
+          window.dispatchEvent(new Event('recargar-vista'));
+          return;
+        }
+      }
+
       cerrarModal();
-      avisar(o ? 'Operador actualizado' : 'Operador registrado');
+      avisar((o ? 'Operador actualizado.' : 'Operador registrado.') + avisoCuenta);
       window.dispatchEvent(new Event('recargar-vista'));
     } catch (e) {
       err.textContent = e.message.includes('duplicate')
