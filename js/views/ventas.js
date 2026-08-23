@@ -167,20 +167,111 @@
 
   let ventasEnPantalla = [];
 
-  function exportar() {
+  /* Exportación completa: todo lo que hace falta para conciliar, declarar
+     o reclamar una venta sin tener que abrir la aplicación. Incluye la
+     tasa con la que se emitió, porque sin ella los montos en bolívares no
+     se pueden explicar meses después. */
+  async function exportar() {
     if (!ventasEnPantalla.length) return avisar('No hay ventas que exportar', 'error');
-    descargarCSV(`ventas-${new Date().toISOString().slice(0,10)}.csv`, [
-      { titulo: 'Número',    valor: v => v.numero },
-      { titulo: 'Fecha',     valor: v => fecha(v.fecha) },
-      { titulo: 'Cliente',   valor: v => v.cliente },
-      { titulo: 'Documento', valor: v => v.documento_completo ?? '' },
-      { titulo: 'Base',      valor: v => v.subtotal },
-      { titulo: 'IVA %',     valor: v => v.iva_tasa },
-      { titulo: 'IVA',       valor: v => v.iva_monto },
-      { titulo: 'Total',     valor: v => v.total },
-      { titulo: 'Estado',    valor: v => v.anulada ? 'Anulada' : 'Vigente' },
+
+    /* El listado no trae renglones ni cuotas: pedirlos para 300 ventas de
+       una vez tumbaría la conexión, así que se piden por tandas. */
+    const completas = await conDetalle(ventasEnPantalla);
+
+    const METODOS = {
+      debito: 'Débito', efectivo_bs: 'Efectivo Bs', efectivo_usd: 'Efectivo USD',
+      efectivo_eur: 'Efectivo EUR', pago_movil: 'Pago móvil',
+      transferencia: 'Transferencia', otro: 'Otro', credito: 'Crédito',
+    };
+
+    const pagosDe = v => v.pagos || [];
+    const hora = f => new Date(f).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
+    const dosDec = n => Number(n || 0).toFixed(2);
+
+    // Los renglones exentos son los que no llevaron impuesto
+    const baseExenta = v => (v.items || [])
+      .filter(i => Number(i.iva_monto) === 0)
+      .reduce((s, i) => s + Number(i.base), 0);
+
+    descargarCSV(`ventas-${new Date().toISOString().slice(0, 10)}.csv`, [
+      { titulo: 'Comprobante', valor: v => v.numero },
+      { titulo: 'Fecha',       valor: v => new Date(v.fecha).toLocaleDateString('es') },
+      { titulo: 'Hora',        valor: v => hora(v.fecha) },
+      { titulo: 'Estado',      valor: v => v.anulada ? 'ANULADA' : 'Vigente' },
+
+      { titulo: 'Cliente',     valor: v => v.cliente || 'Consumidor final' },
+      { titulo: 'Documento',   valor: v => v.documento_completo ?? '' },
+      { titulo: 'Teléfono',    valor: v => v.telefono ?? '' },
+      { titulo: 'Dirección',   valor: v => v.direccion ?? '' },
+
+      { titulo: 'Vendedor',       valor: v => v.vendedor ?? '' },
+      { titulo: 'Correo vendedor', valor: v => v.vendedor_correo ?? '' },
+
+      { titulo: 'Renglones',   valor: v => v.renglones ?? '' },
+      { titulo: 'Productos',   valor: v => (v.items || [])
+          .map(i => `${i.descripcion} x${Number(i.cantidad)}`).join(' | ') },
+
+      { titulo: 'Base imponible', valor: v => dosDec(Number(v.subtotal) - baseExenta(v)) },
+      { titulo: 'Base exenta',    valor: v => dosDec(baseExenta(v)) },
+      { titulo: 'Subtotal',       valor: v => dosDec(v.subtotal) },
+      { titulo: 'IVA %',          valor: v => Number(v.iva_tasa) },
+      { titulo: 'IVA',            valor: v => dosDec(v.iva_monto) },
+      { titulo: 'IVA incluido en el precio', valor: v => v.iva_incluido ? 'Sí' : 'No' },
+      { titulo: 'Total',          valor: v => dosDec(v.total) },
+
+      { titulo: 'Tasa Bs/USD',    valor: v => Number(v.tasa_referencia || 0).toFixed(4) },
+      { titulo: 'Total USD',      valor: v => dosDec(v.total_usd) },
+
+      { titulo: 'Formas de pago', valor: v => pagosDe(v)
+          .map(p => METODOS[p.metodo] || p.metodo).join(' + ') },
+      { titulo: 'Referencias',    valor: v => pagosDe(v)
+          .filter(p => p.referencia).map(p => p.referencia).join(' ') },
+      { titulo: 'Detalle de pagos', valor: v => pagosDe(v).map(p =>
+          `${METODOS[p.metodo] || p.metodo}: ${dosDec(p.monto)} ${p.moneda}` +
+          (p.moneda !== 'VES' ? ` @${Number(p.tasa).toFixed(2)} = ${dosDec(p.monto_local)}` : '')
+        ).join(' | ') },
+      { titulo: 'Pagado',         valor: v => dosDec(v.pagado) },
+      { titulo: 'Saldo',          valor: v => dosDec(v.saldo_pendiente) },
+
+      { titulo: 'A crédito',      valor: v => v.a_credito ? 'Sí' : 'No' },
+      { titulo: 'Recargo crédito %', valor: v => Number(v.recargo_credito || 0) },
+      { titulo: 'Cuotas',         valor: v => (v.cuotas || []).length || '' },
+      { titulo: 'Cuotas por cobrar', valor: v => v.cuotas_por_cobrar ?? '' },
+      { titulo: 'Por cobrar USD', valor: v => (v.cuotas || [])
+          .filter(q => !q.pagada).reduce((s, q) => s + Number(q.monto_usd), 0).toFixed(2) },
+
       { titulo: 'Motivo anulación', valor: v => v.anulada ? nombreMotivo(v.motivo_anulacion) : '' },
-    ], ventasEnPantalla);
+      { titulo: 'Detalle anulación', valor: v => v.detalle_anulacion ?? '' },
+      { titulo: 'Anulada por',      valor: v => v.anulada_por_correo ?? '' },
+      { titulo: 'Anulada el',       valor: v => v.anulada_en
+          ? new Date(v.anulada_en).toLocaleString('es') : '' },
+
+      { titulo: 'Nota',           valor: v => v.nota ?? '' },
+    ], completas);
+
+    avisar(`${completas.length} ventas exportadas`);
+  }
+
+  /* Completa cada venta con sus renglones, pagos y cuotas, en tandas de
+     veinte para no abrir trescientas peticiones a la vez. */
+  async function conDetalle(ventas) {
+    if (ventas.every(v => v.items && v.pagos)) return ventas;
+
+    avisar(`Preparando ${ventas.length} ventas…`);
+    const salida = [];
+    const TANDA = 20;
+
+    for (let i = 0; i < ventas.length; i += TANDA) {
+      const tanda = await Promise.all(ventas.slice(i, i + TANDA).map(async v => {
+        if (v.items && v.pagos) return v;
+        try {
+          const c = await INV.db.ventas.obtener(v.id);
+          return c ? { ...v, ...c } : v;
+        } catch (e) { return v; }
+      }));
+      salida.push(...tanda);
+    }
+    return salida;
   }
 
   async function listado(contenedor) {

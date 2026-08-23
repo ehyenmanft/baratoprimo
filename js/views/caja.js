@@ -133,52 +133,30 @@
 
   /* ---------------- Exportación ---------------- */
 
-  function aCSV(filas) {
-    const cab = ['Comprobante', 'Fecha', 'Hora', 'Cliente', 'Documento', 'Vendedor',
-                 'Formas de pago', 'Referencias', 'Base', 'IVA', 'Total',
-                 'Tasa', 'Total USD', 'Crédito', 'Estado'];
-
-    const cuerpo = filas.map(v => {
-      const f = new Date(v.fecha);
-      const metodos = (v.pagos || []).map(p => METODOS[p.metodo] || p.metodo).join(' + ');
-      const refs = (v.pagos || []).filter(p => p.referencia).map(p => p.referencia).join(' ');
-      return [
-        v.numero,
-        f.toLocaleDateString('es'),
-        f.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' }),
-        v.cliente || 'Consumidor final',
-        v.documento_completo || '',
-        v.vendedor || v.vendedor_correo || '',
-        metodos, refs,
-        Number(v.subtotal).toFixed(2),
-        Number(v.iva_monto).toFixed(2),
-        Number(v.total).toFixed(2),
-        Number(v.tasa_referencia || 0).toFixed(4),
-        Number(v.total_usd || 0).toFixed(2),
-        v.a_credito ? 'Sí' : 'No',
-        v.anulada ? 'ANULADA' : 'Vigente',
-      ];
-    });
-
-    /* Punto y coma como separador y BOM al inicio: es lo que hace que
-       Excel en español abra el archivo con las columnas en su sitio y
-       los acentos correctos, en vez de una sola columna con caracteres
-       raros. */
-    const escapar = c => `"${String(c ?? '').replace(/"/g, '""')}"`;
-    return '\uFEFF' + [cab, ...cuerpo].map(f => f.map(escapar).join(';')).join('\r\n');
-  }
-
-  function descargar(nombre, contenido, tipo) {
-    const blob = new Blob([contenido], { type: tipo });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = nombre;
-    document.body.append(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }
+  /* Las columnas del cuadre. Se usa el mismo generador de CSV que el
+     resto de la aplicación: dos escritores distintos acaban produciendo
+     dos formatos distintos, y el que se rompe siempre es el que nadie
+     mira. */
+  const COLUMNAS = [
+    { titulo: 'Comprobante', valor: v => v.numero },
+    { titulo: 'Fecha',  valor: v => new Date(v.fecha).toLocaleDateString('es') },
+    { titulo: 'Hora',   valor: v => new Date(v.fecha)
+        .toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' }) },
+    { titulo: 'Estado', valor: v => v.anulada ? 'ANULADA' : 'Vigente' },
+    { titulo: 'Cliente',   valor: v => v.cliente || 'Consumidor final' },
+    { titulo: 'Documento', valor: v => v.documento_completo || '' },
+    { titulo: 'Vendedor',  valor: v => v.vendedor || v.vendedor_correo || '' },
+    { titulo: 'Formas de pago', valor: v => (v.pagos || [])
+        .map(p => METODOS[p.metodo] || p.metodo).join(' + ') },
+    { titulo: 'Referencias', valor: v => (v.pagos || [])
+        .filter(p => p.referencia).map(p => p.referencia).join(' ') },
+    { titulo: 'Base',  valor: v => Number(v.subtotal).toFixed(2) },
+    { titulo: 'IVA',   valor: v => Number(v.iva_monto).toFixed(2) },
+    { titulo: 'Total', valor: v => Number(v.total).toFixed(2) },
+    { titulo: 'Tasa Bs/USD', valor: v => Number(v.tasa_referencia || 0).toFixed(4) },
+    { titulo: 'Total USD',   valor: v => Number(v.total_usd || 0).toFixed(2) },
+    { titulo: 'A crédito',   valor: v => v.a_credito ? 'Sí' : 'No' },
+  ];
 
   const nombreArchivo = (r, ext) => {
     const f = d => d.toISOString().slice(0, 10);
@@ -192,9 +170,8 @@
     eyebrow: 'Cierre de turno',
 
     acciones: () => [
-      { texto: 'Exportar CSV', permiso: 'caja.ver', alPulsar: () => exportarCSV() },
-      { texto: 'Imprimir', estilo: 'btn--primario', permiso: 'caja.ver',
-        alPulsar: () => window.print() },
+      { texto: 'Exportar CSV', estilo: 'btn--primario', permiso: 'caja.ver',
+        alPulsar: () => exportarCSV() },
     ],
 
     render: async contenedor => {
@@ -248,13 +225,11 @@
         </div>
 
         <div class="reporte">
-          <div class="reporte__encabezado solo-imprimir">
-            <h2>${esc(INV.comercio.actual().nombre || 'Comercio')}</h2>
-            <p>Cuadre de caja · ${etiquetaRango(rg)}</p>
+          <div class="reporte__encabezado">
+            <h2>${etiquetaRango(rg)}</h2>
             <p>${datos.propio || estado.vendedor
                   ? 'Operador: ' + esc(nombreVendedor(datos, estado.vendedor))
-                  : 'Todos los operadores'}
-               · emitido el ${new Date().toLocaleString('es')}</p>
+                  : 'Todos los operadores'}</p>
           </div>
 
           <div class="mosaico mosaico--auto" style="margin-bottom:14px">
@@ -392,12 +367,12 @@
 
   function exportarCSV() {
     if (!ultimo || !ultimo.datos.filas.length) return avisar('No hay ventas que exportar', 'error');
-    descargar(nombreArchivo(ultimo.rg, 'csv'), aCSV(ultimo.datos.filas), 'text/csv;charset=utf-8');
+    INV.ui.descargarCSV(nombreArchivo(ultimo.rg, 'csv'), COLUMNAS, ultimo.datos.filas);
     avisar(`${ultimo.datos.filas.length} comprobantes exportados`);
   }
 
   INV.vistas.caja.exportarCSV = exportarCSV;
-  INV.vistas.caja.aCSV = aCSV;
+  INV.vistas.caja.COLUMNAS = COLUMNAS;
   INV.vistas.caja.resumir = resumir;
   INV.vistas.caja.PERIODOS = PERIODOS;
   INV.vistas.caja.estado = estado;
