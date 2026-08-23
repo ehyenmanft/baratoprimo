@@ -183,19 +183,8 @@
 
     /* Se escribe en una moneda y se ve en la otra: así nadie se equivoca
        de orden de magnitud al cargar un precio. */
-    const equivalencias = () => {
-      [['#pr-costo', '#pr-costo-eq'], ['#pr-precio', '#pr-precio-eq']].forEach(([campo, salida]) => {
-        const el = $(salida);
-        if (!el || !INV.tasas) return;
-        const d = INV.tasas.dual(Number($(campo).value || 0));
-        el.textContent = d.equivalente ? '= ' + d.equivalente : '';
-      });
-    };
-    ['#pr-costo', '#pr-precio'].forEach(c => {
-      const el = $(c);
-      if (el) el.addEventListener('input', equivalencias);
-    });
-    equivalencias();
+    INV.tasas.enlazarEquivalente('#pr-costo', '#pr-costo-eq');
+    INV.tasas.enlazarEquivalente('#pr-precio', '#pr-precio-eq');
 
     $('#pr-elegir').addEventListener('click', () => $('#pr-archivo').click());
     $('#pr-quitar').addEventListener('click', () => {

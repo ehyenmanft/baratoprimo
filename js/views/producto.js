@@ -113,20 +113,23 @@
               <div class="datos__valor">${cantidad(actual.stock_minimo)}</div>
             </div>
             <div class="datos__celda">
-              <div class="datos__etiqueta">Costo</div>
+              <div class="datos__etiqueta">Costo ${INV.tasas.simbolo()}</div>
               <div class="datos__valor">${numero(actual.costo)}</div>
+              <div class="equivalente">${esc(INV.tasas.equivalente(actual.costo))}</div>
             </div>
             <div class="datos__celda">
-              <div class="datos__etiqueta">Precio de venta</div>
+              <div class="datos__etiqueta">Precio de venta ${INV.tasas.simbolo()}</div>
               <div class="datos__valor">${numero(actual.precio_venta)}</div>
+              <div class="equivalente">${esc(INV.tasas.equivalente(actual.precio_venta))}</div>
             </div>
             <div class="datos__celda">
               <div class="datos__etiqueta">Margen</div>
               <div class="datos__valor ${margen >= 0 ? 'pos' : 'neg'}">${margen.toFixed(1)}<small>%</small></div>
             </div>
             <div class="datos__celda">
-              <div class="datos__etiqueta">Valor en almacén</div>
+              <div class="datos__etiqueta">Valor en almacén ${INV.tasas.simbolo()}</div>
               <div class="datos__valor">${numero(actual.valor_inventario)}</div>
+              <div class="equivalente">${esc(INV.tasas.equivalente(actual.valor_inventario))}</div>
             </div>
             <div class="datos__celda">
               <div class="datos__etiqueta">Salidas 30 días</div>

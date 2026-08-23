@@ -148,9 +148,40 @@
     return bs === null ? null : bs;
   }
 
+  /* Engancha un campo de precio con su equivalente: al teclear, debajo
+     aparece el monto convertido a la otra moneda. Se usa igual en el
+     formulario de producto, en el de movimientos y en el de venta, para
+     que nadie tenga que hacer la cuenta de cabeza. */
+  function enlazarEquivalente(campo, salida, opciones = {}) {
+    const entrada = typeof campo === 'string' ? document.querySelector(campo) : campo;
+    const destino = typeof salida === 'string' ? document.querySelector(salida) : salida;
+    if (!entrada || !destino) return;
+
+    const pintar = () => {
+      const monto = Number(entrada.value || 0);
+      if (!monto) { destino.textContent = ''; return; }
+
+      /* 'moneda' fuerza en qué está escrito el campo. Sin ella se toma la
+         del catálogo, que es lo normal en precios y costos. */
+      const d = dual(monto, opciones);
+      destino.textContent = d.equivalente ? '= ' + d.equivalente : '';
+    };
+
+    entrada.addEventListener('input', pintar);
+    pintar();
+    return pintar;
+  }
+
+  /* Para paneles de solo lectura: devuelve el equivalente ya formateado,
+     o cadena vacía si no hay tasa. */
+  function equivalente(monto, opciones) {
+    const d = dual(monto, opciones);
+    return d.equivalente || '';
+  }
+
   INV.tasas = {
     cargar, actual, usd, aBolivares, aDolares, dual, texto, html, antiguedad,
-    simbolo, catalogoEnDolares, aFactura,
+    simbolo, catalogoEnDolares, aFactura, enlazarEquivalente, equivalente,
     oficial: () => oficial,
   };
 })();

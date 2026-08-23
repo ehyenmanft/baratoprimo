@@ -1260,3 +1260,9 @@ html[data-tema="oscuro"] .rail__comercio select option{
 }
 .tasa-marca b{ color:var(--tinta-2); font-weight:700; }
 .tasa-marca--vieja b{ color:var(--naranja); }
+
+/* El equivalente dentro de campos y celdas */
+.filtro .equivalente{ margin-top:3px; }
+.datos__celda .equivalente{ margin-top:2px; }
+.lista__dato .equivalente{ font-size:9.5px; margin-top:1px; }
+.campo .equivalente{ margin-top:5px; }

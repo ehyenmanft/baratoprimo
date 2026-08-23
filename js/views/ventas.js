@@ -355,7 +355,8 @@
             <label class="filtro" id="pg-caja-tasa" hidden><span>Tasa del día</span>
               <input type="number" id="pg-tasa" min="0" step="0.0001" style="max-width:130px"></label>
             <label class="filtro" id="pg-caja-monto"><span>Monto</span>
-              <input type="number" id="pg-monto" min="0.01" step="0.01" placeholder="0,00" style="max-width:140px"></label>
+              <input type="number" id="pg-monto" min="0.01" step="0.01" placeholder="0,00" style="max-width:140px">
+              <span class="equivalente" id="pg-monto-eq"></span></label>
             <button class="btn btn--primario" id="pg-agregar">Agregar pago</button>
           </div>
           <p id="pg-error" class="error" hidden></p>
@@ -401,6 +402,8 @@
     $('#vn-emitir').addEventListener('click', confirmarEmision);
     $('#vn-nuevo-cliente').addEventListener('click', () => INV.vistas.clientes.abrirFormulario());
     $('#pg-metodo').addEventListener('change', ajustarCamposPago);
+    $('#pg-monto').addEventListener('input', equivalenteDelPago);
+    $('#pg-tasa').addEventListener('input', equivalenteDelPago);
     $('#pg-agregar').addEventListener('click', agregarPago);
     $('#pg-referencia').addEventListener('input', e => {
       e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6);
@@ -488,6 +491,31 @@
       $('#pg-caja-tasa').querySelector('span').textContent = `Tasa ${m.moneda} → Bs`;
     }
     $('#pg-monto').placeholder = m.moneda === 'VES' ? '0,00' : '0,00 ' + m.moneda;
+    equivalenteDelPago();
+  }
+
+  /* El monto del pago se ve en la otra moneda mientras se escribe. Ojo:
+     aquí la moneda la fija la forma de pago, no el catálogo — quien cobra
+     en efectivo USD escribe dólares aunque el catálogo esté en bolívares. */
+  function equivalenteDelPago() {
+    const salida = $('#pg-monto-eq');
+    if (!salida || !INV.tasas) return;
+
+    const m = metodo($('#pg-metodo').value);
+    const monto = Number($('#pg-monto').value || 0);
+    if (!monto) { salida.textContent = ''; return; }
+
+    if (m.moneda === 'VES') {
+      const eq = INV.tasas.aDolares(monto);
+      salida.textContent = eq === null ? '' : '= ' + numero(eq) + ' $';
+      return;
+    }
+
+    // El monto está en divisa: se convierte con la tasa del propio pago
+    const tasa = Number($('#pg-tasa').value || 0) || INV.tasas.usd();
+    salida.textContent = tasa > 0
+      ? '= ' + numero(Math.round(monto * tasa * 100) / 100) + ' Bs'
+      : '';
   }
 
   /* Reparte el saldo financiado entre las cuotas: saldo ÷ número de cuotas.
@@ -696,7 +724,11 @@
               <small>precio</small></span>
             <span class="lista__dato"><b>${numero(it.base)}</b><small>base</small></span>
             <span class="lista__dato"><b>${numero(it.iva_monto)}</b><small>IVA</small></span>
-            <span class="lista__dato"><b>${numero(it.total)}</b><small>total</small></span>
+            <span class="lista__dato"><b>${numero(it.total)}</b><small>total</small>
+              ${(() => {
+                const eq = INV.tasas ? INV.tasas.aDolares(it.total) : null;
+                return eq === null ? '' : `<span class="equivalente">${numero(eq)} $</span>`;
+              })()}</span>
             <button class="btn btn--fantasma btn--chico" data-quitar="${i}" aria-label="Quitar">✕</button>
           </div>`).join('')}
       </div>`
@@ -1128,6 +1160,11 @@
               <span>Total a pagar</span>
               <b>${numero(v.total)}</b>
             </div>
+            ${Number(v.tasa_referencia) > 0 ? `
+              <div class="totales__fila" style="color:var(--cian)">
+                <span>Equivalente · tasa ${numero(v.tasa_referencia, 2)} Bs/$</span>
+                <b>${numero(v.total_usd || (v.total / v.tasa_referencia))} $</b>
+              </div>` : ''}
           </div>
 
           ${(v.pagos && v.pagos.length) ? `

@@ -57,8 +57,9 @@
             <input id="mv-cantidad" type="number" min="0.001" step="0.001" placeholder="0">
           </div>
           <div class="campo">
-            <label for="mv-costo">Costo unitario</label>
+            <label for="mv-costo">Costo unitario ${INV.tasas ? INV.tasas.simbolo() : ''}</label>
             <input id="mv-costo" type="number" min="0" step="0.01" placeholder="Opcional">
+            <span class="equivalente" id="mv-costo-eq"></span>
           </div>
         </div>
         <div class="campos-fila">
@@ -81,6 +82,9 @@
         { texto: 'Guardar', estilo: 'btn--primario', alPulsar: btn => guardar(tipo, btn) },
       ],
     });
+
+    // El costo también se ve en la otra moneda mientras se escribe
+    if (INV.tasas) INV.tasas.enlazarEquivalente('#mv-costo', '#mv-costo-eq');
   }
 
   async function guardar(tipo, btn) {

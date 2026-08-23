@@ -76,9 +76,11 @@
       contenedor.innerHTML = `
         <div class="mosaico mosaico--auto" style="margin-bottom:14px">
           <div class="metrica metrica--violeta anim" style="--i:0">
-            <div class="metrica__etiqueta">Inventario</div>
+            <div class="metrica__etiqueta">Inventario ${INV.tasas ? INV.tasas.simbolo() : ''}</div>
             <div class="metrica__valor">${numero(valor)}</div>
-            <div class="metrica__pie">${existencias.length} productos</div>
+            <div class="metrica__pie">${existencias.length} productos${
+              INV.tasas && INV.tasas.equivalente(valor)
+                ? ' · ' + INV.tasas.equivalente(valor) : ''}</div>
           </div>
           <div class="metrica metrica--teal anim" style="--i:1">
             <div class="metrica__etiqueta">Recibido 30 d</div>
