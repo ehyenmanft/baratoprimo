@@ -1266,3 +1266,47 @@ html[data-tema="oscuro"] .rail__comercio select option{
 .datos__celda .equivalente{ margin-top:2px; }
 .lista__dato .equivalente{ font-size:9.5px; margin-top:1px; }
 .campo .equivalente{ margin-top:5px; }
+
+/* =====================================================================
+   TASA A LA VISTA
+   ===================================================================== */
+.cinta-tasa{
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  background:var(--superficie); border-radius:var(--r-s);
+  padding:9px 14px; margin-bottom:14px;
+  box-shadow:var(--sombra);
+  font-family:var(--dato); font-size:11.5px; color:var(--tinta-2);
+  border-left:3px solid var(--esmeralda);
+}
+.cinta-tasa--vieja{ border-left-color:var(--naranja); }
+.cinta-tasa--sin{ border-left-color:var(--rosa); }
+
+.cinta-tasa__valor{
+  font-size:15px; font-weight:700; color:var(--esmeralda);
+  letter-spacing:-.02em;
+}
+.cinta-tasa--vieja .cinta-tasa__valor{ color:var(--naranja); }
+.cinta-tasa--sin .cinta-tasa__valor{ color:var(--rosa); }
+.cinta-tasa__etiqueta{
+  text-transform:uppercase; letter-spacing:.14em; font-size:9.5px;
+  color:var(--tinta-3);
+}
+.cinta-tasa__nota{ margin-left:auto; font-size:10.5px; color:var(--tinta-3); }
+
+/* El dólar en verde; su conversión, atenuada */
+.monto-usd{ color:var(--esmeralda); font-weight:700; }
+.equivalente--usd{ color:var(--esmeralda); opacity:.85; }
+
+@media (max-width:820px){
+  .cinta-tasa{ padding:8px 12px; }
+  .cinta-tasa__nota{ margin-left:0; width:100%; }
+}
+
+/* Precio en el listado de productos */
+.lista__precio{
+  display:block; margin-top:3px;
+  font-family:var(--dato); font-size:13px; font-weight:700;
+}
+.lista__precio .equivalente{ display:inline; margin-left:7px; font-size:11px; }
+.datos__valor .monto-usd{ font-size:inherit; }
+.datos__valor .equivalente{ display:block; margin-top:2px; }

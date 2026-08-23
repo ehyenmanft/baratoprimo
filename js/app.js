@@ -114,6 +114,46 @@
     });
   }
 
+  /* Cintillo con la tasa que se está aplicando ahora mismo. Se pinta en
+     las pantallas donde se manejan precios: ver el número antes de
+     teclear evita cargar un producto con la tasa de la semana pasada. */
+  const VISTAS_CON_TASA = ['inicio', 'ventas', 'venta', 'productos', 'producto', 'movimientos'];
+
+  function pintarCintaTasa(vista) {
+    const caja = $('#cinta-tasa');
+    if (!caja || !INV.tasas) return;
+
+    if (!VISTAS_CON_TASA.includes(vista)) { caja.hidden = true; return; }
+
+    const t = INV.tasas.actual();
+    const n = INV.ui.numero;
+
+    if (!t.tasa) {
+      caja.className = 'cinta-tasa cinta-tasa--sin';
+      caja.innerHTML = '<span class="cinta-tasa__etiqueta">Sin tasa</span>' +
+        '<span class="cinta-tasa__valor">—</span>' +
+        '<span>No hay tasa de cambio: los equivalentes no se pueden calcular.</span>';
+      caja.hidden = false;
+      return;
+    }
+
+    const dias = t.dias;
+    const vieja = t.origen === 'oficial' && dias > 0;
+    caja.className = 'cinta-tasa' + (vieja ? ' cinta-tasa--vieja' : '');
+
+    const cuando = t.origen !== 'oficial' ? 'tasa propia del comercio'
+      : dias === 0 ? 'de hoy'
+      : dias === 1 ? 'de ayer'
+      : `de hace ${dias} días`;
+
+    caja.innerHTML =
+      `<span class="cinta-tasa__etiqueta">Tasa ${t.origen === 'oficial' ? 'BCV' : 'manual'}</span>` +
+      `<span class="cinta-tasa__valor">${n(t.tasa, 2)}</span>` +
+      `<span>Bs por dólar · ${cuando}</span>` +
+      (t.fuente ? `<span class="cinta-tasa__nota">fuente: ${t.fuente}</span>` : '');
+    caja.hidden = false;
+  }
+
   /* ---------------- Menú lateral en móvil ----------------
      En pantallas estrechas el menú se retira fuera de la vista y entra al
      pulsar el logo, tanto el de la barra superior como el del propio panel
@@ -261,6 +301,7 @@
     $('#vista-eyebrow').textContent = texto(vista.eyebrow);
     const enMovil = $('#vista-movil');
     if (enMovil) enMovil.textContent = texto(vista.titulo);
+    pintarCintaTasa(nombre);
 
     // El ticket pertenece al comprobante; al cambiar de vista se descarta
     // para que una impresión no saque una venta que ya no está en pantalla.

@@ -121,11 +121,19 @@
   }
 
   /* En HTML, con el equivalente atenuado */
+  /* El monto en dólares va en verde y la conversión en bolívares
+     atenuada debajo: de un vistazo se sabe cuál es cuál sin leer el
+     símbolo, que en una pantalla llena de números se pasa por alto. */
   function html(monto, opciones) {
     const d = dual(monto, opciones);
+    const enUsd = catalogoEnDolares() || (opciones && opciones.moneda === 'USD');
+    const clase = enUsd ? 'monto-usd' : '';
+    const claseEq = enUsd ? 'equivalente' : 'equivalente equivalente--usd';
+
     return d.equivalente
-      ? `${INV.ui.esc(d.principal)}<span class="equivalente">${INV.ui.esc(d.equivalente)}</span>`
-      : INV.ui.esc(d.principal);
+      ? `<span class="${clase}">${INV.ui.esc(d.principal)}</span>` +
+        `<span class="${claseEq}">${INV.ui.esc(d.equivalente)}</span>`
+      : `<span class="${clase}">${INV.ui.esc(d.principal)}</span>`;
   }
 
   /* Símbolo de la moneda en la que está escrito el catálogo. */

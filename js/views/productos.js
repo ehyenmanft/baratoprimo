@@ -28,7 +28,8 @@
     <div class="lista__item" style="--i:${Math.min(i, 24)}" data-abrir="${f.producto_id}" role="button" tabindex="0">
       ${miniatura(f.imagen_path, f.nombre)}
       <span class="lista__nombre">${esc(f.nombre)}
-        <span class="lista__sub">${esc(f.sku)} · ${esc(f.categoria ?? 'sin categoría')} · ${INV.tasas.texto(f.precio_venta)}</span></span>
+        <span class="lista__sub">${esc(f.sku)} · ${esc(f.categoria ?? 'sin categoría')}</span>
+        <span class="lista__precio">${INV.tasas.html(f.precio_venta)}</span></span>
       ${medidor(f.stock, f.stock_minimo, Math.min(i, 24))}
       <span class="lista__dato"><b class="${Number(f.stock) <= 0 ? 'neg' : Number(f.stock) <= Number(f.stock_minimo) ? '' : ''}">${cantidad(f.stock)}</b><small>${esc(f.unidad)}</small></span>
     </div>`;
