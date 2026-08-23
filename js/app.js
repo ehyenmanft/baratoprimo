@@ -205,6 +205,10 @@
       caja.hidden = false;
       if (etiqueta) etiqueta.textContent = 'Comercio';
       $('#comercio-actual').textContent = actual.nombre;
+      /* Hay que volver a mostrarlo: la rama del super administrador lo
+         oculta para dejar sitio al selector, y si alguien cierra sesión y
+         entra otro sin recargar, el nombre se quedaba invisible. */
+      $('#comercio-actual').hidden = false;
       $('#selector-comercio').hidden = true;
       return;
     }
@@ -217,7 +221,11 @@
     const selector = $('#selector-comercio');
     try {
       const comercios = await INV.db.comercios.listar();
-      if (!comercios.length) { selector.hidden = true; return; }
+      if (!comercios.length) {
+        selector.hidden = true;
+        $('#comercio-actual').hidden = false;
+        return;
+      }
 
       const idActual = actual && actual.id ? actual.id : '';
       selector.innerHTML =
@@ -243,7 +251,9 @@
         }
       };
     } catch (e) {
+      // Sin lista de comercios se muestra el nombre, no un selector vacío
       selector.hidden = true;
+      $('#comercio-actual').hidden = false;
     }
   }
 

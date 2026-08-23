@@ -419,10 +419,14 @@
         </div>
         <div class="ficha__cuerpo" style="padding-bottom:14px">
           <div class="filtros">
+            <label class="filtro" style="min-width:150px"><span>Buscar por código o nombre</span>
+              <input type="search" id="vn-buscar-prod" placeholder="Escribe el código…"
+                     autocomplete="off" style="max-width:200px"></label>
             <label class="filtro" style="flex:2; min-width:220px"><span>Producto</span>
               <select id="vn-producto">
-                ${catalogo.map(p => `<option value="${p.producto_id}">${esc(p.sku)} — ${esc(p.nombre)} (${cantidad(p.stock)} ${esc(p.unidad)})</option>`).join('')}
-              </select></label>
+                ${catalogo.map(p => `<option value="${p.producto_id}" data-sku="${esc(p.sku)}">${esc(p.sku)} — ${esc(p.nombre)} (${cantidad(p.stock)} ${esc(p.unidad)})</option>`).join('')}
+              </select>
+              <span class="subida__nota" id="vn-encontrados" style="margin-top:4px; display:block"></span></label>
             <label class="filtro"><span>Cantidad</span>
               <input type="number" id="vn-cantidad" min="0.001" step="0.001" value="1"></label>
             <button class="btn btn--primario" id="vn-agregar">Agregar</button>
@@ -523,12 +527,69 @@
       </div>`;
 
     $('#vn-cliente').addEventListener('change', pintarCliente);
+    /* Buscar por código o por nombre. En un mostrador se teclea el código
+       del producto, no se busca en una lista de doscientos: el buscador
+       deja el selector con lo que coincide y, si solo queda uno, lo elige
+       para poder agregar con Enter sin tocar el ratón. */
+    const buscador = $('#vn-buscar-prod');
+    const selector = $('#vn-producto');
+    const todasLasOpciones = [...selector.options].map(o => ({
+      valor: o.value, texto: o.textContent, sku: (o.dataset.sku || '').toLowerCase(),
+    }));
+
+    function filtrarProductos() {
+      const t = buscador.value.trim().toLowerCase();
+      const coinciden = !t ? todasLasOpciones : todasLasOpciones.filter(o =>
+        o.sku.includes(t) || o.texto.toLowerCase().includes(t));
+
+      selector.innerHTML = coinciden.map(o =>
+        `<option value="${o.valor}">${esc(o.texto)}</option>`).join('');
+
+      const nota = $('#vn-encontrados');
+      if (!t) nota.textContent = '';
+      else if (!coinciden.length) {
+        nota.style.color = 'var(--rosa)';
+        nota.textContent = 'Ningún producto con ese código o nombre.';
+      } else {
+        nota.style.color = '';
+        nota.textContent = coinciden.length === 1
+          ? 'Uno encontrado: pulsa Enter para agregarlo.'
+          : `${coinciden.length} productos coinciden.`;
+      }
+      // El código exacto manda sobre la coincidencia parcial
+      const exacto = coinciden.find(o => o.sku === t);
+      if (exacto) selector.value = exacto.valor;
+    }
+
+    buscador.addEventListener('input', filtrarProductos);
+
+    buscador.addEventListener('keydown', e => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      if (!selector.options.length) return;
+      agregarRenglon();
+      buscador.value = '';
+      filtrarProductos();
+      buscador.focus();
+    });
+
     $('#vn-agregar').addEventListener('click', agregarRenglon);
     $('#vn-iva').addEventListener('input', pintarRenglones);
     $('#vn-incluido').addEventListener('change', pintarRenglones);
     $('#vn-emitir').addEventListener('click', confirmarEmision);
     $('#vn-nuevo-cliente').addEventListener('click', () => INV.vistas.clientes.abrirFormulario());
+    INV.ui.montoAutomatico('#pg-monto');
+    INV.ui.montoAutomatico('#cr-inicial');
+
     $('#pg-metodo').addEventListener('change', ajustarCamposPago);
+    $('#pg-monto').addEventListener('monto', equivalenteDelPago);
+    $('#cr-inicial').addEventListener('monto', () => {
+      const total = totalDeLaVenta();
+      const pct = total > 0 ? (INV.ui.leerMonto('#cr-inicial') / total) * 100 : 0;
+      $('#cr-inicial-pct').value = Math.round(pct * 10) / 10;
+      equivalenteInicial();
+      previaCredito();
+    });
     $('#pg-monto').addEventListener('input', equivalenteDelPago);
     $('#pg-tasa').addEventListener('input', equivalenteDelPago);
     $('#pg-agregar').addEventListener('click', agregarPago);
@@ -543,7 +604,7 @@
        mano cada vez que el cliente pide "el 30 por ciento de inicial". */
     $('#cr-inicial').addEventListener('input', () => {
       const total = totalDeLaVenta();
-      const pct = total > 0 ? (Number($('#cr-inicial').value || 0) / total) * 100 : 0;
+      const pct = total > 0 ? (INV.ui.leerMonto('#cr-inicial') / total) * 100 : 0;
       $('#cr-inicial-pct').value = Math.round(pct * 10) / 10;
       equivalenteInicial();
     });
@@ -556,7 +617,7 @@
 
     $('#cr-inicial-pct').addEventListener('input', () => {
       const pct = Math.min(100, Math.max(0, Number($('#cr-inicial-pct').value || 0)));
-      $('#cr-inicial').value = redondear(totalDeLaVenta() * pct / 100);
+      INV.ui.fijarMonto('#cr-inicial', redondear(totalDeLaVenta() * pct / 100));
       equivalenteInicial();
       previaCredito();
     });
@@ -667,7 +728,7 @@
     if (!salida || !INV.tasas) return;
 
     const m = metodo($('#pg-metodo').value);
-    const monto = Number($('#pg-monto').value || 0);
+    const monto = INV.ui.leerMonto('#pg-monto');
     if (!monto) { salida.textContent = ''; return; }
 
     if (m.moneda === 'VES') {
@@ -695,7 +756,7 @@
   function equivalenteInicial() {
     const salida = $('#cr-inicial-eq');
     if (!salida) return;
-    const monto = Number($('#cr-inicial').value || 0);
+    const monto = INV.ui.leerMonto('#cr-inicial');
     const tasa = Number($('#cr-tasa').value || 0) || (INV.tasas ? INV.tasas.usd() : 0);
     salida.textContent = (monto > 0 && tasa > 0)
       ? '= ' + numero(redondear(monto / tasa)) + ' $'
@@ -709,7 +770,7 @@
      céntimo. */
   function calcularPlan() {
     const tasa = Number($('#cr-tasa').value);
-    const inicial = Number($('#cr-inicial').value || 0);
+    const inicial = INV.ui.leerMonto('#cr-inicial');
     const n = Math.max(1, Math.round(Number($('#cr-cuotas').value || 1)));
     const dias = Number($('#cr-frecuencia').value);
     const primera = $('#cr-primera').value;
@@ -812,7 +873,7 @@
     err.hidden = true;
 
     const m = metodo($('#pg-metodo').value);
-    const monto = Number($('#pg-monto').value);
+    const monto = INV.ui.leerMonto('#pg-monto');
     const referencia = $('#pg-referencia').value.trim();
     const detalle = $('#pg-detalle').value.trim();
     const tasa = m.moneda === 'VES' ? 1 : Number($('#pg-tasa').value);
@@ -852,7 +913,7 @@
       monto_local: redondear(monto * tasa),
     });
 
-    $('#pg-monto').value = '';
+    INV.ui.fijarMonto('#pg-monto', 0);
     $('#pg-referencia').value = '';
     $('#pg-detalle').value = '';
     pintarRenglones();

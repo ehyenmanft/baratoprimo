@@ -61,6 +61,110 @@
     </div>`;
   }
 
+  /* =====================================================================
+     CAMPOS DE MONTO
+     ---------------------------------------------------------------------
+     Se teclean como en una caja registradora: cada dígito entra por la
+     derecha y el decimal se corre solo. Tecleando 1, 2, 3, 4 se ve
+     0,01 → 0,12 → 1,23 → 12,34.
+
+     Es más rápido que escribir el separador a mano y elimina el error de
+     poner el punto donde va la coma, que en un país donde los precios
+     tienen cinco cifras cuesta dinero.
+
+     El campo pasa a ser de texto para poder formatearlo, y el valor
+     numérico real queda en dataset.valor. Se lee con leerMonto().
+     ===================================================================== */
+
+  function montoAutomatico(campo, opciones = {}) {
+    const el = typeof campo === 'string' ? document.querySelector(campo) : campo;
+    if (!el || el.dataset.montoAuto === 'si') return;
+
+    const decimales = opciones.decimales ?? 2;
+    const factor = Math.pow(10, decimales);
+
+    /* Se cambia a texto: un input[type=number] no deja formatear ni
+       controlar el cursor, y en el móvil el teclado numérico se pide con
+       inputMode. */
+    el.type = 'text';
+    el.inputMode = 'decimal';
+    el.autocomplete = 'off';
+    el.dataset.montoAuto = 'si';
+
+    const pintar = centavos => {
+      el.dataset.valor = String(centavos / factor);
+      el.value = centavos === 0 && !opciones.mostrarCero
+        ? ''
+        : numero(centavos / factor, decimales);
+      // El cursor siempre al final: es por donde entran los dígitos
+      requestAnimationFrame(() => {
+        try { el.setSelectionRange(el.value.length, el.value.length); } catch (e) {}
+      });
+    };
+
+    // Valor de partida, si el campo ya traía uno
+    const inicial = Number(el.dataset.valor ?? el.value ?? 0);
+    pintar(Math.round((Number.isFinite(inicial) ? inicial : 0) * factor));
+
+    el.addEventListener('input', () => {
+      const digitos = el.value.replace(/\D/g, '').slice(0, 15);
+      pintar(digitos ? parseInt(digitos, 10) : 0);
+      el.dispatchEvent(new CustomEvent('monto', { bubbles: true }));
+    });
+
+    /* Con las flechas se sube y baja de una unidad, como en el campo
+       numérico de siempre. */
+    el.addEventListener('keydown', e => {
+      if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+      e.preventDefault();
+      const actual = Math.round(Number(el.dataset.valor || 0) * factor);
+      const paso = factor * (e.key === 'ArrowUp' ? 1 : -1);
+      pintar(Math.max(0, actual + paso));
+      el.dispatchEvent(new CustomEvent('monto', { bubbles: true }));
+      el.dispatchEvent(new Event('input', { bubbles: false }));
+    });
+
+    return () => leerMonto(el);
+  }
+
+  /* Lee un campo de monto, esté formateado o no. Sirve igual para los
+     campos normales, así que se puede usar en todas partes. */
+  function leerMonto(campo) {
+    const el = typeof campo === 'string' ? document.querySelector(campo) : campo;
+    if (!el) return 0;
+
+    /* Se lee lo que está a la vista, no lo que quedó guardado aparte. Si
+       otro trozo de código escribe el campo directamente —cosa que pasa
+       al reutilizar un formulario o al rellenarlo desde fuera—, lo que el
+       usuario ve tiene que ser lo que se guarde. El valor cacheado solo
+       sirve cuando no hay nada escrito. */
+    const t = String(el.value || '').trim();
+    if (!t) return Number(el.dataset.valor) || 0;
+
+    /* Formato venezolano: el punto separa miles y la coma, decimales.
+       Un valor puesto a mano como "1500" o "1500.5" también se entiende:
+       si no hay coma, el punto se toma como decimal. */
+    const conComa = t.includes(',');
+    const limpio = conComa
+      ? t.replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.')
+      : t.replace(/[^\d.-]/g, '');
+
+    const n = parseFloat(limpio);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  /* Escribe un valor en un campo de monto, respetando su formato. */
+  function fijarMonto(campo, valor) {
+    const el = typeof campo === 'string' ? document.querySelector(campo) : campo;
+    if (!el) return;
+    if (el.dataset.montoAuto === 'si') {
+      el.dataset.valor = String(Number(valor) || 0);
+      el.value = Number(valor) ? numero(valor, 2) : '';
+    } else {
+      el.value = valor;
+    }
+  }
+
   function descargarCSV(nombreArchivo, columnas, filas) {
     const escapar = v => {
       const s = String(v ?? '');
@@ -160,5 +264,6 @@
 
   INV.ui = { $, $$, esc, numero, cantidad, fecha, avisar, abrirModal, cerrarModal,
              cargando, vacio, medidor, descargarCSV,
+             montoAutomatico, leerMonto, fijarMonto,
              aplicarTema, temaGuardado, imagenReducida, miniatura };
 })();

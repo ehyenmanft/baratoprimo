@@ -114,13 +114,25 @@
         return q.then(ok);
       },
       /* El kardex es de solo inserción: un error se corrige con un ajuste
-         inverso. Pasa por la función del esquema para que reenviarlo —lo
-         que hace la cola tras una caída— no lo aplique dos veces. */
-      registrar: datos => sb.rpc('registrar_movimiento', { p: datos })
-        .then(({ data, error }) => {
-          if (error) throw new Error(error.message);
-          return { id: data, ...datos };
-        }),
+         inverso.
+
+         Si la base tiene la función idempotente, se usa: permite reenviar
+         un movimiento tras una caída sin aplicarlo dos veces. Si no la
+         tiene, se inserta directo. Antes se llamaba a la función a secas
+         y el registro fallaba entero en las bases que no la tenían. */
+      registrar: async datos => {
+        const { data, error } = await sb.rpc('registrar_movimiento', { p: datos });
+
+        if (!error) return { id: data, ...datos };
+
+        const sinFuncion = /could not find the function|does not exist|schema cache/i
+          .test(error.message || '');
+        if (!sinFuncion) throw new Error(error.message);
+
+        // Sin la función: inserción directa, que es lo que hacía siempre
+        const { clave_idem, ...limpio } = datos;
+        return sb.from('movimientos').insert(limpio).select().single().then(ok);
+      },
     },
 
     clientes: {

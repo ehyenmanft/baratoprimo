@@ -28,8 +28,9 @@
     <div class="lista__item" style="--i:${Math.min(i, 24)}" data-abrir="${f.producto_id}" role="button" tabindex="0">
       ${miniatura(f.imagen_path, f.nombre)}
       <span class="lista__nombre">${esc(f.nombre)}
+        <span class="sku">${esc(f.sku)}</span>
         ${f.exento_iva ? '<span class="pastilla pastilla--exento">exento de IVA</span>' : ''}
-        <span class="lista__sub">${esc(f.sku)} · ${esc(f.categoria ?? 'sin categoría')}</span>
+        <span class="lista__sub">${esc(f.categoria ?? 'sin categoría')}</span>
         <span class="lista__precio">${INV.tasas.html(f.precio_venta)}</span></span>
       ${medidor(f.stock, f.stock_minimo, Math.min(i, 24))}
       <span class="lista__dato"><b class="${Number(f.stock) <= 0 ? 'neg' : Number(f.stock) <= Number(f.stock_minimo) ? '' : ''}">${cantidad(f.stock)}</b><small>${esc(f.unidad)}</small></span>
@@ -319,6 +320,11 @@
       }
     });
 
+    /* Costo y precio se teclean con el decimal corrido. El equivalente en
+       la otra moneda escucha el evento 'monto', que es el que emiten
+       estos campos al cambiar. */
+    INV.ui.montoAutomatico('#pr-costo');
+    INV.ui.montoAutomatico('#pr-precio');
     INV.tasas.enlazarEquivalente('#pr-costo', '#pr-costo-eq');
     INV.tasas.enlazarEquivalente('#pr-precio', '#pr-precio-eq');
 
@@ -352,8 +358,8 @@
       unidad:       $('#pr-unidad').value.trim() || 'unidad',
       categoria_id: $('#pr-categoria').value ? Number($('#pr-categoria').value) : null,
       exento_iva: $('#pr-exento').checked,
-      costo:        Number($('#pr-costo').value || 0),
-      precio_venta: Number($('#pr-precio').value || 0),
+      costo:        INV.ui.leerMonto('#pr-costo'),
+      precio_venta: INV.ui.leerMonto('#pr-precio'),
       stock_minimo: Number($('#pr-minimo').value || 0),
     };
 

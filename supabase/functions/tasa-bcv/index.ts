@@ -13,8 +13,12 @@
 
    Fuentes, en orden:
      1. bcv.org.ve — la fuente. Se leen USD, EUR y la fecha valor.
-     2. bcv.today  — espejo del BCV, mismas monedas y effective_date.
-     3. ve.dolarapi.com — tasa oficial republicada, sin euro.
+     2. El mismo portal, leído por un intermediario, porque el certificado
+        del BCV hace fallar la conexión directa desde muchos servidores.
+     3. bcv.today — espejo del BCV. Se le piden primero los días
+        siguientes: si la tasa del lunes ya está publicada, esa es la que
+        hay que guardar, no la que rige hoy.
+     4. ve.dolarapi.com — tasa oficial republicada, sin euro.
 
    Si las tres fallan no se inventa nada: se responde con error y la
    aplicación sigue con la última tasa conocida, avisando de su edad.
@@ -129,21 +133,77 @@ async function desdeBCV() {
    la fecha valor. Se sirve como archivo estático, así que sigue en pie
    cuando el portal del BCV no responde. */
 async function desdeEspejo() {
-  const respuesta = await fetch('https://bcv.today/api/v1/rate.json', {
-    headers: { 'Accept': 'application/json' },
-    signal: AbortSignal.timeout(15000),
-  });
-  if (!respuesta.ok) throw new Error('El espejo respondió ' + respuesta.status);
+  const pedir = async url => {
+    const r = await fetch(url, {
+      headers: { 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!r.ok) return null;
+    const d = await r.json();
+    const usd = aNumero(d && d.USD);
+    return razonable(usd) ? { d, usd } : null;
+  };
 
-  const d = await respuesta.json();
-  const usd = aNumero(d && d.USD);
-  if (!razonable(usd)) throw new Error('El espejo no traía una tasa reconocible');
+  /* El espejo sirve en rate.json "la que rige hoy". Pero el BCV publica
+     por la tarde la del siguiente día hábil, y eso es lo que muestra su
+     portal y lo que la gente compara. Así que primero se pregunta por los
+     próximos días: si ya está publicada, es la que hay que guardar. */
+  const base = new Date(Date.now() - 4 * 3600 * 1000);
+  for (let i = 1; i <= 4; i++) {
+    const dia = new Date(base.getTime() + i * 86400000).toISOString().slice(0, 10);
+    try {
+      const futura = await pedir(`https://bcv.today/api/v1/history/${dia}.json`);
+      if (futura) {
+        return {
+          usd: futura.usd,
+          eur: aNumero(futura.d.EUR),
+          fecha: futura.d.effective_date || dia,
+          fuente: 'bcv-espejo',
+        };
+      }
+    } catch (e) { /* ese día todavía no existe: se sigue probando */ }
+  }
+
+  // Nada publicado hacia adelante: la vigente de hoy
+  const hoy = await pedir('https://bcv.today/api/v1/rate.json');
+  if (!hoy) throw new Error('El espejo no traía una tasa reconocible');
+
+  return {
+    usd: hoy.usd,
+    eur: aNumero(hoy.d.EUR),
+    fecha: (hoy.d.effective_date || hoy.d.date) || hoyCaracas(),
+    fuente: 'bcv-espejo',
+  };
+}
+
+/* ---------------- Fuente 1b: el portal, leído por un intermediario ----
+   El certificado de bcv.org.ve suele hacer que la conexión directa falle.
+   Este lector descarga la página desde su servidor y devuelve el texto,
+   con lo que se puede leer el portal aunque no se pueda hablar con él. */
+async function desdePortalIndirecto() {
+  const respuesta = await fetch('https://r.jina.ai/https://www.bcv.org.ve/', {
+    headers: { 'Accept': 'text/plain' },
+    signal: AbortSignal.timeout(25000),
+  });
+  if (!respuesta.ok) throw new Error('El lector respondió ' + respuesta.status);
+
+  const texto = await respuesta.text();
+
+  /* Aquí no hay etiquetas HTML: el texto viene plano, así que se busca la
+     cifra que sigue a cada símbolo de moneda. */
+  const tras = etiqueta => {
+    const m = texto.match(new RegExp(etiqueta + '[\\s\\S]{0,120}?([\\d]{1,3}(?:\\.[\\d]{3})*,[\\d]+)', 'i'));
+    return m ? aNumero(m[1]) : null;
+  };
+
+  const usd = tras('USD');
+  if (!razonable(usd)) throw new Error('No se encontró el dólar en el texto del portal');
 
   return {
     usd,
-    eur: aNumero(d && d.EUR),
-    fecha: (d && (d.effective_date || d.date)) || hoyCaracas(),
-    fuente: 'bcv-espejo',
+    eur: tras('EUR'),
+    fecha: fechaValor(texto) || hoyCaracas(),
+    fuente: 'bcv-portal',
   };
 }
 
@@ -181,7 +241,7 @@ Deno.serve(async (peticion) => {
   const intentos = [];
   let r = null;
 
-  for (const fuente of [desdeBCV, desdeEspejo, desdeRepublicador]) {
+  for (const fuente of [desdeBCV, desdePortalIndirecto, desdeEspejo, desdeRepublicador]) {
     try {
       r = await fuente();
       break;

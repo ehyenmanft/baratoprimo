@@ -324,15 +324,36 @@
 
     sesion: {
       actual: async () => {
-        try { return localStorage.getItem(CLAVE + '-sesion')
-          ? { user: { email: 'demo@local' } } : null; } catch (e) { return null; }
+        try {
+          if (!localStorage.getItem(CLAVE + '-sesion')) return null;
+          // Se recuerda con qué operador se entró, para conservar su rol
+          const quien = localStorage.getItem(CLAVE + '-quien')
+            || (bd.operadores[0] || {}).correo || 'demo@local';
+          return { user: { email: quien } };
+        } catch (e) { return null; }
       },
-      entrar: async () => {
+      /* En demo no hay contraseñas: se entra con el correo de cualquier
+         operador registrado, y así se pueden probar los distintos roles
+         sin montar nada. Si el correo no existe, entra el de siempre. */
+      entrar: async (correo) => {
         await dormir(200);
-        try { localStorage.setItem(CLAVE + '-sesion', '1'); } catch (e) {}
-        return { session: { user: { email: 'demo@local' } } };
+        const limpio = String(correo || '').trim().toLowerCase();
+        const existe = bd.operadores.find(o => o.activo && o.correo.toLowerCase() === limpio);
+        const elegido = existe ? existe.correo : (bd.operadores[0] || {}).correo || 'demo@local';
+
+        try {
+          localStorage.setItem(CLAVE + '-sesion', '1');
+          localStorage.setItem(CLAVE + '-quien', elegido);
+        } catch (e) {}
+        return { session: { user: { email: elegido } } };
       },
-      salir: async () => { try { localStorage.removeItem(CLAVE + '-sesion'); } catch (e) {} },
+
+      salir: async () => {
+        try {
+          localStorage.removeItem(CLAVE + '-sesion');
+          localStorage.removeItem(CLAVE + '-quien');
+        } catch (e) {}
+      },
       alCambiar: () => {},
     },
 

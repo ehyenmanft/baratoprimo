@@ -192,7 +192,7 @@
     if (!entrada || !destino) return;
 
     const pintar = () => {
-      const monto = Number(entrada.value || 0);
+      const monto = INV.ui.leerMonto(entrada);
       if (!monto) { destino.textContent = ''; return; }
 
       /* 'moneda' fuerza en qué está escrito el campo. Sin ella se toma la
@@ -202,6 +202,8 @@
     };
 
     entrada.addEventListener('input', pintar);
+    // Los campos con decimal corrido avisan con su propio evento
+    entrada.addEventListener('monto', pintar);
     pintar();
     return pintar;
   }

@@ -84,6 +84,7 @@
     });
 
     // El costo también se ve en la otra moneda mientras se escribe
+    INV.ui.montoAutomatico('#mv-costo');
     if (INV.tasas) INV.tasas.enlazarEquivalente('#mv-costo', '#mv-costo-eq');
   }
 
@@ -102,7 +103,7 @@
         tipo,
         cantidad:       cant,
         es_negativo:    tipo === 'ajuste' && $('#mv-sentido').value === 'menos',
-        costo_unitario: $('#mv-costo').value ? Number($('#mv-costo').value) : null,
+        costo_unitario: INV.ui.leerMonto('#mv-costo') || null,
         motivo:         $('#mv-motivo').value || null,
         referencia:     $('#mv-referencia').value || null,
         nota:           $('#mv-nota').value || null,

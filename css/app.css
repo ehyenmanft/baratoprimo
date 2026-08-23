@@ -1357,3 +1357,14 @@ html[data-tema="oscuro"] .rail__comercio select option{
 .tabla .num{ text-align:right; font-family:var(--dato); }
 
 
+
+/* Código del producto, junto al nombre */
+.sku{
+  display:inline-block; margin-left:8px; vertical-align:middle;
+  font-family:var(--dato); font-size:10px; font-weight:700;
+  letter-spacing:.06em;
+  background:var(--violeta-piel); color:var(--violeta);
+  padding:2px 7px; border-radius:5px;
+}
+html[data-tema="oscuro"] .sku{ background:rgba(124,77,247,.2); color:#B69BFF; }
+.sku--grande{ margin-left:0; font-size:11px; padding:3px 9px; }
