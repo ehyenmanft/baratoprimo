@@ -95,6 +95,30 @@ end $$;
 
 
 -- ---------------------------------------------------------------------
+-- 3b. Rehacer la vista mi_comercio
+-- PostgreSQL congela las columnas de una vista al crearla: el "select *"
+-- se expande en ese momento y no vuelve a mirar. Sin esto, las columnas
+-- que acabamos de añadir existirían en la tabla pero la aplicación nunca
+-- las vería, porque lee de aquí.
+-- ---------------------------------------------------------------------
+
+drop view if exists mi_comercio;
+
+create view mi_comercio as
+select * from comercios where id = comercio_actual();
+
+do $$
+begin
+  if exists (select 1 from pg_roles where rolname = 'authenticated') then
+    grant select on mi_comercio to authenticated;
+  end if;
+  if current_setting('server_version_num')::int >= 150000 then
+    execute 'alter view mi_comercio set (security_invoker = true)';
+  end if;
+end $$;
+
+
+-- ---------------------------------------------------------------------
 -- 4. Quién puede leer y escribir la tasa
 -- La lee cualquiera con sesión. La escribe la función que consulta al
 -- BCV, que corre con la llave de servicio y se salta las políticas, y
@@ -152,5 +176,11 @@ union all
 select 'columnas en comercios',
        case when (select count(*) from information_schema.columns
                    where table_name = 'comercios'
+                     and column_name in ('tasa_automatica', 'moneda_precios')) = 2
+            then 'listo' else 'FALTA' end
+union all
+select 'vista mi_comercio actualizada',
+       case when (select count(*) from information_schema.columns
+                   where table_name = 'mi_comercio'
                      and column_name in ('tasa_automatica', 'moneda_precios')) = 2
             then 'listo' else 'FALTA' end;

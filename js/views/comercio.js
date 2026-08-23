@@ -38,6 +38,11 @@
 
       const puede = INV.permisos.puede('ajustes.comercio');
 
+      /* Si la base es de una versión anterior, la vista mi_comercio puede
+         no traer estas columnas: se avisa en lugar de dejar que el ajuste
+         parezca no guardarse. */
+      const faltanColumnas = c.moneda_precios === undefined || c.tasa_automatica === undefined;
+
       contenedor.innerHTML = `
         <div class="mosaico mosaico--2">
           <div>
@@ -96,6 +101,15 @@
                     <input id="co-moneda" type="text" value="${esc(c.moneda ?? 'Bs')}" placeholder="Bs">
                   </div>
                 </div>
+                ${faltanColumnas ? `
+                  <div class="campo">
+                    <p class="error" style="margin:0">
+                      Tu base de datos no expone <b>moneda_precios</b>. Lo que cambies aquí
+                      se guardará pero la aplicación no lo verá. Ejecuta
+                      <b>migracion-vista-comercio.sql</b> en el editor SQL de Supabase.
+                    </p>
+                  </div>` : ''}
+
                 <div class="campo">
                   <label for="co-moneda-precios">Moneda de los precios del catálogo</label>
                   <select id="co-moneda-precios">
