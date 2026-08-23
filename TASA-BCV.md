@@ -61,17 +61,49 @@ select status, return_message, start_time
 
 ---
 
+## La fecha valor
+
+Esto explica una confusión frecuente. El BCV **publica por la tarde de cada día
+hábil la tasa que regirá el siguiente día hábil**, y la etiqueta como *Fecha
+Valor*. La del viernes aplica al lunes.
+
+Por eso puedes ver dos números distintos el mismo día:
+
+- **784,6633 · Fecha Valor lunes 24** — lo que muestra bcv.org.ve
+- **779,9522** — la que rige hoy, que es la que publican las mesas de cambio de
+  los bancos
+
+BaratoPrimo guarda cada tasa **con su fecha valor**, no con la fecha en que se
+consultó, y usa la última publicada — la misma que ves en el portal del BCV. El
+cintillo lo dice: si la fecha valor todavía no llegó, muestra *"fecha valor
+lunes, 24 agosto"* en vez de *"de hoy"*.
+
+Eso además permite explicar una factura vieja con la tasa que regía aquel día,
+que es justo lo que hace falta cuando alguien reclama.
+
 ## Las tres fuentes
 
-Se consultan en cascada y se para en la primera que responda:
+Todas publican la tasa **oficial del BCV**. Se consultan en cascada y se para en
+la primera que responda:
 
-1. **bcv.org.ve** — la oficial. Se lee el bloque `#dolar` de su portada.
-2. **Banco de Venezuela** — publica un JSON estable con la tasa oficial.
-3. **Una réplica pública** — último recurso.
+1. **bcv.org.ve** — la fuente. Se leen el dólar, el euro y la fecha valor.
+2. **bcv.today** — espejo del BCV: mismas monedas y misma fecha valor, servido
+   como archivo estático, así que sigue en pie cuando el portal no responde.
+3. **ve.dolarapi.com** — republica la oficial. No trae euro.
 
-El sitio del BCV se cae con frecuencia y cambia su maquetado sin avisar; por eso
-hay tres. La respuesta siempre dice de cuál vino, y esa marca queda guardada
-junto a la tasa.
+**El Banco de Venezuela se quitó a propósito.** Su JSON trae la *mesa de
+cambio*, que es la tasa vigente hoy, no la que el BCV acaba de publicar.
+Mezclarlas hacía que la aplicación mostrara un número distinto al del portal del
+BCV, que es el que la gente compara.
+
+La respuesta siempre dice de cuál vino, y esa marca queda guardada junto a la
+tasa.
+
+## El euro
+
+Si la fuente lo trae —el portal y su espejo lo traen—, se guarda también la tasa
+oficial del euro y se usa al cobrar en efectivo EUR. Si no, manda la tasa manual
+del comercio. El cintillo muestra las dos monedas.
 
 **Si las tres fallan no se guarda nada.** La aplicación sigue usando la última
 tasa conocida y avisa de que está vieja. Una tasa inventada es peor que una tasa

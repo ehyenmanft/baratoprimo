@@ -138,18 +138,26 @@
     }
 
     const dias = t.dias;
+    /* Días negativos significan fecha valor futura: el BCV publica por la
+       tarde la tasa del siguiente día hábil, y eso no es estar viejo. */
     const vieja = t.origen === 'oficial' && dias > 0;
+    const futura = t.origen === 'oficial' && dias < 0;
     caja.className = 'cinta-tasa' + (vieja ? ' cinta-tasa--vieja' : '');
 
     const cuando = t.origen !== 'oficial' ? 'tasa propia del comercio'
+      : futura ? `fecha valor ${new Date(t.fecha + 'T00:00:00')
+          .toLocaleDateString('es', { weekday: 'long', day: '2-digit', month: 'long' })}`
       : dias === 0 ? 'de hoy'
       : dias === 1 ? 'de ayer'
       : `de hace ${dias} días`;
 
+    const eur = INV.tasas.eur();
+
     caja.innerHTML =
       `<span class="cinta-tasa__etiqueta">Tasa ${t.origen === 'oficial' ? 'BCV' : 'manual'}</span>` +
-      `<span class="cinta-tasa__valor">${n(t.tasa, 2)}</span>` +
+      `<span class="cinta-tasa__valor">${n(t.tasa, 4)}</span>` +
       `<span>Bs por dólar · ${cuando}</span>` +
+      (eur > 0 ? `<span class="cinta-tasa__euro">€ ${n(eur, 4)}</span>` : '') +
       (t.fuente ? `<span class="cinta-tasa__nota">fuente: ${t.fuente}</span>` : '');
     caja.hidden = false;
   }

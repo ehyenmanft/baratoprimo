@@ -12,18 +12,21 @@
 (function () {
   const CLAVE = 'baratoprimo-tasa';
 
-  let oficial = null;   // { moneda, fecha, tasa, fuente, obtenida_en }
+  let oficial = null;   // USD: { moneda, fecha, tasa, fuente, obtenida_en }
+  let oficialEur = null;
 
   /* ---------------- Guardado local ---------------- */
 
-  function guardar(t) {
-    try { localStorage.setItem(CLAVE, JSON.stringify(t)); }
+  const clave = moneda => moneda === 'EUR' ? CLAVE + '-eur' : CLAVE;
+
+  function guardar(t, moneda) {
+    try { localStorage.setItem(clave(moneda), JSON.stringify(t)); }
     catch (e) { /* sin almacenamiento: solo memoria */ }
   }
 
-  function recuperar() {
+  function recuperar(moneda) {
     try {
-      const g = localStorage.getItem(CLAVE);
+      const g = localStorage.getItem(clave(moneda));
       return g ? JSON.parse(g) : null;
     } catch (e) { return null; }
   }
@@ -33,6 +36,7 @@
   async function cargar() {
     // Lo guardado sirve de inmediato mientras llega lo de la red
     if (!oficial) oficial = recuperar();
+    if (!oficialEur) oficialEur = recuperar('EUR');
 
     try {
       const t = await INV.db.tasas.vigente('USD');
@@ -43,6 +47,17 @@
     } catch (e) {
       // Sin conexión o sin tabla: se sigue con la última conocida
     }
+
+    /* El euro es opcional: el BCV lo publica, pero si la fuente que
+       respondió no lo trae, se sigue con la tasa manual del comercio. */
+    try {
+      const e = await INV.db.tasas.vigente('EUR');
+      if (e && Number(e.tasa) > 0) {
+        oficialEur = e;
+        guardar(e, 'EUR');
+      }
+    } catch (e) { /* sin euro oficial */ }
+
     return oficial;
   }
 
@@ -51,9 +66,11 @@
   function antiguedad() {
     if (!oficial || !oficial.fecha) return null;
     const hoy = new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10);
-    const dias = Math.round(
+    /* Puede salir negativo, y es correcto: el BCV publica por la tarde la
+       tasa que regirá el siguiente día hábil. No se recorta a cero para
+       que la interfaz pueda distinguir "vieja" de "aún por entrar". */
+    return Math.round(
       (new Date(hoy + 'T00:00:00') - new Date(oficial.fecha + 'T00:00:00')) / 86400000);
-    return Math.max(0, dias);
   }
 
   /* ---------------- Cuál manda ----------------
@@ -77,6 +94,15 @@
   }
 
   const usd = () => actual().tasa;
+
+  /* Euro: la oficial del BCV si el comercio sigue la tasa automática y
+     la fuente la trajo; si no, la manual del comercio. */
+  function eur() {
+    const c = INV.comercio ? INV.comercio.actual() : {};
+    const automatica = c.tasa_automatica !== false;
+    if (automatica && oficialEur && Number(oficialEur.tasa) > 0) return Number(oficialEur.tasa);
+    return Number(c.tasa_eur || 0);
+  }
 
   /* ---------------- Conversión y presentación ---------------- */
 
@@ -189,7 +215,8 @@
 
   INV.tasas = {
     cargar, actual, usd, aBolivares, aDolares, dual, texto, html, antiguedad,
-    simbolo, catalogoEnDolares, aFactura, enlazarEquivalente, equivalente,
+    simbolo, catalogoEnDolares, aFactura, enlazarEquivalente, equivalente, eur,
     oficial: () => oficial,
+    oficialEur: () => oficialEur,
   };
 })();

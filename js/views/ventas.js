@@ -25,7 +25,9 @@
       USD: (INV.tasas ? INV.tasas.usd() : 0)
            || Number(c.tasa_usd || 0)
            || Number((INV.config.TASAS || {}).USD || 0),
-      EUR: Number(c.tasa_eur || (INV.config.TASAS || {}).EUR || 0),
+      EUR: (INV.tasas ? INV.tasas.eur() : 0)
+           || Number(c.tasa_eur || 0)
+           || Number((INV.config.TASAS || {}).EUR || 0),
     };
   };
 
