@@ -17,6 +17,8 @@ y funciona.
 - **Impresión en formato ticket** de 58 mm, 80 mm o página completa.
 - **Multi-comercio**: varios comercios en la misma instalación, con sus datos
   completamente separados.
+- **Tasa del BCV automática**: se consulta sola cada día y cada precio se muestra
+  con su equivalente en la otra moneda.
 - **Roles**: super administrador, administrador, operador de inventario,
   facturador y mixto.
 - **Gráficas** de flujo, ventas, rotación y capital detenido.
@@ -56,6 +58,7 @@ js/config.js               Credenciales y modo de funcionamiento
 js/db.js                   Capa de datos (demo, Drive o Supabase)
 js/datos-demo.js           Adaptador local con datos de ejemplo
 js/permisos.js             Roles y permisos
+js/tasas.js                Tasa de cambio y conversión entre monedas
 js/qr.js                   Generador de códigos QR propio
 js/graficos.js             Gráficas SVG sin librerías
 js/views/                  Una vista por pantalla
@@ -75,4 +78,5 @@ ningún archivo que se suba al servidor: esa sí salta todas las políticas.
 
 - [LEEME.md](LEEME.md) — cómo funciona cada parte y por qué
 - [FUNCION-CUENTAS.md](FUNCION-CUENTAS.md) — contraseñas de los operadores
+- [TASA-BCV.md](TASA-BCV.md) — tasa oficial del dólar
 - [PUESTA-EN-MARCHA.md](PUESTA-EN-MARCHA.md) — instalación paso a paso

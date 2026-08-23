@@ -221,9 +221,22 @@ escribir una contraseña nueva: esa opción no existe. Las salidas están en
 administración y cambiarla desde la propia aplicación.
 
 **"No fue posible iniciar sesión. Comuníquese con el administrador."** — Es el
-mensaje que ve cualquiera que se equivoque de contraseña: no dice si falló el
-correo o la clave, a propósito. Del lado del panel, revisa que el usuario exista
-en Authentication y esté confirmado.
+mensaje que ve cualquiera que se equivoque: no dice si falló el correo o la
+clave, a propósito. **Para diagnosticarlo, abre la consola del navegador (F12):
+ahí sí aparece el motivo real** y qué hacer con él.
+
+Las dos causas habituales:
+
+- **El correo no es idéntico.** `usuario.x@gmail.com` y `usuariox@gmail.com` son
+  la misma bandeja para Gmail, pero cuentas distintas para Supabase. Un punto de
+  más, un espacio al pegar o una mayúscula bastan.
+- **La cuenta existe pero está sin confirmar.** Pasa cuando *Confirm email* está
+  activado en Authentication → Providers → Email. O lo desactivas, o confirmas
+  al usuario a mano desde Authentication → Users.
+
+**Entra, pero no puede hacer nada** — El correo de la cuenta y el de la fila en
+`operadores` no coinciden carácter por carácter. La sesión se abre, pero al
+buscar su rol no encuentra a nadie.
 
 **Las imágenes no cargan** — El bucket `inventario` no es público. Panel →
 Storage → inventario → Settings → Public bucket.

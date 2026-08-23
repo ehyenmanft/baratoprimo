@@ -28,12 +28,86 @@
     <div class="lista__item" style="--i:${Math.min(i, 24)}" data-abrir="${f.producto_id}" role="button" tabindex="0">
       ${miniatura(f.imagen_path, f.nombre)}
       <span class="lista__nombre">${esc(f.nombre)}
-        <span class="lista__sub">${esc(f.sku)} · ${esc(f.categoria ?? 'sin categoría')} · ${numero(f.precio_venta)}</span></span>
+        <span class="lista__sub">${esc(f.sku)} · ${esc(f.categoria ?? 'sin categoría')} · ${INV.tasas.texto(f.precio_venta)}</span></span>
       ${medidor(f.stock, f.stock_minimo, Math.min(i, 24))}
       <span class="lista__dato"><b class="${Number(f.stock) <= 0 ? 'neg' : Number(f.stock) <= Number(f.stock_minimo) ? '' : ''}">${cantidad(f.stock)}</b><small>${esc(f.unidad)}</small></span>
     </div>`;
 
   /* ---------------- Formulario ---------------- */
+
+  /* Cambiar la moneda del catálogo no convierte nada por sí solo: los
+     números guardados siguen siendo los mismos y solo cambia cómo se
+     leen. Esto los convierte de verdad, una sola vez y con vista previa,
+     porque equivocarse aquí multiplica o divide todo el catálogo. */
+  async function convertirCatalogo() {
+    const tasa = INV.tasas.usd();
+    if (!tasa) return avisar('No hay tasa de cambio: no se puede convertir', 'error');
+
+    const productos = await INV.db.productos.listar();
+    if (!productos.length) return avisar('No hay productos que convertir', 'error');
+
+    const enDolares = INV.tasas.catalogoEnDolares();
+    const hacia = enDolares ? 'dólares' : 'bolívares';
+    const desde = enDolares ? 'bolívares' : 'dólares';
+    const convertir = v => enDolares
+      ? Math.round((Number(v) / tasa) * 100) / 100
+      : Math.round(Number(v) * tasa * 100) / 100;
+
+    const muestra = productos.slice(0, 5);
+
+    abrirModal({
+      titulo: 'Convertir el catálogo a ' + hacia,
+      cuerpo: `
+        <p style="font-size:14px; color:var(--tinta-2); margin:0 0 14px">
+          Convierte el costo y el precio de <b>${productos.length} productos</b>
+          usando la tasa vigente (${numero(tasa, 2)} Bs/$), pasándolos de ${desde}
+          a ${hacia}. Úsalo una sola vez, justo después de cambiar la moneda
+          del catálogo en Mi comercio.
+        </p>
+        <p style="font-size:13px; color:var(--tinta-2); margin:0 0 8px"><b>Así quedarían:</b></p>
+        <div class="lista" style="margin-bottom:14px">
+          ${muestra.map(p => `
+            <div class="lista__item" style="grid-template-columns:1fr auto">
+              <span class="lista__nombre">${esc(p.nombre)}
+                <span class="lista__sub">${esc(p.sku)}</span></span>
+              <span class="lista__dato"><b>${numero(p.precio_venta)} → ${numero(convertir(p.precio_venta))}</b></span>
+            </div>`).join('')}
+        </div>
+        ${productos.length > 5 ? `<p class="ficha__nota">y ${productos.length - 5} más</p>` : ''}
+        <div class="campo" style="margin:0">
+          <label for="cv-confirmar">Escribe <b>CONVERTIR</b> para confirmar</label>
+          <input id="cv-confirmar" type="text" autocomplete="off">
+        </div>
+        <p id="cv-error" class="error" hidden></p>`,
+      acciones: [
+        { texto: 'Cancelar', alPulsar: cerrarModal },
+        { texto: 'Convertir', estilo: 'btn--primario', alPulsar: async btn => {
+          if ($('#cv-confirmar').value.trim().toUpperCase() !== 'CONVERTIR') {
+            $('#cv-error').textContent = 'Escribe CONVERTIR para confirmar.';
+            $('#cv-error').hidden = false; return;
+          }
+          btn.disabled = true; btn.textContent = 'Convirtiendo…';
+          let hechos = 0;
+          try {
+            for (const p of productos) {
+              await INV.db.productos.actualizar(p.producto_id ?? p.id, {
+                costo: convertir(p.costo),
+                precio_venta: convertir(p.precio_venta),
+              });
+              hechos++;
+            }
+            cerrarModal();
+            avisar(`${hechos} productos convertidos a ${hacia}`);
+            window.dispatchEvent(new Event('recargar-vista'));
+          } catch (e) {
+            $('#cv-error').textContent = `Se convirtieron ${hechos} de ${productos.length}: ` + e.message;
+            $('#cv-error').hidden = false;
+            btn.disabled = false; btn.textContent = 'Convertir';
+          }
+        }},
+      ],
+    });
+  }
 
   async function abrirFormulario(p = null) {
     if (!cats.length) cats = await INV.db.categorias.listar();
@@ -80,12 +154,14 @@
         </div>
         <div class="campos-fila">
           <div class="campo">
-            <label for="pr-costo">Costo</label>
+            <label for="pr-costo">Costo ${INV.tasas.simbolo()}</label>
             <input id="pr-costo" type="number" step="0.01" min="0" value="${p ? p.costo : 0}">
+            <span class="equivalente" id="pr-costo-eq"></span>
           </div>
           <div class="campo">
-            <label for="pr-precio">Precio de venta</label>
+            <label for="pr-precio">Precio de venta ${INV.tasas.simbolo()}</label>
             <input id="pr-precio" type="number" step="0.01" min="0" value="${p ? p.precio_venta : 0}">
+            <span class="equivalente" id="pr-precio-eq"></span>
           </div>
         </div>
         <div class="campo">
@@ -104,6 +180,22 @@
         { texto: 'Guardar', estilo: 'btn--primario', alPulsar: btn => guardar(p, btn) },
       ],
     });
+
+    /* Se escribe en una moneda y se ve en la otra: así nadie se equivoca
+       de orden de magnitud al cargar un precio. */
+    const equivalencias = () => {
+      [['#pr-costo', '#pr-costo-eq'], ['#pr-precio', '#pr-precio-eq']].forEach(([campo, salida]) => {
+        const el = $(salida);
+        if (!el || !INV.tasas) return;
+        const d = INV.tasas.dual(Number($(campo).value || 0));
+        el.textContent = d.equivalente ? '= ' + d.equivalente : '';
+      });
+    };
+    ['#pr-costo', '#pr-precio'].forEach(c => {
+      const el = $(c);
+      if (el) el.addEventListener('input', equivalencias);
+    });
+    equivalencias();
 
     $('#pr-elegir').addEventListener('click', () => $('#pr-archivo').click());
     $('#pr-quitar').addEventListener('click', () => {
@@ -197,6 +289,7 @@
 
     acciones: () => [
       { texto: 'Cargar producto', estilo: 'btn--primario', alPulsar: () => abrirFormulario() },
+      { texto: 'Convertir precios', alPulsar: () => convertirCatalogo() },
       {
         texto: 'Exportar', estilo: 'btn--secundario',
         alPulsar: () => {
@@ -208,8 +301,8 @@
             { titulo: 'Unidad',    valor: f => f.unidad },
             { titulo: 'Stock',     valor: f => f.stock },
             { titulo: 'Mínimo',    valor: f => f.stock_minimo },
-            { titulo: 'Costo',     valor: f => f.costo },
-            { titulo: 'Precio',    valor: f => f.precio_venta },
+            { titulo: 'Costo ' + INV.tasas.simbolo(),  valor: f => f.costo },
+            { titulo: 'Precio ' + INV.tasas.simbolo(), valor: f => f.precio_venta },
             { titulo: 'Valor',     valor: f => f.valor_inventario },
           ], filas);
         },

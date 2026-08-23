@@ -52,6 +52,9 @@
 
     INV.permisos.fijarRol(rol);
     await INV.comercio.recargar();
+    // La tasa es opcional: sin ella la aplicación funciona, solo que sin
+    // equivalentes en la otra moneda.
+    if (INV.tasas) await INV.tasas.cargar();
 
     /* Sin comercio en contexto no hay datos que mostrar. Para el super
        administrador eso es normal —supervisa, no opera—, así que se le

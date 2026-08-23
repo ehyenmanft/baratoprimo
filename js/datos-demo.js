@@ -36,11 +36,19 @@
       venta_pagos: [],
       cuotas: [],
       anulaciones: [],
+      cajas: [{ id: 1, comercio_id: 1, nombre: 'Caja 1', bloque: 1, activa: true }],
+      conflictos: [],
+      tasas: [{
+        id: 1, moneda: 'USD',
+        fecha: new Date(ahora - 4 * 3600 * 1000).toISOString().slice(0, 10),
+        tasa: 236.7568, fuente: 'bcv', obtenida_en: new Date(ahora).toISOString(),
+      }],
       comercios: [
         { id: 1, nombre: 'Bodega La Esquina, C.A.', rif: 'J-40987654-3',
           direccion: 'Calle 5 con Av. Lara, Barquisimeto', telefono: '0251-2223344',
           correo: '', mensaje: '¡Gracias por su compra!',
-          iva_tasa: 16, moneda: 'Bs', tasa_usd: 0, tasa_eur: 0, ticket_ancho: '80', activo: true },
+          iva_tasa: 16, moneda: 'Bs', tasa_usd: 0, tasa_eur: 0, ticket_ancho: '80',
+          tasa_automatica: true, moneda_precios: 'VES', activo: true },
         { id: 2, nombre: 'Depósito El Trébol, C.A.', rif: 'J-41122334-0',
           direccion: 'Zona Industrial II, Galpón 7, Valencia', telefono: '0241-5566778',
           correo: '', mensaje: '¡Gracias por su compra!',
@@ -290,6 +298,7 @@
     return {
       categorias: [], productos: [], movimientos: [],
       clientes: [], ventas: [], venta_items: [], venta_pagos: [], cuotas: [], anulaciones: [],
+      cajas: [], conflictos: [], tasas: [],
       comercios: [{
         id: 1, nombre: 'Mi Comercio', rif: '', direccion: '', telefono: '',
         correo: '', mensaje: '¡Gracias por su compra!',
@@ -779,6 +788,70 @@
           x.activo && x.correo.toLowerCase() === String(correo).toLowerCase());
         operadorActivo = o || null;
         return o ? o.rol : null;
+      },
+    },
+
+    tasas: {
+      vigente: async (moneda = 'USD') => {
+        const filas = bd.tasas.filter(t => t.moneda === moneda)
+          .sort((a, b) => b.fecha.localeCompare(a.fecha));
+        return filas[0] || null;
+      },
+      historico: async (moneda = 'USD', limite = 30) => bd.tasas
+        .filter(t => t.moneda === moneda)
+        .sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, limite),
+      fijar: async (fecha, tasa, moneda = 'USD') => {
+        const existente = bd.tasas.find(t => t.moneda === moneda && t.fecha === fecha);
+        if (existente) {
+          Object.assign(existente, { tasa: Number(tasa), fuente: 'manual',
+                                     obtenida_en: new Date().toISOString() });
+          persistir(); return existente;
+        }
+        const t = {
+          id: siguienteId(bd.tasas), moneda, fecha, tasa: Number(tasa),
+          fuente: 'manual', obtenida_en: new Date().toISOString(),
+        };
+        bd.tasas.push(t); persistir(); return t;
+      },
+    },
+
+    cajas: {
+      listar: async () => bd.cajas.filter(c => delComercio(c) && c.activa)
+        .sort((a, b) => a.bloque - b.bloque),
+      crear: async datos => {
+        if (bd.cajas.some(c => c.comercio_id === cId() && c.bloque === Number(datos.bloque)))
+          throw new Error('Ya hay una caja con ese bloque');
+        const c = { id: siguienteId(bd.cajas), comercio_id: cId(), activa: true, ...datos };
+        bd.cajas.push(c); persistir(); return c;
+      },
+      actualizar: async (id, datos) => {
+        const c = bd.cajas.find(x => x.id === Number(id));
+        Object.assign(c, datos); persistir(); return c;
+      },
+    },
+
+    conflictos: {
+      listar: async () => bd.conflictos
+        .filter(c => c.comercio_id === cId() && !c.resuelto)
+        .sort((a, b) => a.creado_en.localeCompare(b.creado_en)),
+      registrar: async datos => {
+        const existente = bd.conflictos.find(c =>
+          c.comercio_id === cId() && c.clave_idem === datos.clave_idem);
+        if (existente) { existente.motivo = datos.motivo; persistir(); return existente.id; }
+        const c = {
+          id: siguienteId(bd.conflictos), comercio_id: cId(), resuelto: false,
+          creado_en: new Date().toISOString(), ...datos,
+        };
+        bd.conflictos.push(c); persistir(); return c.id;
+      },
+      resolver: async (id, nota) => {
+        const c = bd.conflictos.find(x => x.id === Number(id));
+        if (c) {
+          c.resuelto = true;
+          c.resuelto_en = new Date().toISOString();
+          c.nota_resolucion = nota || null;
+          persistir();
+        }
       },
     },
 

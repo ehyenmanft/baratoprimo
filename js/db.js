@@ -108,8 +108,14 @@
         if (hasta) q = q.lte('fecha', hasta);
         return q.then(ok);
       },
-      // El kardex es de solo inserción: un error se corrige con un ajuste inverso.
-      registrar: datos => sb.from('movimientos').insert(datos).select().single().then(ok),
+      /* El kardex es de solo inserción: un error se corrige con un ajuste
+         inverso. Pasa por la función del esquema para que reenviarlo —lo
+         que hace la cola tras una caída— no lo aplique dos veces. */
+      registrar: datos => sb.rpc('registrar_movimiento', { p: datos })
+        .then(({ data, error }) => {
+          if (error) throw new Error(error.message);
+          return { id: data, ...datos };
+        }),
     },
 
     clientes: {
@@ -243,6 +249,35 @@
         if (error || !data || !data.length) return null;
         return data[0].rol;
       },
+    },
+
+    tasas: {
+      vigente: async (moneda = 'USD') => sb.from('tasa_vigente').select('*')
+        .eq('moneda', moneda).maybeSingle().then(ok),
+      historico: (moneda = 'USD', limite = 30) => sb.from('tasas_cambio').select('*')
+        .eq('moneda', moneda).order('fecha', { ascending: false }).limit(limite).then(ok),
+      /* Corrección a mano: si el BCV no publicó o la tasa llegó mal, un
+         administrador puede escribirla. Queda marcada como manual. */
+      fijar: (fecha, tasa, moneda = 'USD') => sb.from('tasas_cambio').upsert({
+        moneda, fecha, tasa, fuente: 'manual', obtenida_en: new Date().toISOString(),
+      }, { onConflict: 'moneda,fecha' }).select().single().then(ok),
+    },
+
+    cajas: {
+      listar: () => sb.from('cajas').select('*').eq('activa', true).order('bloque').then(ok),
+      crear:  datos => sb.from('cajas').insert(datos).select().single().then(ok),
+      actualizar: (id, datos) => sb.from('cajas').update(datos).eq('id', id)
+        .select().single().then(ok),
+    },
+
+    conflictos: {
+      listar: () => sb.from('conflictos_sync').select('*')
+        .eq('resuelto', false).order('creado_en').then(ok),
+      registrar: datos => sb.rpc('registrar_conflicto', { p: datos })
+        .then(({ data, error }) => { if (error) throw new Error(error.message); return data; }),
+      resolver: (id, nota) => sb.from('conflictos_sync').update({
+        resuelto: true, resuelto_en: new Date().toISOString(), nota_resolucion: nota || null,
+      }).eq('id', id).then(ok),
     },
 
     /* ---------------- Cuentas de acceso ----------------

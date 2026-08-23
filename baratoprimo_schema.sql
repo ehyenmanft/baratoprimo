@@ -66,6 +66,13 @@ create table comercios (
   tasa_usd       numeric(14,4) not null default 0,
   tasa_eur       numeric(14,4) not null default 0,
   ticket_ancho   text not null default '80',
+  /* true: la tasa del dólar la toma del BCV cada día. false: manda la
+     que se escriba a mano en tasa_usd. */
+  tasa_automatica boolean not null default true,
+  /* Moneda en la que están escritos los precios del catálogo. Con 'USD'
+     el precio se guarda en dólares y se cobra en bolívares al cambio del
+     día; con 'VES' es al revés. */
+  moneda_precios text not null default 'USD' check (moneda_precios in ('VES', 'USD')),
   activo         boolean not null default true,
   creado_en      timestamptz not null default now(),
   actualizado_en timestamptz not null default now()
@@ -433,6 +440,33 @@ create table anulaciones (
   anulada_por uuid references auth.users(id) default auth.uid(),
   correo      text
 );
+
+
+-- ---------------------------------------------------------------------
+-- Tasas de cambio oficiales.
+-- La tasa del BCV es nacional, no de cada comercio, así que la tabla es
+-- común. Se guarda el histórico —una fila por día— porque una factura
+-- emitida hace un mes tiene que poder explicarse con la tasa de aquel
+-- día, no con la de hoy.
+-- ---------------------------------------------------------------------
+
+create table tasas_cambio (
+  id          bigint generated always as identity primary key,
+  moneda      text not null default 'USD',
+  fecha       date not null,
+  tasa        numeric(14,4) not null check (tasa > 0),
+  fuente      text not null,              -- bcv, bdv, respaldo…
+  obtenida_en timestamptz not null default now(),
+  unique (moneda, fecha)
+);
+
+create index tasas_recientes_idx on tasas_cambio (moneda, fecha desc);
+
+-- La última tasa conocida de cada moneda
+create view tasa_vigente as
+select distinct on (moneda) moneda, fecha, tasa, fuente, obtenida_en
+from tasas_cambio
+order by moneda, fecha desc;
 
 
 -- =====================================================================
@@ -965,7 +999,8 @@ declare v text;
 begin
   if current_setting('server_version_num')::int >= 150000 then
     foreach v in array array['stock_actual','alertas_stock','kardex',
-                             'ventas_detalle','cuotas_pendientes','mi_comercio'] loop
+                             'ventas_detalle','cuotas_pendientes','mi_comercio',
+                             'tasa_vigente'] loop
       execute format('alter view %I set (security_invoker = true)', v);
     end loop;
     raise notice 'Vistas con security_invoker activado';
@@ -974,7 +1009,59 @@ end $$;
 
 
 -- =====================================================================
--- 14. PRIMER ARRANQUE
+-- 14. CONSULTA DIARIA DE LA TASA
+-- Programa la función tasa-bcv para que corra sola cada día. Ejecuta
+-- este bloque APARTE, después de desplegar la función y sustituyendo la
+-- llave, porque necesita extensiones que se activan una sola vez.
+-- =====================================================================
+
+/*
+-- 1. Extensiones necesarias
+create extension if not exists pg_cron;
+create extension if not exists pg_net;
+
+-- 2. Dos consultas al día, a las 8:30 y a las 14:30 de Caracas.
+--    El BCV publica por la mañana, pero a veces corrige después; el
+--    segundo intento recoge esa corrección. Las horas van en UTC, que
+--    lleva cuatro horas de adelanto sobre Venezuela.
+select cron.schedule(
+  'tasa-bcv-manana',
+  '30 12 * * 1-5',        -- 08:30 en Caracas, de lunes a viernes
+  $$
+  select net.http_post(
+    url     := 'https://TU-PROYECTO.supabase.co/functions/v1/tasa-bcv',
+    headers := '{"Content-Type": "application/json",
+                 "Authorization": "Bearer TU-LLAVE-ANON"}'::jsonb,
+    body    := '{}'::jsonb
+  );
+  $$
+);
+
+select cron.schedule(
+  'tasa-bcv-tarde',
+  '30 18 * * 1-5',        -- 14:30 en Caracas
+  $$
+  select net.http_post(
+    url     := 'https://TU-PROYECTO.supabase.co/functions/v1/tasa-bcv',
+    headers := '{"Content-Type": "application/json",
+                 "Authorization": "Bearer TU-LLAVE-ANON"}'::jsonb,
+    body    := '{}'::jsonb
+  );
+  $$
+);
+
+-- Para ver qué hay programado:
+--   select jobname, schedule, active from cron.job;
+-- Para ver si las últimas corridas funcionaron:
+--   select jobid, status, return_message, start_time
+--     from cron.job_run_details order by start_time desc limit 10;
+-- Para quitar una:
+--   select cron.unschedule('tasa-bcv-manana');
+*/
+
+
+-- =====================================================================
+-- 15. PRIMER ARRANQUE
 -- Ejecuta esto UNA VEZ, con el correo con el que vas a entrar. Crea el
 -- comercio inicial y te registra como super administrador.
 --

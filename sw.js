@@ -28,6 +28,7 @@ const ARMAZON = [
   './js/db.js',
   './js/ui.js',
   './js/permisos.js',
+  './js/tasas.js',
   './js/periodos.js',
   './js/graficos.js',
   './js/qr.js',

@@ -96,9 +96,29 @@
                     <input id="co-moneda" type="text" value="${esc(c.moneda ?? 'Bs')}" placeholder="Bs">
                   </div>
                 </div>
+                <div class="campo">
+                  <label for="co-moneda-precios">Moneda de los precios del catálogo</label>
+                  <select id="co-moneda-precios">
+                    <option value="USD" ${c.moneda_precios === 'USD' ? 'selected' : ''}>Dólares — se cobra en bolívares al cambio del día</option>
+                    <option value="VES" ${c.moneda_precios !== 'USD' ? 'selected' : ''}>Bolívares</option>
+                  </select>
+                  <span class="subida__nota" style="margin-top:6px; display:block">
+                    Cambiarlo no convierte los precios ya cargados: solo cambia en qué
+                    moneda se interpretan. Si lo cambias, revisa el catálogo.
+                  </span>
+                </div>
+
+                <div class="campo">
+                  <label class="rol-opcion" style="cursor:pointer">
+                    <input type="checkbox" id="co-tasa-auto" ${c.tasa_automatica !== false ? 'checked' : ''}>
+                    <span><b>Seguir la tasa oficial del BCV</b>
+                      <span class="lista__sub" id="co-tasa-estado"></span></span>
+                  </label>
+                </div>
+
                 <div class="campos-fila">
                   <div class="campo">
-                    <label for="co-usd">Tasa USD</label>
+                    <label for="co-usd">Tasa USD manual</label>
                     <input id="co-usd" type="number" min="0" step="0.0001" value="${c.tasa_usd ?? 0}">
                   </div>
                   <div class="campo">
@@ -145,6 +165,36 @@
       ['co-nombre','co-rif','co-direccion','co-telefono','co-mensaje']
         .forEach(id => $('#' + id).addEventListener('input', previa));
       previa();
+
+      /* Estado de la tasa: de dónde sale y qué antigüedad tiene. Con la
+         automática encendida, la casilla manual queda inerte para que no
+         se escriba algo que no se va a usar. */
+      function pintarEstadoTasa() {
+        const caja = $('#co-tasa-estado');
+        if (!caja || !INV.tasas) return;
+        const t = INV.tasas.actual();
+        const auto = $('#co-tasa-auto').checked;
+        $('#co-usd').disabled = auto;
+
+        if (!auto) {
+          caja.textContent = 'Manda la tasa manual de abajo.';
+          caja.style.color = '';
+          return;
+        }
+        if (t.origen !== 'oficial') {
+          caja.textContent = 'Todavía no hay tasa del BCV guardada: mientras tanto se usa la manual.';
+          caja.style.color = 'var(--naranja)';
+          return;
+        }
+        const dias = t.dias || 0;
+        caja.textContent = dias === 0
+          ? `Tasa de hoy: ${numero(t.tasa, 2)} Bs/$ · fuente ${t.fuente}`
+          : `Última tasa: ${numero(t.tasa, 2)} Bs/$ de hace ${dias} día${dias > 1 ? 's' : ''} · fuente ${t.fuente}`;
+        caja.style.color = dias === 0 ? 'var(--esmeralda)' : 'var(--naranja)';
+      }
+
+      $('#co-tasa-auto').addEventListener('change', pintarEstadoTasa);
+      pintarEstadoTasa();
     },
   };
 
@@ -308,6 +358,8 @@
         iva_tasa:     Number($('#co-iva').value || 16),
         moneda:       $('#co-moneda').value.trim() || 'Bs',
         tasa_usd:     Number($('#co-usd').value || 0),
+        tasa_automatica: $('#co-tasa-auto').checked,
+        moneda_precios:  $('#co-moneda-precios').value,
         tasa_eur:     Number($('#co-eur').value || 0),
         ticket_ancho: $('#co-ticket').value,
       });

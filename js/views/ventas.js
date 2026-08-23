@@ -15,10 +15,16 @@
     return c.iva_tasa !== undefined && c.iva_tasa !== null ? Number(c.iva_tasa) : 16;
   };
 
+  /* La del dólar sale de INV.tasas, que decide entre la oficial del BCV y
+     la que el comercio haya fijado a mano. El euro sigue siendo manual:
+     el BCV lo publica, pero aquí solo se automatizó el dólar. */
   const tasasPorDefecto = () => {
     const c = INV.comercio ? INV.comercio.actual() : {};
     return {
-      USD: Number(c.tasa_usd || (INV.config.TASAS || {}).USD || 0),
+      // Oficial del BCV, luego la del comercio, y por último la de config
+      USD: (INV.tasas ? INV.tasas.usd() : 0)
+           || Number(c.tasa_usd || 0)
+           || Number((INV.config.TASAS || {}).USD || 0),
       EUR: Number(c.tasa_eur || (INV.config.TASAS || {}).EUR || 0),
     };
   };
@@ -443,7 +449,13 @@
     if (existente) existente.cantidad = Number(existente.cantidad) + cant;
     else renglones.push({
       producto_id: id, descripcion: p.nombre, sku: p.sku, unidad: p.unidad,
-      cantidad: cant, precio_unitario: Number(p.precio_venta), stock: Number(p.stock),
+      cantidad: cant,
+      /* El catálogo puede estar en dólares, pero la factura se emite en
+         bolívares: el precio se convierte aquí, a la tasa del día, y esa
+         es la que queda guardada en el comprobante. */
+      precio_catalogo: Number(p.precio_venta),
+      precio_unitario: INV.tasas.aFactura(Number(p.precio_venta)) ?? Number(p.precio_venta),
+      stock: Number(p.stock),
     });
 
     $('#vn-cantidad').value = 1;
@@ -631,6 +643,13 @@
 
       <div class="totales">
         <div class="totales__fila"><span>Total a pagar</span><b>${numero(total)}</b></div>
+        ${(() => {
+          // Equivalente del total en la otra moneda, a la tasa del día
+          const otra = INV.tasas ? INV.tasas.aDolares(total) : null;
+          return otra === null ? '' : `
+            <div class="totales__fila" style="color:var(--cian)">
+              <span>Equivalente</span><b>${numero(otra)} $</b></div>`;
+        })()}
         <div class="totales__fila"><span>Pagado</span><b>${numero(pagado)}</b></div>
         ${plan ? `
           <div class="totales__fila" style="color:var(--cian)">
@@ -668,7 +687,9 @@
         ${r.items.map((it, i) => `
           <div class="lista__item" style="--i:${i}">
             <span class="lista__nombre">${esc(it.descripcion)}
-              <span class="lista__sub">${esc(it.sku)} · ${cantidad(it.cantidad)} ${esc(it.unidad)} × ${numero(it.precio_unitario)}</span></span>
+              <span class="lista__sub">${esc(it.sku)} · ${cantidad(it.cantidad)} ${esc(it.unidad)} × ${numero(it.precio_unitario)}${
+                INV.tasas.catalogoEnDolares() && it.precio_catalogo
+                  ? ` <span style="color:var(--cian)">(${numero(it.precio_catalogo)} $)</span>` : ''}</span></span>
             <span class="lista__dato">
               <input type="number" min="0.01" step="0.01" value="${it.precio_unitario}"
                      data-precio="${i}" style="width:104px; text-align:right; padding:6px 8px">
@@ -695,6 +716,17 @@
           <span>Total a pagar</span>
           <b>${numero(r.total)}</b>
         </div>
+        ${(() => {
+          /* El equivalente en la otra moneda, a la tasa del día. Con el
+             catálogo en dólares el cliente ve en qué se traduce lo que
+             va a pagar; con el catálogo en bolívares, al revés. */
+          if (!INV.tasas) return '';
+          const enDolares = INV.tasas.catalogoEnDolares();
+          const otra = enDolares ? INV.tasas.aDolares(r.total) : INV.tasas.aDolares(r.total);
+          if (otra === null) return '';
+          return `<div class="totales__fila" style="color:var(--cian)">
+            <span>Equivalente</span><b>${numero(otra)} $</b></div>`;
+        })()}
       </div>`;
 
     $$('[data-quitar]').forEach(b => b.addEventListener('click', () => {
@@ -920,6 +952,9 @@
           <div class="tk__total-fila tk__total-fila--grande">
             <span>TOTAL</span><span>${numero(v.total)}</span>
           </div>
+          ${Number(v.tasa_referencia) > 0 ? `
+            <div class="tk__total-fila"><span>TASA DEL DIA</span><span>${numero(v.tasa_referencia, 2)} Bs/$</span></div>
+            <div class="tk__total-fila"><span>EQUIVALENTE</span><span>${numero(v.total_usd)} $</span></div>` : ''}
         </div>
 
         ${(v.pagos && v.pagos.length) ? `
