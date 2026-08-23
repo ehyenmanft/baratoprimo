@@ -516,7 +516,9 @@
     $('#pg-caja-tasa').hidden = m.moneda === 'VES' || m.credito;
     $('#pg-caja-monto').hidden = !!m.credito;
     $('#pg-credito').hidden = !m.credito;
-    $('#pg-agregar').textContent = m.credito ? 'Establecer crédito' : 'Agregar pago';
+    $('#pg-agregar').textContent = m.credito
+      ? (plan ? 'Actualizar el crédito' : 'Establecer crédito')
+      : 'Agregar pago';
 
     if (m.credito) {
       if (!$('#cr-tasa').value) $('#cr-tasa').value = tasasPorDefecto().USD || '';
@@ -780,18 +782,29 @@
         </div>` : ''}
 
       <div class="totales">
-        <div class="totales__fila"><span>Total a pagar</span><b>${numero(total)}</b></div>
+        <div class="totales__fila"><span>Total de la mercancía</span><b>${numero(total)}</b></div>
         ${(() => {
-          // Equivalente del total en la otra moneda, a la tasa del día
           const otra = INV.tasas ? INV.tasas.aDolares(total) : null;
           return otra === null ? '' : `
             <div class="totales__fila" style="color:var(--cian)">
               <span>Equivalente</span><b>${numero(otra)} $</b></div>`;
         })()}
-        <div class="totales__fila"><span>Pagado</span><b>${numero(pagado)}</b></div>
+        ${plan && plan.recargoUsd > 0 ? `
+          <div class="totales__fila" style="color:var(--naranja)">
+            <span>Recargo por financiamiento · ${numero(plan.recargoPct, 1)}%</span>
+            <b>+${numero(redondear(plan.recargoUsd * plan.tasa))}<span class="equivalente">${
+              numero(plan.recargoUsd)} $</span></b></div>
+          <div class="totales__fila totales__fila--total">
+            <span>Total a cancelar con el crédito</span>
+            <b>${numero(redondear(total + plan.recargoUsd * plan.tasa))}<span class="equivalente equivalente--usd">${
+              numero(plan.aPagarUsd)} $</span></b></div>` : ''}
+        <div class="totales__fila"><span>${plan ? 'Pagado hoy · inicial' : 'Pagado'}</span><b>${numero(pagado)}</b></div>
         ${plan ? `
           <div class="totales__fila" style="color:var(--cian)">
-            <span>Financiado en ${plan.cuotas.length} cuotas</span><b>${numero(plan.financiadoUsd)} USD</b></div>`
+            <span>Por cobrar en ${plan.cuotas.length} cuota${plan.cuotas.length > 1 ? 's' : ''} ·
+              ${numero(plan.minimoUsd)} $ cada una</span>
+            <b class="monto-usd">${numero(plan.financiadoUsd)} $<span class="equivalente">${
+              numero(redondear(plan.financiadoUsd * plan.tasa))} Bs</span></b></div>`
         : Math.abs(diferencia) < 0.01 ? `
           <div class="totales__fila" style="color:var(--esmeralda)"><span>Cuenta saldada</span><b>0,00</b></div>`
         : diferencia > 0 ? `
@@ -893,6 +906,20 @@
   function confirmarEmision() {
     if (!renglones.length) return avisar('Agrega al menos un producto', 'error');
 
+    /* Si el método elegido es Crédito y el plan está completo pero nadie
+       pulsó "Establecer crédito", se aplica solo. Antes la venta salía
+       sin cuotas y sin marcar como crédito, que es justo lo contrario de
+       lo que la pantalla estaba mostrando. */
+    if (!plan && metodo($('#pg-metodo').value).credito) {
+      const r = calcularPlan();
+      if (r.error) {
+        return avisar('Falta completar el crédito: ' + r.error, 'error');
+      }
+      agregarPago();
+      if (!plan) return;
+      avisar('Se aplicó el plan de crédito antes de emitir');
+    }
+
     const tasa = Number($('#vn-iva').value || 0);
     const incluido = $('#vn-incluido').value === 'si';
     const r = calcular(renglones, tasa, incluido);
@@ -901,7 +928,7 @@
     const diferencia = redondear(r.total - pagado);
 
     abrirModal({
-      titulo: 'Confirmar la venta',
+      titulo: plan ? 'Confirmar la venta a crédito' : 'Confirmar la venta',
       cuerpo: `
         <div class="datos" style="border-radius:var(--r-s); overflow:hidden; margin-bottom:16px">
           <div class="datos__celda" style="grid-column:1 / -1">
@@ -939,14 +966,36 @@
         : '<p class="subida__nota" style="margin-top:6px">Sin formas de pago registradas.</p>'}
 
         ${plan ? `
-          <div class="datos__etiqueta" style="margin-top:16px">Crédito</div>
+          <div class="datos__etiqueta" style="margin-top:16px">
+            Venta a crédito${plan.recargoPct > 0 ? ` · recargo ${numero(plan.recargoPct, 1)}%` : ''}</div>
           <div class="confirmar-lista">
-            <div class="confirmar-fila"><span>Inicial de hoy</span><b>${numero(plan.inicial)}</b></div>
-            <div class="confirmar-fila"><span>Financiado</span><b>${numero(plan.financiadoUsd)} USD</b></div>
+            <div class="confirmar-fila">
+              <span>Total de la mercancía</span><b>${numero(r.total)}</b></div>
+            ${plan.recargoUsd > 0 ? `
+              <div class="confirmar-fila" style="color:var(--naranja)">
+                <span>Recargo por financiamiento</span>
+                <b>+${numero(redondear(plan.recargoUsd * plan.tasa))}</b></div>
+              <div class="confirmar-fila" style="font-weight:700">
+                <span>Total a cancelar</span>
+                <b>${numero(redondear(r.total + plan.recargoUsd * plan.tasa))}
+                  <span class="equivalente equivalente--usd">${numero(plan.aPagarUsd)} $</span></b></div>` : ''}
+            <div class="confirmar-fila" style="color:var(--esmeralda)">
+              <span>Se cobra hoy · inicial${plan.inicial > 0
+                ? ` ${numero((plan.inicial / r.total) * 100, 1)}%` : ' · ninguna'}</span>
+              <b>${numero(plan.inicial)}</b></div>
+            <div class="confirmar-fila" style="color:var(--naranja)">
+              <span>Queda por cobrar en ${plan.cuotas.length} cuota${plan.cuotas.length > 1 ? 's' : ''}</span>
+              <b class="monto-usd">${numero(plan.financiadoUsd)} $
+                <span class="equivalente">${numero(redondear(plan.financiadoUsd * plan.tasa))} Bs</span></b></div>
+          </div>
+          <div class="confirmar-lista" style="margin-top:8px">
             ${plan.cuotas.map(q => `
               <div class="confirmar-fila">
-                <span>Cuota ${q.numero}<span class="lista__sub">${new Date(q.vence_en + 'T00:00:00').toLocaleDateString('es')}</span></span>
-                <b>${numero(q.monto_usd)} USD</b>
+                <span>Cuota ${q.numero} de ${plan.cuotas.length}<span class="lista__sub">vence el ${
+                  new Date(q.vence_en + 'T00:00:00').toLocaleDateString('es', {
+                    day: '2-digit', month: 'short', year: 'numeric' })}</span></span>
+                <b class="monto-usd">${numero(q.monto_usd)} $<span class="equivalente">${
+                  numero(redondear(q.monto_usd * plan.tasa))} Bs</span></b>
               </div>`).join('')}
           </div>` : ''}
 
