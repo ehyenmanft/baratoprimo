@@ -57,6 +57,10 @@
       operadores: [
         { id: 1, correo: 'demo@local', nombre: 'Super administrador', rol: 'super_admin',
           comercio_id: 1, activo: true },
+        { id: 2, correo: 'ana@local', nombre: 'Ana Torres', rol: 'operador_facturador',
+          comercio_id: 1, activo: true },
+        { id: 3, correo: 'luis@local', nombre: 'Luis Ramírez', rol: 'operador_mixto',
+          comercio_id: 1, activo: true },
       ],
     };
   };
@@ -277,6 +281,8 @@
   }
 
   function ventaCompleta(v) {
+    const vend = bd.operadores.find(o =>
+      v.vendedor_correo && o.correo.toLowerCase() === String(v.vendedor_correo).toLowerCase());
     const c = v.cliente_id ? bd.clientes.find(x => x.id === v.cliente_id) : null;
     return {
       ...v,
@@ -285,6 +291,9 @@
       telefono: c ? c.telefono : null,
       direccion: c ? c.direccion : null,
       renglones: bd.venta_items.filter(i => i.venta_id === v.id).length,
+      vendedor: vend ? vend.nombre : null,
+      // El listado del cuadre necesita los pagos sin pedir cada venta
+      pagos: bd.venta_pagos.filter(i => i.venta_id === v.id),
       ...anulacionDe(v.id),
       pagado: bd.venta_pagos.filter(i => i.venta_id === v.id)
         .reduce((s, p) => s + Number(p.monto_local), 0),
@@ -522,6 +531,8 @@
         const venta = {
           id: siguienteId(bd.ventas), comercio_id: cId(), numero,
           recargo_credito: Number(datos.recargo_credito || 0),
+          // Quién la emitió, para el cuadre de caja
+          vendedor_correo: (operador() || {}).correo || null,
           cliente_id: datos.cliente_id ? Number(datos.cliente_id) : null,
           fecha: new Date().toISOString(),
           iva_tasa: Number(datos.iva_tasa), iva_incluido: !!datos.iva_incluido,

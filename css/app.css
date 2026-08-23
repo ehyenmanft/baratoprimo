@@ -1330,3 +1330,36 @@ html[data-tema="oscuro"] .rail__comercio select option{
   font-weight:700; color:var(--cian);
   padding-left:12px; border-left:1px solid var(--linea);
 }
+
+/* =====================================================================
+   REPORTES IMPRIMIBLES
+   ===================================================================== */
+.solo-imprimir{ display:none; }
+.reporte__encabezado h2{
+  font-family:var(--display); font-size:20px; margin:0 0 4px;
+}
+.reporte__encabezado p{ margin:0; font-size:12px; color:var(--tinta-2); }
+
+.tabla-envoltura{ overflow-x:auto; }
+.tabla{ width:100%; border-collapse:collapse; font-size:13px; }
+.tabla th{
+  text-align:left; padding:9px 12px;
+  font-family:var(--dato); font-size:10px; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--tinta-3);
+  border-bottom:1px solid var(--linea);
+}
+.tabla td{ padding:9px 12px; border-bottom:1px solid var(--linea); }
+.tabla tbody tr{ cursor:pointer; transition:background .15s var(--curva); }
+.tabla tbody tr:hover{ background:var(--violeta-piel); }
+.tabla .num{ text-align:right; font-family:var(--dato); }
+
+@media print{
+  .rail, .cabecera__acciones, .no-imprimir, .barra-movil,
+  .cinta-tasa, #banda-alertas, .avisos, .instalar, .sin-conexion{ display:none !important; }
+  .solo-imprimir{ display:block; margin-bottom:16px; }
+  .lienzo{ padding:0; }
+  .capa{ display:block; }
+  .ficha, .metrica{ box-shadow:none; border:1px solid #ddd; break-inside:avoid; }
+  .tabla tbody tr{ cursor:default; }
+  body{ background:#fff; color:#000; }
+}

@@ -21,7 +21,9 @@
       permisos: ['inventario.ver', 'productos.crear', 'productos.editar', 'productos.eliminar',
                  'movimientos.registrar', 'ventas.emitir', 'ventas.anular',
                  'clientes.gestionar', 'graficas.ver',
-                 'ajustes.comercio', 'operadores.gestionar'],
+                 'ajustes.comercio', 'operadores.gestionar',
+                 // Ve el cuadre de todos los operadores de su comercio
+                 'caja.ver', 'caja.ver_todos'],
     },
     {
       id: 'operador_inventario',
@@ -34,14 +36,17 @@
       id: 'operador_facturador',
       etiqueta: 'Operador facturador',
       descripcion: 'Ventas y clientes. Ve el catálogo pero no lo modifica.',
-      permisos: ['inventario.ver', 'ventas.emitir', 'clientes.gestionar', 'graficas.ver'],
+      permisos: ['inventario.ver', 'ventas.emitir', 'clientes.gestionar', 'graficas.ver',
+                 // Su propio cuadre, no el de los demás
+                 'caja.ver'],
     },
     {
       id: 'operador_mixto',
       etiqueta: 'Operador mixto',
       descripcion: 'Inventario y facturación, salvo dar de baja productos.',
       permisos: ['inventario.ver', 'productos.crear', 'productos.editar',
-                 'movimientos.registrar', 'ventas.emitir', 'clientes.gestionar', 'graficas.ver'],
+                 'movimientos.registrar', 'ventas.emitir', 'clientes.gestionar', 'graficas.ver',
+                 'caja.ver'],
     },
   ];
 
@@ -60,6 +65,7 @@
     venta:       'ventas.emitir',
     clientes:    'clientes.gestionar',
     cliente:     'clientes.gestionar',
+    caja:        'caja.ver',
     comercio:    'ajustes.comercio',
     operadores:  'operadores.gestionar',
     comercios:   'comercios.gestionar',

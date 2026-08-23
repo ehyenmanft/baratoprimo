@@ -45,6 +45,7 @@ const ARMAZON = [
   './js/views/comercio.js',
   './js/views/operadores.js',
   './js/views/comercios.js',
+  './js/views/caja.js',
 ];
 
 /* Servidores que NUNCA se guardan: son datos vivos o sesiones.
