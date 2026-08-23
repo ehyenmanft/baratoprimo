@@ -1310,3 +1310,12 @@ html[data-tema="oscuro"] .rail__comercio select option{
 .lista__precio .equivalente{ display:inline; margin-left:7px; font-size:11px; }
 .datos__valor .monto-usd{ font-size:inherit; }
 .datos__valor .equivalente{ display:block; margin-top:2px; }
+
+/* Ventas a crédito */
+.pastilla--credito{
+  background:rgba(11,165,199,.16); color:var(--cian);
+  margin-left:7px; font-size:9.5px;
+}
+.metrica--pulsable{ cursor:pointer; transition:transform .16s var(--curva); }
+.metrica--pulsable:hover{ transform:translateY(-2px); }
+.metrica--pulsable:focus-visible{ outline:2px solid var(--violeta); outline-offset:3px; }

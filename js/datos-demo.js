@@ -497,6 +497,7 @@
 
         const venta = {
           id: siguienteId(bd.ventas), comercio_id: cId(), numero,
+          recargo_credito: Number(datos.recargo_credito || 0),
           cliente_id: datos.cliente_id ? Number(datos.cliente_id) : null,
           fecha: new Date().toISOString(),
           iva_tasa: Number(datos.iva_tasa), iva_incluido: !!datos.iva_incluido,

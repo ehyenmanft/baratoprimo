@@ -125,9 +125,10 @@
 
     render: async contenedor => {
       contenedor.innerHTML = cargando();
-      const [clientes, ventas] = await Promise.all([
+      const [clientes, ventas, cuotas] = await Promise.all([
         INV.db.clientes.listar(),
         INV.db.ventas.listar({ limite: 1000 }),
+        INV.db.cuotas.pendientes().catch(() => []),
       ]);
 
       if (!clientes.length) {
@@ -141,25 +142,43 @@
       const resumen = {};
       ventas.filter(v => !v.anulada).forEach(v => {
         if (!v.cliente_id) return;
-        resumen[v.cliente_id] = resumen[v.cliente_id] || { compras: 0, total: 0, ultima: null };
+        resumen[v.cliente_id] = resumen[v.cliente_id] ||
+          { compras: 0, total: 0, ultima: null, deudaUsd: 0, cuotas: 0, vencidas: 0 };
         resumen[v.cliente_id].compras++;
         resumen[v.cliente_id].total += Number(v.total);
         if (!resumen[v.cliente_id].ultima || v.fecha > resumen[v.cliente_id].ultima)
           resumen[v.cliente_id].ultima = v.fecha;
       });
 
+      /* Lo que cada cliente debe, en dólares, que es como están escritas
+         las cuotas. Sin esto la cartera solo dice cuánto compró alguien,
+         no cuánto falta por cobrarle. */
+      cuotas.forEach(q => {
+        if (!q.cliente_id) return;
+        resumen[q.cliente_id] = resumen[q.cliente_id] ||
+          { compras: 0, total: 0, ultima: null, deudaUsd: 0, cuotas: 0, vencidas: 0 };
+        resumen[q.cliente_id].deudaUsd += Number(q.monto_usd);
+        resumen[q.cliente_id].cuotas++;
+        if (Number(q.dias_vencida) > 0) resumen[q.cliente_id].vencidas++;
+      });
+
       const facturado = ventas.filter(v => !v.anulada).reduce((s, v) => s + Number(v.total), 0);
       const conCompras = Object.keys(resumen).length;
 
       const ficha = (c, i) => {
-        const r = resumen[c.id] || { compras: 0, total: 0, ultima: null };
+        const r = resumen[c.id] || { compras: 0, total: 0, ultima: null, deudaUsd: 0, cuotas: 0, vencidas: 0 };
         return `
           <div class="lista__item" style="--i:${Math.min(i, 20)}" data-abrir="${c.id}" role="button" tabindex="0">
             <span class="miniatura miniatura--vacia">${esc(iniciales(c.cliente))}</span>
             <span class="lista__nombre">${esc(c.cliente)}
+              ${r.cuotas ? `<span class="pastilla pastilla--${r.vencidas ? 'salida' : 'credito'}">${
+                r.vencidas ? `${r.vencidas} vencida${r.vencidas > 1 ? 's' : ''}` : 'a crédito'}</span>` : ''}
               <span class="lista__sub">${esc(c.documento_completo)}${c.telefono ? ' · ' + esc(c.telefono) : ''}</span></span>
             <span class="lista__dato"><b>${r.compras}</b><small>compras</small></span>
             <span class="lista__dato"><b>${numero(r.total)}</b><small>facturado</small></span>
+            <span class="lista__dato">${r.deudaUsd > 0
+              ? `<b class="monto-usd">${numero(r.deudaUsd)} $</b><small>${r.cuotas} por cobrar</small>`
+              : '<b style="color:var(--tinta-3)">—</b><small>sin deuda</small>'}</span>
           </div>`;
       };
 
@@ -186,6 +205,15 @@
               ? numero(facturado / ventas.filter(v => !v.anulada).length) : '—'}</div>
             <div class="metrica__pie">por comprobante</div>
           </div>
+          ${cuotas.length ? `
+            <div class="metrica metrica--cian anim" style="--i:4">
+              <div class="metrica__etiqueta">Por cobrar</div>
+              <div class="metrica__valor monto-usd">${numero(
+                cuotas.reduce((s, q) => s + Number(q.monto_usd), 0))}<span style="font-size:14px"> $</span></div>
+              <div class="metrica__pie">${cuotas.length} cuota${cuotas.length === 1 ? '' : 's'} · ${
+                cuotas.filter(q => Number(q.dias_vencida) > 0).length} vencida${
+                cuotas.filter(q => Number(q.dias_vencida) > 0).length === 1 ? '' : 's'}</div>
+            </div>` : ''}
         </div>
 
         <div class="ficha anim" style="--i:4">
@@ -239,7 +267,11 @@
       clienteActual = c;
       $('#vista-titulo').textContent = c.cliente;
 
-      const ventas = await INV.db.ventas.listar({ clienteId: c.id, limite: 200 });
+      const [ventas, todasLasCuotas] = await Promise.all([
+        INV.db.ventas.listar({ clienteId: c.id, limite: 200 }),
+        INV.db.cuotas.pendientes().catch(() => []),
+      ]);
+      const susCuotas = todasLasCuotas.filter(q => String(q.cliente_id) === String(c.id));
       // Las anuladas siguen en el histórico, pero no suman a lo facturado.
       const vigentes = ventas.filter(v => !v.anulada);
       const total = vigentes.reduce((s, v) => s + Number(v.total), 0);
@@ -298,7 +330,36 @@
           </div>
         </div>
 
-        <div class="ficha anim" style="--i:1">
+        ${susCuotas.length ? `
+        <div class="ficha anim" style="--i:1; margin-bottom:14px">
+          <div class="ficha__cabecera">
+            <div>
+              <h3 class="ficha__titulo">Cuotas por cobrar</h3>
+              <p class="ficha__nota">${susCuotas.length} pendiente${susCuotas.length > 1 ? 's' : ''} ·
+                ${numero(susCuotas.reduce((s, q) => s + Number(q.monto_usd), 0))} $ en total</p>
+            </div>
+          </div>
+          <div class="lista">
+            ${susCuotas.map((q, i) => {
+              const atraso = Number(q.dias_vencida);
+              const bs = INV.tasas ? INV.tasas.aBolivares(q.monto_usd) : null;
+              return `
+              <div class="lista__item" style="--i:${i}" data-venta="${q.venta_id}"
+                   role="button" tabindex="0">
+                <span class="pastilla pastilla--${atraso > 0 ? 'salida' : 'credito'}">${esc(q.comprobante)}</span>
+                <span class="lista__nombre">Cuota ${q.numero} de ${q.cuotas_totales}
+                  <span class="lista__sub">vence el ${new Date(q.vence_en + 'T00:00:00')
+                    .toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' })}${
+                    atraso > 0 ? ` · ${atraso} días de atraso`
+                    : atraso === 0 ? ' · vence hoy' : ` · en ${-atraso} días`}</span></span>
+                <span class="lista__dato"><b class="monto-usd">${numero(q.monto_usd)} $</b><small>mínimo</small>
+                  ${bs === null ? '' : `<span class="equivalente">${numero(bs)} Bs</span>`}</span>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>` : ''}
+
+        <div class="ficha anim" style="--i:2">
           <div class="ficha__cabecera">
             <h3 class="ficha__titulo">Histórico de compras</h3>
             <p class="ficha__nota">${ventas.length} comprobantes</p>
@@ -310,6 +371,10 @@
                      data-venta="${v.id}" role="button" tabindex="0">
                   <span class="pastilla pastilla--${v.anulada ? 'salida' : 'entrada'}">${esc(v.numero)}</span>
                   <span class="lista__nombre">${fecha(v.fecha)}
+                    ${v.a_credito ? `<span class="pastilla pastilla--credito">${
+                      Number(v.cuotas_por_cobrar) > 0
+                        ? `${v.cuotas_por_cobrar} cuota${Number(v.cuotas_por_cobrar) > 1 ? 's' : ''} por cobrar`
+                        : 'crédito saldado'}</span>` : ''}
                     <span class="lista__sub">${v.anulada ? 'ANULADA · ' : ''}${v.renglones} renglones · IVA ${numero(v.iva_tasa, 0)}%</span></span>
                   <span class="lista__dato"><b>${numero(v.subtotal)}</b><small>base</small></span>
                   <span class="lista__dato"><b>${numero(v.total)}</b><small>total</small></span>

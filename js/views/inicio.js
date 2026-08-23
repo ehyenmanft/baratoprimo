@@ -92,10 +92,12 @@
             <div class="metrica__valor">${cantidad(salidas)}</div>
             <div class="metrica__pie">unidades</div>
           </div>
-          <div class="metrica metrica--cian anim" style="--i:3">
+          <div class="metrica metrica--cian anim ${cuotas.length ? 'metrica--pulsable' : ''}"
+               style="--i:3" ${cuotas.length ? 'id="ir-cobranza" role="button" tabindex="0"' : ''}>
             <div class="metrica__etiqueta">Por cobrar</div>
-            <div class="metrica__valor">${numero(cuotas.reduce((s, q) => s + Number(q.monto_usd), 0))}<span style="font-size:14px"> USD</span></div>
-            <div class="metrica__pie">${cuotas.length} cuotas · ${new Set(cuotas.map(q => q.cliente_id)).size} clientes</div>
+            <div class="metrica__valor monto-usd">${numero(cuotas.reduce((s, q) => s + Number(q.monto_usd), 0))}<span style="font-size:14px"> $</span></div>
+            <div class="metrica__pie">${cuotas.length} cuota${cuotas.length === 1 ? '' : 's'} · ${new Set(cuotas.map(q => q.cliente_id)).size} cliente${new Set(cuotas.map(q => q.cliente_id)).size === 1 ? '' : 's'}${
+              cuotas.length ? ' · pulsa para ver' : ''}</div>
           </div>
           <div class="metrica metrica--ambar anim" style="--i:4">
             <div class="metrica__etiqueta">Por reponer</div>
@@ -133,14 +135,19 @@
             ${cuotas.slice(0, 8).map((q, i) => {
               const atraso = Number(q.dias_vencida);
               return `
-              <div class="lista__item" style="--i:${i}">
+              <div class="lista__item" style="--i:${i}"
+                   data-venta="${q.venta_id}" role="button" tabindex="0">
                 <span class="lista__nombre">${esc(q.cliente || 'Consumidor final')}
                   <span class="lista__sub">${esc(q.documento || 's/d')}${q.telefono ? ' · ' + esc(q.telefono) : ''}
                     · ${esc(q.comprobante)} · cuota ${q.numero} de ${q.cuotas_totales}</span></span>
                 <span class="lista__dato">
                   <b class="${atraso > 0 ? 'neg' : ''}">${new Date(q.vence_en + 'T00:00:00').toLocaleDateString('es')}</b>
                   <small>${atraso > 0 ? atraso + ' días de atraso' : atraso === 0 ? 'vence hoy' : 'en ' + (-atraso) + ' días'}</small></span>
-                <span class="lista__dato"><b>${numero(q.monto_usd)}</b><small>USD mínimo</small></span>
+                <span class="lista__dato"><b class="monto-usd">${numero(q.monto_usd)} $</b><small>mínimo</small>
+                  ${(() => {
+                    const bs = INV.tasas ? INV.tasas.aBolivares(q.monto_usd) : null;
+                    return bs === null ? '' : `<span class="equivalente">${numero(bs)} Bs</span>`;
+                  })()}</span>
                 <button class="btn btn--secundario btn--chico" data-cobrar="${q.id}">Cobrar</button>
               </div>`;
             }).join('')}
@@ -210,6 +217,29 @@
         ev.stopPropagation();
         cobrar(cuotas.find(q => String(q.id) === b.dataset.cobrar));
       }));
+
+      /* Pulsar la fila lleva al comprobante de esa venta: desde la
+         cobranza se quiere ver qué se le vendió, no solo cuánto debe. */
+      $$('[data-venta]').forEach(el => {
+        const ir = () => { location.hash = '#/venta/' + el.dataset.venta; };
+        el.addEventListener('click', ir);
+        el.addEventListener('keydown', ev => {
+          if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); ir(); }
+        });
+      });
+
+      // La métrica de cobranza baja hasta el panel
+      const irCobranza = $('#ir-cobranza');
+      if (irCobranza) {
+        const bajar = () => {
+          const panel = $('.lista--cuo');
+          if (panel) panel.closest('.ficha').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        };
+        irCobranza.addEventListener('click', bajar);
+        irCobranza.addEventListener('keydown', ev => {
+          if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); bajar(); }
+        });
+      }
 
       enlazar();
     },

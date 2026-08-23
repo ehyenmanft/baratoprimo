@@ -236,9 +236,17 @@
          data-venta="${v.id}" role="button" tabindex="0">
       <span class="pastilla pastilla--${v.anulada ? 'salida' : 'entrada'}">${esc(v.numero)}</span>
       <span class="lista__nombre">${esc(v.cliente || 'Consumidor final')}
+        ${v.a_credito ? `<span class="pastilla pastilla--credito">${
+          Number(v.cuotas_por_cobrar) > 0
+            ? `crédito · ${v.cuotas_por_cobrar} por cobrar`
+            : 'crédito saldado'}</span>` : ''}
         <span class="lista__sub">${v.anulada ? 'ANULADA · ' : ''}${fecha(v.fecha)} · ${v.renglones} renglones${v.documento_completo ? ' · ' + esc(v.documento_completo) : ''}</span></span>
       <span class="lista__dato"><b>${numero(v.iva_monto)}</b><small>IVA</small></span>
-      <span class="lista__dato"><b>${numero(v.total)}</b><small>total</small></span>
+      <span class="lista__dato"><b>${numero(v.total)}</b><small>total</small>
+        ${(() => {
+          const eq = INV.tasas ? INV.tasas.aDolares(v.total) : null;
+          return eq === null ? '' : `<span class="equivalente">${numero(eq)} $</span>`;
+        })()}</span>
     </div>`;
 
   function enlazarVentas() {
@@ -370,12 +378,20 @@
               adelanta las cuotas siguientes.
             </p>
             <div class="filtros">
-              <label class="filtro"><span>Inicial a cancelar</span>
-                <input type="number" id="cr-inicial" min="0" step="0.01" value="0" style="max-width:140px"></label>
+              <label class="filtro"><span>Inicial</span>
+                <input type="number" id="cr-inicial" min="0" step="0.01" value="0" style="max-width:130px">
+                <span class="equivalente" id="cr-inicial-eq"></span></label>
+              <label class="filtro"><span>Inicial en %</span>
+                <input type="number" id="cr-inicial-pct" min="0" max="100" step="1" value="0"
+                       style="max-width:100px" placeholder="0"></label>
               <label class="filtro"><span>Tasa de referencia</span>
                 <input type="number" id="cr-tasa" min="0" step="0.0001" style="max-width:140px"></label>
               <label class="filtro"><span>N.º de cuotas</span>
                 <input type="number" id="cr-cuotas" min="1" max="36" step="1" value="3" style="max-width:110px"></label>
+              <label class="filtro"><span>Recargo %</span>
+                <input type="number" id="cr-recargo" min="0" max="100" step="0.5" value="0"
+                       style="max-width:100px" placeholder="0">
+                <span class="equivalente" id="cr-recargo-eq"></span></label>
               <label class="filtro"><span>Frecuencia</span>
                 <select id="cr-frecuencia" style="max-width:150px">
                   ${FRECUENCIAS.map(f => `<option value="${f.dias}" ${f.id === '30' ? 'selected' : ''}>${f.etiqueta}</option>`).join('')}
@@ -408,8 +424,31 @@
     $('#pg-referencia').addEventListener('input', e => {
       e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6);
     });
-    ['cr-inicial','cr-tasa','cr-cuotas','cr-frecuencia','cr-primera']
+    ['cr-inicial','cr-tasa','cr-cuotas','cr-frecuencia','cr-primera','cr-recargo']
       .forEach(id => $('#' + id).addEventListener('input', previaCredito));
+
+    /* Inicial y porcentaje son dos caras del mismo dato: al tocar uno se
+       recalcula el otro. Sin esto habría que hacer la regla de tres a
+       mano cada vez que el cliente pide "el 30 por ciento de inicial". */
+    $('#cr-inicial').addEventListener('input', () => {
+      const total = totalDeLaVenta();
+      const pct = total > 0 ? (Number($('#cr-inicial').value || 0) / total) * 100 : 0;
+      $('#cr-inicial-pct').value = Math.round(pct * 10) / 10;
+      equivalenteInicial();
+    });
+
+    $('#cr-recargo').addEventListener('input', () => {
+      const salida = $('#cr-recargo-eq');
+      const r = calcularPlan();
+      salida.textContent = (!r.error && r.recargoUsd > 0) ? '+' + numero(r.recargoUsd) + ' $' : '';
+    });
+
+    $('#cr-inicial-pct').addEventListener('input', () => {
+      const pct = Math.min(100, Math.max(0, Number($('#cr-inicial-pct').value || 0)));
+      $('#cr-inicial').value = redondear(totalDeLaVenta() * pct / 100);
+      equivalenteInicial();
+      previaCredito();
+    });
 
     pintarCliente();
     ajustarCamposPago();
@@ -466,6 +505,10 @@
   }
 
   /* Muestra solo los campos que el método elegido necesita. */
+  /* Moneda del último método elegido, para saber cuándo hay que rehacer
+     la tasa del campo. */
+  let monedaAnterior = null;
+
   function ajustarCamposPago() {
     const m = metodo($('#pg-metodo').value);
     $('#pg-caja-ref').hidden = !m.ref;
@@ -486,10 +529,18 @@
     }
 
     if (m.moneda !== 'VES') {
+      /* La tasa se rehace en cada cambio de método. Antes solo se ponía si
+         el campo estaba vacío, así que pasar de Efectivo USD a Efectivo
+         EUR dejaba puesta la tasa del dólar y se cobraban euros al cambio
+         equivocado. */
       const tasas = tasasPorDefecto();
-      if (!$('#pg-tasa').value) $('#pg-tasa').value = tasas[m.moneda] || '';
+      if (monedaAnterior !== m.moneda) {
+        $('#pg-tasa').value = tasas[m.moneda] || '';
+      }
       $('#pg-caja-tasa').querySelector('span').textContent = `Tasa ${m.moneda} → Bs`;
+      $('#pg-tasa').placeholder = tasas[m.moneda] ? '' : 'Sin tasa configurada';
     }
+    monedaAnterior = m.moneda;
     $('#pg-monto').placeholder = m.moneda === 'VES' ? '0,00' : '0,00 ' + m.moneda;
     equivalenteDelPago();
   }
@@ -518,6 +569,25 @@
       : '';
   }
 
+  /* Total de la venta, que es la base sobre la que se calcula el
+     porcentaje de la inicial. */
+  function totalDeLaVenta() {
+    return calcular(renglones, Number($('#vn-iva').value || 0),
+                    $('#vn-incluido').value === 'si').total;
+  }
+
+  /* La inicial también se ve en dólares: el cliente suele pensar el
+     enganche en divisa aunque pague en bolívares. */
+  function equivalenteInicial() {
+    const salida = $('#cr-inicial-eq');
+    if (!salida) return;
+    const monto = Number($('#cr-inicial').value || 0);
+    const tasa = Number($('#cr-tasa').value || 0) || (INV.tasas ? INV.tasas.usd() : 0);
+    salida.textContent = (monto > 0 && tasa > 0)
+      ? '= ' + numero(redondear(monto / tasa)) + ' $'
+      : '';
+  }
+
   /* Reparte el saldo financiado entre las cuotas: saldo ÷ número de cuotas.
      Ese resultado es el MÍNIMO que hay que abonar en cada vencimiento; el
      cliente puede pagar de más y el excedente adelanta las siguientes. El
@@ -539,9 +609,17 @@
 
     if (!tasa || tasa <= 0) return { error: 'Indica la tasa de referencia en dólares.' };
     if (!primera) return { error: 'Indica la fecha de la primera cuota.' };
+    // Una inicial de cero es válida: se financia el total.
     if (financiado <= 0) return { error: 'La inicial ya cubre el total: no hay nada que financiar.' };
 
-    const financiadoUsd = redondear(financiado / tasa);
+    /* Recargo por vender a crédito: un porcentaje sobre el saldo que se
+       financia. No toca el precio de la mercancía —el comprobante sigue
+       diciendo lo que costó— sino lo que hay que pagar por diferirla. */
+    const recargoPct = Math.min(100, Math.max(0, Number($('#cr-recargo').value || 0)));
+    const financiadoSinRecargo = redondear(financiado / tasa);
+    const recargoUsd = redondear(financiadoSinRecargo * recargoPct / 100);
+    const financiadoUsd = redondear(financiadoSinRecargo + recargoUsd);
+
     const base = Math.floor((financiadoUsd / n) * 100) / 100;
     const cuotas = [];
     for (let i = 1; i <= n; i++) {
@@ -553,8 +631,13 @@
         vence_en: vence.toISOString().slice(0, 10),
       });
     }
-    return { inicial, tasa, financiado, financiadoUsd, cuotas, totalVenta,
-             minimoUsd: base, periodoDias: dias, n };
+    return {
+      inicial, tasa, financiado, financiadoUsd, cuotas, totalVenta,
+      minimoUsd: base, periodoDias: dias, n,
+      recargoPct, recargoUsd, financiadoSinRecargo,
+      // Lo que el cliente termina pagando: inicial + cuotas con recargo
+      aPagarUsd: redondear((inicial / tasa) + financiadoUsd),
+    };
   }
 
   function previaCredito() {
@@ -564,22 +647,49 @@
       caja.innerHTML = `<p class="subida__nota" style="margin-top:12px">${esc(r.error)}</p>`;
       return;
     }
+    const pct = r.totalVenta > 0 ? (r.inicial / r.totalVenta) * 100 : 0;
+    const inicialUsd = r.tasa > 0 ? redondear(r.inicial / r.tasa) : 0;
+    const frecuencia = (FRECUENCIAS.find(f => Number(f.dias) === Number(r.periodoDias)) || {}).etiqueta
+                       || `cada ${r.periodoDias} días`;
+
     caja.innerHTML = `
       <div class="totales" style="border-radius:var(--r-s); margin-top:14px">
-        <div class="totales__fila"><span>Inicial a cancelar hoy</span><b>${numero(r.inicial)}</b></div>
-        <div class="totales__fila"><span>Queda financiado</span><b>${numero(r.financiado)}</b></div>
-        <div class="totales__fila"><span>Equivalente en dólares</span><b>${numero(r.financiadoUsd)} USD</b></div>
+        <div class="totales__fila">
+          <span>Inicial de hoy${r.inicial > 0 ? ` · ${numero(pct, 1)}% del total` : ' · sin inicial'}</span>
+          <b>${numero(r.inicial)}<span class="equivalente equivalente--usd">${numero(inicialUsd)} $</span></b>
+        </div>
+        <div class="totales__fila">
+          <span>Queda financiado</span>
+          <b>${numero(r.financiado)}<span class="equivalente equivalente--usd">${numero(r.financiadoSinRecargo)} $</span></b>
+        </div>
+        ${r.recargoPct > 0 ? `
+          <div class="totales__fila" style="color:var(--naranja)">
+            <span>Recargo por financiamiento · ${numero(r.recargoPct, 1)}%</span>
+            <b>+${numero(r.recargoUsd)} $<span class="equivalente">${numero(redondear(r.recargoUsd * r.tasa))} Bs</span></b>
+          </div>
+          <div class="totales__fila totales__fila--total">
+            <span>Total a cancelar con el crédito</span>
+            <b class="monto-usd">${numero(r.aPagarUsd)} $<span class="equivalente">${
+              numero(redondear(r.aPagarUsd * r.tasa))} Bs</span></b>
+          </div>` : ''}
         <div class="totales__fila" style="color:var(--cian)">
-          <span>Cuota mínima — ${numero(r.financiadoUsd)} ÷ ${r.n}, cada ${r.periodoDias} días</span>
-          <b>${numero(r.minimoUsd)} USD</b></div>
+          <span>${r.n} cuota${r.n > 1 ? 's' : ''} ${esc(frecuencia.toLowerCase())} · mínimo por cuota</span>
+          <b class="monto-usd">${numero(r.minimoUsd)} $</b>
+        </div>
       </div>
       <div class="confirmar-lista" style="margin-top:12px">
-        ${r.cuotas.map(q => `
+        ${r.cuotas.map(q => {
+          const f = new Date(q.vence_en + 'T00:00:00');
+          const enBs = r.tasa > 0 ? redondear(q.monto_usd * r.tasa) : null;
+          return `
           <div class="confirmar-fila">
             <span>Cuota ${q.numero} de ${r.cuotas.length}
-              <br><span class="lista__sub">vence el ${new Date(q.vence_en + 'T00:00:00').toLocaleDateString('es')} · mínimo a abonar</span></span>
-            <b>${numero(q.monto_usd)} USD</b>
-          </div>`).join('')}
+              <br><span class="lista__sub">vence el ${f.toLocaleDateString('es', {
+                weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}</span></span>
+            <b class="monto-usd">${numero(q.monto_usd)} $${
+              enBs === null ? '' : `<span class="equivalente">${numero(enBs)} Bs</span>`}</b>
+          </div>`;
+        }).join('')}
       </div>`;
   }
 
@@ -873,6 +983,7 @@
         nota: $('#vn-nota').value || null,
         a_credito: !!plan,
         tasa_referencia: plan ? plan.tasa : Number(tasasPorDefecto().USD || 0),
+        recargo_credito: plan ? plan.recargoPct : 0,
         total_usd: plan ? redondear(r.total / plan.tasa)
                         : (tasasPorDefecto().USD ? redondear(r.total / tasasPorDefecto().USD) : 0),
         cuotas: plan ? plan.cuotas.map(q => ({ ...q })) : [],
@@ -1164,6 +1275,11 @@
               <div class="totales__fila" style="color:var(--cian)">
                 <span>Equivalente · tasa ${numero(v.tasa_referencia, 2)} Bs/$</span>
                 <b>${numero(v.total_usd || (v.total / v.tasa_referencia))} $</b>
+              </div>` : ''}
+            ${Number(v.recargo_credito) > 0 ? `
+              <div class="totales__fila" style="color:var(--naranja)">
+                <span>Recargo por financiamiento · ${numero(v.recargo_credito, 1)}%</span>
+                <b>incluido en las cuotas</b>
               </div>` : ''}
           </div>
 
