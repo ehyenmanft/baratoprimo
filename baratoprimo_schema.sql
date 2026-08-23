@@ -172,6 +172,9 @@ create table productos (
   costo          numeric(14,2) not null default 0,
   precio_venta   numeric(14,2) not null default 0,
   stock_minimo   numeric(14,3) not null default 0,
+  /* Productos que no causan IVA. La factura los separa como base exenta,
+     que es como los exige el SENIAT. */
+  exento_iva     boolean not null default false,
   imagen_path    text,
   activo         boolean not null default true,
   creado_en      timestamptz not null default now(),
@@ -302,7 +305,7 @@ select
   p.comercio_id,
   p.sku, p.nombre, p.unidad, p.categoria_id,
   c.nombre        as categoria,
-  p.stock_minimo, p.costo, p.precio_venta, p.imagen_path,
+  p.stock_minimo, p.costo, p.precio_venta, p.exento_iva, p.imagen_path,
   coalesce(sum(cantidad_signada(m.tipo, m.cantidad, m.es_negativo)), 0) as stock,
   coalesce(sum(cantidad_signada(m.tipo, m.cantidad, m.es_negativo)), 0) * p.costo as valor_inventario,
   max(m.fecha)    as ultimo_movimiento

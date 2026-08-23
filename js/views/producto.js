@@ -86,6 +86,7 @@
               <div>
                 <h2 class="detalle__titulo">${esc(actual.nombre)}</h2>
                 <div class="detalle__meta">
+                ${actual.exento_iva ? '<span class="pastilla pastilla--exento">exento de IVA</span>' : ''}
                   <span>${esc(actual.sku)}</span>
                   <span>${esc(actual.categoria ?? 'sin categoría')}</span>
                   <span>por ${esc(actual.unidad)}</span>

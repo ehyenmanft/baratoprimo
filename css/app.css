@@ -1319,3 +1319,9 @@ html[data-tema="oscuro"] .rail__comercio select option{
 .metrica--pulsable{ cursor:pointer; transition:transform .16s var(--curva); }
 .metrica--pulsable:hover{ transform:translateY(-2px); }
 .metrica--pulsable:focus-visible{ outline:2px solid var(--violeta); outline-offset:3px; }
+
+/* Productos exentos de IVA */
+.pastilla--exento{
+  background:rgba(16,185,129,.16); color:var(--esmeralda);
+  margin-left:7px; font-size:9.5px;
+}

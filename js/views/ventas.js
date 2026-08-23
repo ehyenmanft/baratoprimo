@@ -85,10 +85,19 @@
      mientras escribes y también lo que se guarda en la base. */
   function calcular(renglones, tasa, incluido) {
     const t = Number(tasa) / 100;
+
     const items = renglones.map(r => {
       const bruto = Number(r.cantidad) * Number(r.precio_unitario);
-      const base  = incluido ? bruto / (1 + t) : bruto;
-      const iva   = incluido ? bruto - base : base * t;
+
+      /* Un producto exento no lleva impuesto, y tampoco se le desglosa
+         nada cuando el precio "incluye IVA": si está exento, el precio de
+         lista ya es la base, porque no hay impuesto dentro que sacar. */
+      if (r.exento) {
+        return { ...r, base: redondear(bruto), iva_monto: 0, total: redondear(bruto) };
+      }
+
+      const base = incluido ? bruto / (1 + t) : bruto;
+      const iva  = incluido ? bruto - base : base * t;
       return {
         ...r,
         base:      redondear(base),
@@ -96,8 +105,17 @@
         total:     redondear(base + iva),
       };
     });
+
+    const gravados = items.filter(i => !i.exento);
+    const exentos  = items.filter(i => i.exento);
+
     return {
       items,
+      // Base sobre la que se calcula el impuesto
+      base_gravada: redondear(gravados.reduce((s, i) => s + i.base, 0)),
+      // Lo que no paga impuesto: en Venezuela va separado en la factura
+      base_exenta:  redondear(exentos.reduce((s, i) => s + i.base, 0)),
+      hay_exentos:  exentos.length > 0,
       subtotal:  redondear(items.reduce((s, i) => s + i.base, 0)),
       iva_monto: redondear(items.reduce((s, i) => s + i.iva_monto, 0)),
       total:     redondear(items.reduce((s, i) => s + i.total, 0)),
@@ -497,6 +515,7 @@
          es la que queda guardada en el comprobante. */
       precio_catalogo: Number(p.precio_venta),
       precio_unitario: INV.tasas.aFactura(Number(p.precio_venta)) ?? Number(p.precio_venta),
+      exento: !!p.exento_iva,
       stock: Number(p.stock),
     });
 
@@ -838,6 +857,7 @@
         ${r.items.map((it, i) => `
           <div class="lista__item" style="--i:${i}">
             <span class="lista__nombre">${esc(it.descripcion)}
+              ${it.exento ? '<span class="pastilla pastilla--exento">exento</span>' : ''}
               <span class="lista__sub">${esc(it.sku)} · ${cantidad(it.cantidad)} ${esc(it.unidad)} × ${numero(it.precio_unitario)}${
                 INV.tasas.catalogoEnDolares() && it.precio_catalogo
                   ? ` <span style="color:var(--cian)">(${numero(it.precio_catalogo)} $)</span>` : ''}</span></span>
@@ -859,6 +879,11 @@
 
     $('#vn-totales').innerHTML = `
       <div class="totales">
+        ${r.hay_exentos ? `
+          <div class="totales__fila">
+            <span>Base imponible</span><b>${numero(r.base_gravada)}</b></div>
+          <div class="totales__fila" style="color:var(--esmeralda)">
+            <span>Exento de IVA</span><b>${numero(r.base_exenta)}</b></div>` : ''}
         <div class="totales__fila">
           <span>Subtotal de los productos${incluido ? ' (IVA desglosado)' : ''}</span>
           <b>${numero(r.subtotal)}</b>
@@ -1134,6 +1159,15 @@
         ${guion()}
 
         <div class="tk__totales">
+          ${(() => {
+            const exentos = (v.items || []).filter(i => Number(i.iva_monto) === 0);
+            if (!exentos.length || Number(v.iva_tasa) === 0) return '';
+            const baseExenta = exentos.reduce((s, i) => s + Number(i.base), 0);
+            return `
+              <div class="tk__total-fila"><span>BASE IMPONIBLE</span><span>${
+                numero(Number(v.subtotal) - baseExenta)}</span></div>
+              <div class="tk__total-fila"><span>EXENTO</span><span>${numero(baseExenta)}</span></div>`;
+          })()}
           <div class="tk__total-fila">
             <span>Subtotal${v.iva_incluido ? ' (base)' : ''}</span><span>${numero(v.subtotal)}</span>
           </div>
@@ -1297,7 +1331,8 @@
             </tr></thead>
             <tbody>${v.items.map(i => `
               <tr>
-                <td>${esc(i.descripcion)}</td>
+                <td>${esc(i.descripcion)}${Number(i.iva_monto) === 0 && Number(v.iva_tasa) > 0
+                ? ' <span class="pastilla pastilla--exento">exento</span>' : ''}</td>
                 <td class="num">${cantidad(i.cantidad)}</td>
                 <td class="num">${numero(i.precio_unitario)}</td>
                 <td class="num">${numero(i.base)}</td>
@@ -1308,6 +1343,18 @@
           </table>
 
           <div class="totales">
+            ${(() => {
+              /* La exención se deduce de los renglones ya emitidos: un
+                 renglón sin IVA en una venta con IVA es un exento. */
+              const exentos = (v.items || []).filter(i => Number(i.iva_monto) === 0);
+              if (!exentos.length || Number(v.iva_tasa) === 0) return '';
+              const baseExenta = exentos.reduce((s, i) => s + Number(i.base), 0);
+              return `
+                <div class="totales__fila">
+                  <span>Base imponible</span><b>${numero(Number(v.subtotal) - baseExenta)}</b></div>
+                <div class="totales__fila" style="color:var(--esmeralda)">
+                  <span>Exento de IVA</span><b>${numero(baseExenta)}</b></div>`;
+            })()}
             <div class="totales__fila">
               <span>Subtotal de los productos${v.iva_incluido ? ' (IVA desglosado)' : ''}</span>
               <b>${numero(v.subtotal)}</b>

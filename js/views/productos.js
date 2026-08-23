@@ -28,6 +28,7 @@
     <div class="lista__item" style="--i:${Math.min(i, 24)}" data-abrir="${f.producto_id}" role="button" tabindex="0">
       ${miniatura(f.imagen_path, f.nombre)}
       <span class="lista__nombre">${esc(f.nombre)}
+        ${f.exento_iva ? '<span class="pastilla pastilla--exento">exento de IVA</span>' : ''}
         <span class="lista__sub">${esc(f.sku)} · ${esc(f.categoria ?? 'sin categoría')}</span>
         <span class="lista__precio">${INV.tasas.html(f.precio_venta)}</span></span>
       ${medidor(f.stock, f.stock_minimo, Math.min(i, 24))}
@@ -35,6 +36,102 @@
     </div>`;
 
   /* ---------------- Formulario ---------------- */
+
+  /* Renombrar y eliminar categorías. Al eliminar una, sus productos no
+     se borran: quedan sin categoría, que es lo que espera cualquiera. */
+  async function gestionarCategorias() {
+    const [cats, productos] = await Promise.all([
+      INV.db.categorias.listar(),
+      INV.db.productos.listar(),
+    ]);
+
+    const cuantos = id => productos.filter(p => p.categoria_id === id).length;
+
+    abrirModal({
+      titulo: 'Categorías',
+      cuerpo: `
+        <div class="campo">
+          <label for="gc-nueva">Crear una categoría</label>
+          <div style="display:grid; grid-template-columns:1fr auto; gap:8px">
+            <input id="gc-nueva" type="text" placeholder="Bebidas, Limpieza, Repuestos…">
+            <button type="button" class="btn btn--primario btn--chico" id="gc-crear">Crear</button>
+          </div>
+        </div>
+
+        ${cats.length ? `
+          <div class="lista" style="margin-top:6px">
+            ${cats.map(c => `
+              <div class="lista__item" style="grid-template-columns:1fr auto auto; gap:8px">
+                <input type="text" value="${esc(c.nombre)}" data-nombre="${c.id}"
+                       style="padding:7px 10px; font-size:14px">
+                <span class="lista__sub" style="align-self:center">${cuantos(c.id)} prod.</span>
+                <button type="button" class="btn btn--fantasma btn--chico" data-borrar="${c.id}"
+                        title="Eliminar">&#10005;</button>
+              </div>`).join('')}
+          </div>
+          <p class="subida__nota" style="margin-top:10px">
+            Cambia un nombre y pulsa fuera para guardarlo. Al eliminar una categoría
+            sus productos quedan sin clasificar, no se borran.
+          </p>`
+        : '<p class="subida__nota">Todavía no hay categorías.</p>'}
+        <p id="gc-error" class="error" hidden></p>`,
+      acciones: [{ texto: 'Listo', estilo: 'btn--primario', alPulsar: () => {
+        cerrarModal();
+        window.dispatchEvent(new Event('recargar-vista'));
+      }}],
+    });
+
+    const fallar = texto => {
+      $('#gc-error').textContent = texto;
+      $('#gc-error').hidden = false;
+    };
+
+    $('#gc-crear').addEventListener('click', async () => {
+      const nombre = $('#gc-nueva').value.trim();
+      if (!nombre) return fallar('Escribe el nombre.');
+      try {
+        await INV.db.categorias.crear(nombre);
+        cerrarModal();
+        avisar(`Categoría "${nombre}" creada`);
+        gestionarCategorias();
+      } catch (e) {
+        fallar(/duplicate|ya existe/i.test(e.message)
+          ? 'Ya existe una categoría con ese nombre.' : e.message);
+      }
+    });
+
+    $$('[data-nombre]').forEach(input => {
+      const original = input.value;
+      input.addEventListener('change', async () => {
+        const nombre = input.value.trim();
+        if (!nombre || nombre === original) { input.value = original; return; }
+        try {
+          await INV.db.categorias.actualizar(Number(input.dataset.nombre), { nombre });
+          avisar('Categoría renombrada');
+        } catch (e) {
+          input.value = original;
+          fallar(/duplicate|ya existe/i.test(e.message)
+            ? 'Ya existe una categoría con ese nombre.' : e.message);
+        }
+      });
+    });
+
+    $$('[data-borrar]').forEach(b => b.addEventListener('click', async () => {
+      const id = Number(b.dataset.borrar);
+      const n = cuantos(id);
+      const cat = cats.find(c => c.id === id);
+      if (n && !confirm(`"${cat.nombre}" tiene ${n} producto${n > 1 ? 's' : ''}. ` +
+                        'Al eliminarla quedarán sin categoría. ¿Continuar?')) return;
+      try {
+        await INV.db.categorias.eliminar(id);
+        cerrarModal();
+        avisar('Categoría eliminada');
+        gestionarCategorias();
+      } catch (e) {
+        fallar(e.message);
+      }
+    }));
+  }
 
   /* Cambiar la moneda del catálogo no convierte nada por sí solo: los
      números guardados siguen siendo los mismos y solo cambia cómo se
@@ -148,11 +245,23 @@
         </div>
         <div class="campo">
           <label for="pr-categoria">Categoría</label>
-          <select id="pr-categoria">
-            <option value="">Sin categoría</option>
-            ${cats.map(c => `<option value="${c.id}" ${p && p.categoria_id === c.id ? 'selected' : ''}>${esc(c.nombre)}</option>`).join('')}
-          </select>
+          <div style="display:grid; grid-template-columns:1fr auto; gap:8px">
+            <select id="pr-categoria">
+              <option value="">Sin categoría</option>
+              ${cats.map(c => `<option value="${c.id}" ${p && p.categoria_id === c.id ? 'selected' : ''}>${esc(c.nombre)}</option>`).join('')}
+            </select>
+            <button type="button" class="btn btn--secundario btn--chico" id="pr-nueva-cat"
+                    title="Crear una categoría">+ Nueva</button>
+          </div>
+          <span class="subida__nota" id="pr-cat-nota" style="margin-top:6px; display:block"></span>
         </div>
+
+        <label class="rol-opcion" style="cursor:pointer; margin-bottom:14px">
+          <input type="checkbox" id="pr-exento" ${p && p.exento_iva ? 'checked' : ''}>
+          <span><b>Exento de IVA</b>
+            <span class="lista__sub">No se le aplica impuesto al venderlo. La factura lo
+              separa del resto como base exenta.</span></span>
+        </label>
         <div class="campos-fila">
           <div class="campo">
             <label for="pr-costo">Costo ${INV.tasas.simbolo()}</label>
@@ -184,6 +293,32 @@
 
     /* Se escribe en una moneda y se ve en la otra: así nadie se equivoca
        de orden de magnitud al cargar un precio. */
+    /* Crear una categoría sin salir del formulario: obligar a ir a otra
+       pantalla a media carga de producto se traduce en catálogos sin
+       clasificar. */
+    $('#pr-nueva-cat').addEventListener('click', async () => {
+      const nombre = (prompt('Nombre de la categoría nueva') || '').trim();
+      if (!nombre) return;
+
+      const nota = $('#pr-cat-nota');
+      try {
+        const nueva = await INV.db.categorias.crear(nombre);
+        const sel = $('#pr-categoria');
+        const op = document.createElement('option');
+        op.value = nueva.id;
+        op.textContent = nueva.nombre;
+        op.selected = true;
+        sel.append(op);
+        nota.style.color = 'var(--esmeralda)';
+        nota.textContent = `"${nueva.nombre}" creada y seleccionada.`;
+      } catch (e) {
+        nota.style.color = 'var(--rosa)';
+        nota.textContent = /duplicate|ya existe/i.test(e.message)
+          ? 'Ya existe una categoría con ese nombre.'
+          : e.message;
+      }
+    });
+
     INV.tasas.enlazarEquivalente('#pr-costo', '#pr-costo-eq');
     INV.tasas.enlazarEquivalente('#pr-precio', '#pr-precio-eq');
 
@@ -216,6 +351,7 @@
       nombre:       $('#pr-nombre').value.trim(),
       unidad:       $('#pr-unidad').value.trim() || 'unidad',
       categoria_id: $('#pr-categoria').value ? Number($('#pr-categoria').value) : null,
+      exento_iva: $('#pr-exento').checked,
       costo:        Number($('#pr-costo').value || 0),
       precio_venta: Number($('#pr-precio').value || 0),
       stock_minimo: Number($('#pr-minimo').value || 0),
@@ -279,6 +415,7 @@
 
     acciones: () => [
       { texto: 'Cargar producto', estilo: 'btn--primario', alPulsar: () => abrirFormulario() },
+      { texto: 'Categorías', alPulsar: () => gestionarCategorias() },
       { texto: 'Convertir precios', alPulsar: () => convertirCatalogo() },
       {
         texto: 'Exportar', estilo: 'btn--secundario',
@@ -288,6 +425,7 @@
             { titulo: 'SKU',       valor: f => f.sku },
             { titulo: 'Producto',  valor: f => f.nombre },
             { titulo: 'Categoría', valor: f => f.categoria ?? '' },
+            { titulo: 'Exento de IVA', valor: f => f.exento_iva ? 'Sí' : 'No' },
             { titulo: 'Unidad',    valor: f => f.unidad },
             { titulo: 'Stock',     valor: f => f.stock },
             { titulo: 'Mínimo',    valor: f => f.stock_minimo },

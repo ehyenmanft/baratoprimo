@@ -81,6 +81,11 @@
     categorias: {
       listar: () => sb.from('categorias').select('*').order('nombre').then(ok),
       crear:  nombre => sb.from('categorias').insert({ nombre }).select().single().then(ok),
+      actualizar: (id, datos) => sb.from('categorias').update(datos).eq('id', id)
+        .select().single().then(ok),
+      /* Los productos que la usaban quedan sin categoría, no se borran:
+         la clave foránea está declarada 'on delete set null'. */
+      eliminar: id => sb.from('categorias').delete().eq('id', id).then(ok),
     },
 
     productos: {

@@ -228,6 +228,7 @@
       producto_id: p.id, sku: p.sku, nombre: p.nombre, unidad: p.unidad,
       categoria_id: p.categoria_id, categoria: cat ? cat.nombre : null,
       stock_minimo: p.stock_minimo, costo: p.costo, precio_venta: p.precio_venta,
+      exento_iva: !!p.exento_iva,
       imagen_path: p.imagen_path || null,
       stock, valor_inventario: stock * p.costo,
       ultimo_movimiento: movs.length ? movs.map(m => m.fecha).sort().at(-1) : null,
@@ -330,8 +331,28 @@
       listar: async () => bd.categorias.filter(delComercio)
         .sort((a, b) => a.nombre.localeCompare(b.nombre)),
       crear: async nombre => {
+        if (bd.categorias.some(c => c.comercio_id === cId() &&
+            c.nombre.toLowerCase() === String(nombre).toLowerCase()))
+          throw new Error('duplicate key: ya existe una categoría con ese nombre');
         const c = { id: siguienteId(bd.categorias), comercio_id: cId(), nombre };
         bd.categorias.push(c); persistir(); return c;
+      },
+
+      actualizar: async (id, datos) => {
+        const c = bd.categorias.find(x => x.id === Number(id));
+        if (!c) throw new Error('La categoría no existe');
+        if (datos.nombre && bd.categorias.some(x => x.id !== c.id &&
+            x.comercio_id === cId() && x.nombre.toLowerCase() === datos.nombre.toLowerCase()))
+          throw new Error('duplicate key: ya existe una categoría con ese nombre');
+        Object.assign(c, datos); persistir(); return c;
+      },
+
+      /* Los productos que la usaban quedan sin categoría, no se borran */
+      eliminar: async id => {
+        const n = Number(id);
+        bd.productos.forEach(p => { if (p.categoria_id === n) p.categoria_id = null; });
+        bd.categorias = bd.categorias.filter(c => c.id !== n);
+        persistir();
       },
     },
 
@@ -352,7 +373,10 @@
         // El SKU es único dentro del comercio, no en toda la base
         if (bd.productos.some(p => p.comercio_id === cId() && p.sku === datos.sku))
           throw new Error('duplicate key: ya existe un producto con ese SKU');
-        const p = { id: siguienteId(bd.productos), comercio_id: cId(), activo: true, ...datos };
+        const p = {
+          id: siguienteId(bd.productos), comercio_id: cId(), activo: true,
+          exento_iva: false, ...datos,
+        };
         bd.productos.push(p); persistir(); return p;
       },
       actualizar: async (id, datos) => {
