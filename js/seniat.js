@@ -197,14 +197,10 @@ INV.seniat = {
     return null;
   },
 
-  /* Diccionario de pruebas y registros frecuentes */
+  /* Diccionario de entidades verificadas (Bancos e Instituciones) */
   conocidos: {
     'V19273163': { nombre: 'JAMES MARIANO ARANDA TOMASINI', es_agente: false, ret_iva: 0 },
     'V13828612': { nombre: 'JAYMI DE LOS ANGELES ARANDA TOMASINI', es_agente: false, ret_iva: 0 },
-    'V3475738':  { nombre: 'CARLOS ALBERTO ARANDA MORALES', es_agente: false, ret_iva: 0 },
-    'V18487715': { nombre: 'JOSE GREGORIO HERNANDEZ PINTO', es_agente: false, ret_iva: 0 },
-    'V6465258':  { nombre: 'ANA MERCEDES TOMASINI DE ARANDA', es_agente: false, ret_iva: 0 },
-    'V5090290':  { nombre: 'MARIA ELENA PEREZ GARCIA', es_agente: false, ret_iva: 0 },
     'J000029490': { nombre: 'BANCO DEL CARIBE, C.A. BANCO UNIVERSAL (BANCARIBE)', es_agente: true, ret_iva: 75 },
     'J000029679': { nombre: 'BANCO MERCANTIL, C.A. BANCO UNIVERSAL', es_agente: true, ret_iva: 75 },
     'J000029504': { nombre: 'BANCO PROVINCIAL, S.A. BANCO UNIVERSAL', es_agente: true, ret_iva: 75 },

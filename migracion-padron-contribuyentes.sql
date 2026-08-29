@@ -44,10 +44,6 @@ INSERT INTO public.padron_contribuyentes
 VALUES
   ('V19273163', 'V-19273163', 'JAMES MARIANO ARANDA TOMASINI', 'natural', false, 0, 0, 'SI'),
   ('V13828612', 'V-13828612', 'JAYMI DE LOS ANGELES ARANDA TOMASINI', 'natural', false, 0, 0, 'SI'),
-  ('V3475738',  'V-3475738',  'CARLOS ALBERTO ARANDA MORALES', 'natural', false, 0, 0, 'SI'),
-  ('V18487715', 'V-18487715', 'JOSE GREGORIO HERNANDEZ PINTO', 'natural', false, 0, 0, 'SI'),
-  ('V6465258',  'V-6465258',  'ANA MERCEDES TOMASINI DE ARANDA', 'natural', false, 0, 0, 'SI'),
-  ('V5090290',  'V-5090290',  'MARIA ELENA PEREZ GARCIA', 'natural', false, 0, 0, 'SI'),
   ('J000029490', 'J-00002949-0', 'BANCO DEL CARIBE, C.A. BANCO UNIVERSAL (BANCARIBE)', 'juridica', true, 75, 2, 'SI'),
   ('J000029679', 'J-00002967-9', 'BANCO MERCANTIL, C.A. BANCO UNIVERSAL', 'juridica', true, 75, 2, 'SI'),
   ('J000029504', 'J-00002950-4', 'BANCO PROVINCIAL, S.A. BANCO UNIVERSAL', 'juridica', true, 75, 2, 'SI'),
