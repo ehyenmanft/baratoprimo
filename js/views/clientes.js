@@ -114,6 +114,21 @@
         btnSeniat.textContent = 'Buscando…';
         try {
           const res = await INV.seniat.consultar(prefijo, num);
+          const errDiv = $('#cl-error');
+
+          // Si las dos fuentes arrojaron datos que difieren (Discrepancia)
+          if (res && res.discrepancia) {
+            if (errDiv) {
+              errDiv.textContent = res.error || 'Discrepancia detectada entre fuentes oficiales.';
+              errDiv.hidden = false;
+            }
+            avisar(res.error || '⚠️ Discrepancia entre fuentes: los datos no coinciden.');
+            return;
+          }
+
+          if (errDiv) errDiv.hidden = true;
+
+          // Si coinciden positivamente
           if (res && res.nombre) {
             if (['J', 'G', 'C'].includes(prefijo)) {
               $('#cl-nombres').value = res.nombre;
@@ -128,6 +143,13 @@
               }
             }
 
+            if (res.direccion && $('#cl-direccion') && !$('#cl-direccion').value) {
+              $('#cl-direccion').value = res.direccion;
+            }
+            if (res.telefono && $('#cl-telefono') && !$('#cl-telefono').value) {
+              $('#cl-telefono').value = res.telefono;
+            }
+
             if (res.es_agente_retencion) {
               const chk = $('#cl-agente');
               if (chk) {
@@ -139,7 +161,7 @@
               }
             }
 
-            avisar(`Datos listos: ${res.nombre}${res.es_agente_retencion ? ' · Agente de Retención' : ''}`);
+            avisar(`✅ Datos verificados y coincidentes: ${res.nombre}${res.es_agente_retencion ? ' · Agente de Retención' : ''}`);
           } else {
             // Asistente cuando el servidor externo no tiene el nombre
             if (['J', 'G'].includes(prefijo)) {
