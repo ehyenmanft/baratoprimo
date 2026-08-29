@@ -192,7 +192,7 @@
         <div class="ficha anim no-imprimir" style="margin-bottom:14px">
           <div class="ficha__cuerpo" style="padding-top:16px">
             <div class="filtros">
-              <div class="segmentado" id="cj-periodo">
+              <div class="chips" id="cj-periodo">
                 ${PERIODOS.map(p => `
                   <button class="${estado.periodo === p.id ? 'activo' : ''}"
                           data-periodo="${p.id}">${p.etiqueta}</button>`).join('')}
