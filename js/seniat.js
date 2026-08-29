@@ -244,10 +244,11 @@ INV.seniat = {
       }
     } catch (e) { /* continuar */ }
 
-    // Nivel 2: Micro-Proxy Local en Venezuela (si el script proxy-seniat.js corre en localhost:3030)
+    // Nivel 2: Túnel con IP Venezolana (localhost:3030 o TUNEL_VENEZUELA_URL)
+    const urlTunel = (INV.config && INV.config.TUNEL_VENEZUELA_URL) ? INV.config.TUNEL_VENEZUELA_URL : 'http://localhost:3030';
     try {
-      const respLocal = await fetch(`http://localhost:3030/consulta?rif=${encodeURIComponent(s.rif)}`, {
-        signal: AbortSignal.timeout(1500),
+      const respLocal = await fetch(`${urlTunel.replace(/\/+$/, '')}/consulta?rif=${encodeURIComponent(s.rif)}`, {
+        signal: AbortSignal.timeout(2000),
       });
       if (respLocal.ok) {
         const dLocal = await respLocal.json();

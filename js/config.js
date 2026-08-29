@@ -49,6 +49,11 @@ INV.config = {
   /* URL de la función para consultar RIF y Agentes de Retención en SENIAT */
   FUNCION_SENIAT: 'https://goqqmcibcdaeuienjmuy.supabase.co/functions/v1/consulta-rif',
 
+  /* URL del Túnel con IP Venezolana (Cloudflare Tunnel, Ngrok o VPS local).
+     Si se configura, BaratoPrimo y Supabase consultan a través de este túnel
+     para evitar el geobloqueo de CANTV/SENIAT/CNE. */
+  TUNEL_VENEZUELA_URL: '',
+
   /* Para MODO 'drive': ID de cliente OAuth de Google Cloud, tipo
      "aplicación web", con tu dominio en los orígenes autorizados. */
   GOOGLE: { CLIENT_ID: 'TU-ID-DE-CLIENTE.apps.googleusercontent.com' },

@@ -178,6 +178,28 @@ Deno.serve(async (req) => {
     } catch (_e) {}
   }
 
+  // 1.5. Consultar a través del Túnel con IP Venezolana (si está configurado)
+  const tunelUrl = Deno.env.get('TUNEL_VENEZUELA_URL') || '';
+  if (tunelUrl) {
+    try {
+      const respTunel = await fetch(`${tunelUrl.replace(/\/+$/, '')}/consulta?rif=${encodeURIComponent(rif)}`, {
+        signal: AbortSignal.timeout(4000),
+      });
+      if (respTunel.ok) {
+        const datosTunel = await respTunel.json();
+        if (datosTunel && datosTunel.encontrado && datosTunel.nombre) {
+          if (sbUrl && sbKey) {
+            try {
+              const supabase = createClient(sbUrl, sbKey);
+              await supabase.from('padron_contribuyentes').upsert(datosTunel, { onConflict: 'rif' });
+            } catch (_err) {}
+          }
+          return responder(datosTunel, 200);
+        }
+      }
+    } catch (_eTunel) {}
+  }
+
   // 2. Consulta concurrente a fuentes externas
   let resultadoA: any = null; // Fuente principal (CNE para natural, SENIAT para jurídica)
   let resultadoB: any = datosPadron ? {
