@@ -43,6 +43,7 @@ INSERT INTO public.padron_contribuyentes
   (rif, rif_formateado, nombre, tipo_persona, es_agente_retencion, retencion_iva_porcentaje, retencion_islr_porcentaje, contribuyente_iva)
 VALUES
   ('V19273163', 'V-19273163', 'JAMES MARIANO ARANDA TOMASINI', 'natural', false, 0, 0, 'SI'),
+  ('V13828612', 'V-13828612', 'JAYMI DE LOS ANGELES ARANDA TOMASINI', 'natural', false, 0, 0, 'SI'),
   ('V18487715', 'V-18487715', 'JOSE GREGORIO HERNANDEZ PINTO', 'natural', false, 0, 0, 'SI'),
   ('V5090290',  'V-5090290',  'MARIA ELENA PEREZ GARCIA', 'natural', false, 0, 0, 'SI'),
   ('J000029490', 'J-00002949-0', 'BANCO DEL CARIBE, C.A. BANCO UNIVERSAL (BANCARIBE)', 'juridica', true, 75, 2, 'SI'),

@@ -38,6 +38,12 @@ INV.seniat = {
       retencion_iva_porcentaje: 0,
       contribuyente_iva: 'SI',
     },
+    'V13828612': {
+      nombre: 'JAYMI DE LOS ANGELES ARANDA TOMASINI',
+      es_agente_retencion: false,
+      retencion_iva_porcentaje: 0,
+      contribuyente_iva: 'SI',
+    },
     'V18487715': {
       nombre: 'CONTRIBUYENTE V-18487715',
       es_agente_retencion: false,

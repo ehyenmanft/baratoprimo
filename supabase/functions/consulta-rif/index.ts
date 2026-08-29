@@ -1,12 +1,12 @@
 /* =====================================================================
    BaratoPrimo — Consulta RIF y Agentes de Retención SENIAT
    ---------------------------------------------------------------------
-   Consulta oficial del SENIAT (contribuyente.seniat.gob.ve) para
-   obtener Razón Social / Nombre y condición de Agente de Retención (75% / 100%).
-
-   Desplegar en Supabase:
-     npx supabase functions deploy consulta-rif --no-verify-jwt
+   Consulta en tiempo real al Padrón Fiscal en Supabase y al SENIAT
+   (contribuyente.seniat.gob.ve) para obtener Razón Social / Nombre
+   y condición de Agente de Retención (75% / 100%).
    ===================================================================== */
+
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -72,7 +72,7 @@ async function desdeSeniatDirecto(rif: string) {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
       'Accept': 'text/xml,application/xml,text/html,*/*',
     },
-    signal: AbortSignal.timeout(10000),
+    signal: AbortSignal.timeout(4000),
   });
   if (!resp.ok) throw new Error('SENIAT directo respondió ' + resp.status);
   const texto = await resp.text();
@@ -86,47 +86,13 @@ async function desdeSeniatIntermediario(rif: string) {
   const url = `https://r.jina.ai/http://contribuyente.seniat.gob.ve/getContribuyente/getContribuyente?p_rif=${rif}`;
   const resp = await fetch(url, {
     headers: { 'Accept': 'text/plain' },
-    signal: AbortSignal.timeout(12000),
+    signal: AbortSignal.timeout(4000),
   });
   if (!resp.ok) throw new Error('Intermediario SENIAT respondió ' + resp.status);
   const texto = await resp.text();
   const res = parsearXmlSeniat(texto, rif);
   if (!res) throw new Error('No se pudo parsear el RIF desde intermediario');
   return { ...res, fuente: 'seniat-proxy' };
-}
-
-/* Fuente 3: Portal SENIAT BuscaRif */
-async function desdeSeniatBuscaRif(rif: string) {
-  const url = `https://r.jina.ai/http://contribuyente.seniat.gob.ve/BuscaRif/BuscaRif.jsp?p_rif=${rif}`;
-  const resp = await fetch(url, {
-    headers: { 'Accept': 'text/plain' },
-    signal: AbortSignal.timeout(12000),
-  });
-  if (!resp.ok) throw new Error('BuscaRif respondió ' + resp.status);
-  const texto = await resp.text();
-  
-  const m = texto.match(/Nombre\s*o\s*Razón\s*Social[:\s]*([^\n\r<|]+)/i) ||
-            texto.match(/Razón\s*Social[:\s]*([^\n\r<|]+)/i) ||
-            texto.match(/Contribuyente[:\s]*([^\n\r<|]+)/i);
-  if (!m) throw new Error('No se encontró el nombre en BuscaRif');
-
-  const nombre = m[1].trim().replace(/\s+/g, ' ');
-  const esAgente = texto.toUpperCase().includes('AGENTE DE RETENCI');
-  const tasa100 = texto.includes('100%');
-
-  const prefijo = rif.slice(0, 1);
-  const numero = rif.slice(1);
-
-  return {
-    encontrado: true,
-    rif,
-    rif_formateado: `${prefijo}-${numero}`,
-    nombre,
-    es_agente_retencion: esAgente,
-    retencion_iva_porcentaje: esAgente ? (tasa100 ? 100 : 75) : 0,
-    contribuyente_iva: 'SI',
-    fuente: 'seniat-buscarif',
-  };
 }
 
 Deno.serve(async (req) => {
@@ -148,23 +114,74 @@ Deno.serve(async (req) => {
 
   const rif = limpiarRif(rawRif);
   if (!rif || rif.length < 5) {
-    return responder({ error: 'Indica un RIF o Cédula válido (ej. J403118225, V12345678)' }, 400);
+    return responder({ error: 'Indica un RIF o Cédula válido (ej. V13828612, J000029490)' }, 400);
   }
 
-  const errores: string[] = [];
+  // 1. Consultar en la base de datos de Supabase (padron_contribuyentes)
+  const sbUrl = Deno.env.get('SUPABASE_URL') || '';
+  const sbKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_ANON_KEY') || '';
+  if (sbUrl && sbKey) {
+    try {
+      const supabase = createClient(sbUrl, sbKey);
+      const { data, error } = await supabase
+        .from('padron_contribuyentes')
+        .select('*')
+        .ilike('rif', rif)
+        .limit(1);
 
-  for (const fuente of [desdeSeniatDirecto, desdeSeniatIntermediario, desdeSeniatBuscaRif]) {
+      if (!error && data && data.length > 0) {
+        const item = data[0];
+        return responder({
+          encontrado: true,
+          rif: item.rif,
+          rif_formateado: item.rif_formateado || `${rif.slice(0,1)}-${rif.slice(1)}`,
+          nombre: item.nombre,
+          es_agente_retencion: !!item.es_agente_retencion,
+          retencion_iva_porcentaje: Number(item.retencion_iva_porcentaje || 0),
+          retencion_islr_porcentaje: Number(item.retencion_islr_porcentaje || 0),
+          contribuyente_iva: item.contribuyente_iva || 'SI',
+          direccion: item.direccion || null,
+          telefono: item.telefono || null,
+          fuente: 'padron-supabase',
+        });
+      }
+    } catch (_e) { /* continuar a búsqueda externa */ }
+  }
+
+  // 2. Si no está en el padrón, consultar servidores del SENIAT
+  const errores: string[] = [];
+  for (const fuente of [desdeSeniatDirecto, desdeSeniatIntermediario]) {
     try {
       const datos = await fuente(rif);
+      // Guardar en Supabase para futuras consultas
+      if (sbUrl && sbKey) {
+        try {
+          const supabase = createClient(sbUrl, sbKey);
+          await supabase.from('padron_contribuyentes').upsert({
+            rif: datos.rif,
+            rif_formateado: datos.rif_formateado,
+            nombre: datos.nombre,
+            tipo_persona: ['J', 'G'].includes(datos.rif.slice(0, 1)) ? 'juridica' : 'natural',
+            es_agente_retencion: datos.es_agente_retencion,
+            retencion_iva_porcentaje: datos.retencion_iva_porcentaje,
+            retencion_islr_porcentaje: 0,
+            contribuyente_iva: datos.contribuyente_iva,
+            fuente: 'seniat-live',
+          }, { onConflict: 'rif' });
+        } catch (_err) {}
+      }
       return responder(datos);
     } catch (e) {
       errores.push(`${fuente.name}: ${(e as Error).message}`);
     }
   }
 
+  // 3. Si no respondió el SENIAT externo
   return responder({
     encontrado: false,
-    error: 'No se pudo consultar el RIF en el SENIAT en este momento',
+    rif,
+    error: 'Contribuyente no encontrado en el padrón ni en el servidor del SENIAT.',
     detalles: errores,
   }, 404);
 });
+
