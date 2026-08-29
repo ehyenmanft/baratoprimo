@@ -1,29 +1,24 @@
 /* =====================================================================
    BaratoPrimo — tasa oficial del BCV
    ---------------------------------------------------------------------
-   Solo fuentes que publican la tasa OFICIAL del Banco Central. Se quitó
-   a propósito el Banco de Venezuela: su JSON trae la mesa de cambio, que
-   es la que rige hoy, mientras el BCV publica por la tarde la que regirá
-   el siguiente día hábil. Mezclarlas hacía que la aplicación mostrara un
-   número distinto al de bcv.org.ve, que es el que la gente compara.
+   Solo fuentes que publican la tasa OFICIAL del Banco Central (bcv.org.ve).
+   Se leen USD, EUR y demás monedas oficiales (CNY, TRY, RUB) con su FECHA VALOR.
 
    Cada tasa se guarda con su FECHA VALOR —el día desde el que rige—, no
    con la fecha en que se consultó. Es lo que publica el propio BCV y lo
    que permite explicar una factura vieja con la tasa de aquel día.
 
    Fuentes, en orden:
-     1. bcv.org.ve — la fuente. Se leen USD, EUR y la fecha valor.
-     2. El mismo portal, leído por un intermediario, porque el certificado
-        del BCV hace fallar la conexión directa desde muchos servidores.
-     3. bcv.today — espejo del BCV. Se le piden primero los días
-        siguientes: si la tasa del lunes ya está publicada, esa es la que
-        hay que guardar, no la que rige hoy.
-     4. ve.dolarapi.com — tasa oficial republicada, sin euro.
+     1. Lector del portal oficial del BCV (bcv.org.ve vía intermediario),
+        que obtiene el portal oficial actualizado al instante sin fallos de certificado TLS.
+     2. bcv.org.ve — conexión directa al portal.
+     3. bcv.today — espejo del BCV con histórico y tasas futuras publicadas.
+     4. ve.dolarapi.com — tasa oficial republicada (respaldo).
 
-   Si las tres fallan no se inventa nada: se responde con error y la
+   Si las fuentes fallan no se inventa nada: se responde con error y la
    aplicación sigue con la última tasa conocida, avisando de su edad.
 
-   Desplegar: Edge Functions → Deploy a new function → nombre "tasa-bcv"
+   Desplegar: Edge Functions → tasa-bcv
    ===================================================================== */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -34,19 +29,17 @@ const CORS = {
   'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
 };
 
-const responder = (cuerpo, estado = 200) =>
+const responder = (cuerpo: unknown, estado = 200) =>
   new Response(JSON.stringify(cuerpo), {
     status: estado,
     headers: { ...CORS, 'Content-Type': 'application/json' },
   });
 
-/* El BCV escribe los números a la venezolana: 784,66330000 son
-   setecientos ochenta y cuatro con sesenta y seis. El punto separa miles
+/* El BCV escribe los números a la venezolana: 794,99170000 son
+   setecientos noventa y cuatro con noventa y nueve. El punto separa miles
    y la coma, decimales. */
-function aNumero(texto) {
+function aNumero(texto: unknown): number | null {
   if (texto === null || texto === undefined) return null;
-
-  // Los espejos ya lo mandan como número: se toma tal cual
   if (typeof texto === 'number') return Number.isFinite(texto) && texto > 0 ? texto : null;
 
   const limpio = String(texto).trim()
@@ -59,37 +52,40 @@ function aNumero(texto) {
 
 /* Una tasa fuera de rango casi siempre es un error de lectura, no una
    devaluación. Más vale no guardarla. */
-const razonable = t => t !== null && t > 1 && t < 100000000;
+const razonable = (t: number | null): t is number => t !== null && t > 1 && t < 100000000;
 
 /* Fecha de Caracas, cuatro horas por detrás de UTC */
 const hoyCaracas = () =>
   new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10);
 
-const MESES = {
+const MESES: Record<string, string> = {
   enero: '01', febrero: '02', marzo: '03', abril: '04', mayo: '05', junio: '06',
   julio: '07', agosto: '08', septiembre: '09', setiembre: '09',
   octubre: '10', noviembre: '11', diciembre: '12',
 };
 
-/* "Fecha Valor: Lunes, 24 Agosto 2026" → "2026-08-24".
+/* "Fecha Valor: Lunes, 31 Agosto 2026" → "2026-08-31".
    Es el día desde el que rige la tasa, y no tiene por qué ser hoy: el
    BCV publica por la tarde la que aplicará el siguiente día hábil. */
-function fechaValor(html) {
+function fechaValor(html: string): string | null {
+  const mContent = html.match(/content=["'](\d{4}-\d{2}-\d{2})T/i);
+  if (mContent) return mContent[1];
+
   const m = html.match(
-    /Fecha\s*Valor[:\s]*[^,<]*,?\s*(\d{1,2})\s+([A-Za-zÁÉÍÓÚáéíóúñÑ]+)\s+(\d{4})/i);
+    /Fecha\s*Valor[:\s]*[^,<]*[,]?\s*(\d{1,2})\s+([A-Za-zÁÉÍÓÚáéíóúñÑ]+)\s+(\d{4})/i);
   if (!m) return null;
   const mes = MESES[m[2].toLowerCase()];
   if (!mes) return null;
   return `${m[3]}-${mes}-${m[1].padStart(2, '0')}`;
 }
 
-/* Lee el valor de un bloque de moneda del portal (#dolar, #euro…) */
-function monedaDelPortal(html, id) {
+/* Lee el valor de un bloque de moneda del portal HTML (#dolar, #euro…) */
+function monedaDelPortal(html: string, id: string): number | null {
   const ventana = html.match(new RegExp(`id=["']${id}["']([\\s\\S]{0,800})`, 'i'));
   if (!ventana) return null;
   const trozo = ventana[1];
 
-  const conStrong = trozo.match(/<strong>\s*([\d.,]+)\s*<\/strong>/i);
+  const conStrong = trozo.match(/<strong[^>]*>\s*([\d.,]+)\s*<\/strong>/i);
   if (conStrong) {
     const t = aNumero(conStrong[1]);
     if (razonable(t)) return t;
@@ -103,7 +99,38 @@ function monedaDelPortal(html, id) {
   return null;
 }
 
-/* ---------------- Fuente 1: el portal del BCV ---------------- */
+/* ---------------- Fuente 1: El portal oficial del BCV leído por intermediario ----------------
+   El certificado de bcv.org.ve suele hacer que la conexión directa falle desde servidores cloud.
+   Este lector descarga el portal oficial directamente y permite leer la última tasa publicada. */
+async function desdePortalIndirecto() {
+  const respuesta = await fetch('https://r.jina.ai/https://www.bcv.org.ve/', {
+    headers: { 'Accept': 'text/plain' },
+    signal: AbortSignal.timeout(25000),
+  });
+  if (!respuesta.ok) throw new Error('El intermediario respondió ' + respuesta.status);
+
+  const texto = await respuesta.text();
+
+  const tras = (etiqueta: string) => {
+    const m = texto.match(new RegExp(etiqueta + '[\\s\\S]{0,120}?([\\d]{1,3}(?:\\.[\\d]{3})*,[\\d]+)', 'i'));
+    return m ? aNumero(m[1]) : null;
+  };
+
+  const usd = tras('USD');
+  if (!razonable(usd)) throw new Error('No se encontró el dólar en el texto del portal');
+
+  return {
+    usd,
+    eur: tras('EUR'),
+    cny: tras('CNY'),
+    try: tras('TRY'),
+    rub: tras('RUB'),
+    fecha: fechaValor(texto) || hoyCaracas(),
+    fuente: 'bcv-portal',
+  };
+}
+
+/* ---------------- Fuente 2: El portal del BCV (conexión directa) ---------------- */
 async function desdeBCV() {
   const respuesta = await fetch('https://www.bcv.org.ve/', {
     headers: {
@@ -123,17 +150,18 @@ async function desdeBCV() {
   return {
     usd,
     eur: monedaDelPortal(html, 'euro'),
+    cny: monedaDelPortal(html, 'yuan'),
+    try: monedaDelPortal(html, 'lira'),
+    rub: monedaDelPortal(html, 'rublo'),
     fecha: fechaValor(html) || hoyCaracas(),
-    fuente: 'bcv',
+    fuente: 'bcv-directo',
   };
 }
 
-/* ---------------- Fuente 2: espejo del BCV ----------------
-   Publica exactamente las monedas del portal y su effective_date, que es
-   la fecha valor. Se sirve como archivo estático, así que sigue en pie
-   cuando el portal del BCV no responde. */
+/* ---------------- Fuente 3: Espejo del BCV (bcv.today) ----------------
+   Publica las monedas del portal y su effective_date (fecha valor). */
 async function desdeEspejo() {
-  const pedir = async url => {
+  const pedir = async (url: string) => {
     const r = await fetch(url, {
       headers: { 'Accept': 'application/json' },
       signal: AbortSignal.timeout(15000),
@@ -144,12 +172,8 @@ async function desdeEspejo() {
     return razonable(usd) ? { d, usd } : null;
   };
 
-  /* El espejo sirve en rate.json "la que rige hoy". Pero el BCV publica
-     por la tarde la del siguiente día hábil, y eso es lo que muestra su
-     portal y lo que la gente compara. Así que primero se pregunta por los
-     próximos días: si ya está publicada, es la que hay que guardar. */
   const base = new Date(Date.now() - 4 * 3600 * 1000);
-  for (let i = 1; i <= 4; i++) {
+  for (let i = 1; i <= 5; i++) {
     const dia = new Date(base.getTime() + i * 86400000).toISOString().slice(0, 10);
     try {
       const futura = await pedir(`https://bcv.today/api/v1/history/${dia}.json`);
@@ -157,57 +181,31 @@ async function desdeEspejo() {
         return {
           usd: futura.usd,
           eur: aNumero(futura.d.EUR),
+          cny: aNumero(futura.d.CNY),
+          try: aNumero(futura.d.TRY),
+          rub: aNumero(futura.d.RUB),
           fecha: futura.d.effective_date || dia,
           fuente: 'bcv-espejo',
         };
       }
-    } catch (e) { /* ese día todavía no existe: se sigue probando */ }
+    } catch { /* continuar si el día aún no existe */ }
   }
 
-  // Nada publicado hacia adelante: la vigente de hoy
   const hoy = await pedir('https://bcv.today/api/v1/rate.json');
   if (!hoy) throw new Error('El espejo no traía una tasa reconocible');
 
   return {
     usd: hoy.usd,
     eur: aNumero(hoy.d.EUR),
+    cny: aNumero(hoy.d.CNY),
+    try: aNumero(hoy.d.TRY),
+    rub: aNumero(hoy.d.RUB),
     fecha: (hoy.d.effective_date || hoy.d.date) || hoyCaracas(),
     fuente: 'bcv-espejo',
   };
 }
 
-/* ---------------- Fuente 1b: el portal, leído por un intermediario ----
-   El certificado de bcv.org.ve suele hacer que la conexión directa falle.
-   Este lector descarga la página desde su servidor y devuelve el texto,
-   con lo que se puede leer el portal aunque no se pueda hablar con él. */
-async function desdePortalIndirecto() {
-  const respuesta = await fetch('https://r.jina.ai/https://www.bcv.org.ve/', {
-    headers: { 'Accept': 'text/plain' },
-    signal: AbortSignal.timeout(25000),
-  });
-  if (!respuesta.ok) throw new Error('El lector respondió ' + respuesta.status);
-
-  const texto = await respuesta.text();
-
-  /* Aquí no hay etiquetas HTML: el texto viene plano, así que se busca la
-     cifra que sigue a cada símbolo de moneda. */
-  const tras = etiqueta => {
-    const m = texto.match(new RegExp(etiqueta + '[\\s\\S]{0,120}?([\\d]{1,3}(?:\\.[\\d]{3})*,[\\d]+)', 'i'));
-    return m ? aNumero(m[1]) : null;
-  };
-
-  const usd = tras('USD');
-  if (!razonable(usd)) throw new Error('No se encontró el dólar en el texto del portal');
-
-  return {
-    usd,
-    eur: tras('EUR'),
-    fecha: fechaValor(texto) || hoyCaracas(),
-    fuente: 'bcv-portal',
-  };
-}
-
-/* ---------------- Fuente 3: republicador ---------------- */
+/* ---------------- Fuente 4: Republicador DolarApi ---------------- */
 async function desdeRepublicador() {
   const respuesta = await fetch('https://ve.dolarapi.com/v1/dolares/oficial', {
     headers: { 'Accept': 'application/json' },
@@ -222,6 +220,9 @@ async function desdeRepublicador() {
   return {
     usd,
     eur: null,
+    cny: null,
+    try: null,
+    rub: null,
     fecha: ((d && d.fechaActualizacion) || '').slice(0, 10) || hoyCaracas(),
     fuente: 'bcv-republicado',
   };
@@ -230,7 +231,7 @@ async function desdeRepublicador() {
 Deno.serve(async (peticion) => {
   if (peticion.method === 'OPTIONS') return new Response('ok', { headers: CORS });
 
-  const primera = (...nombres) => nombres.map(n => Deno.env.get(n)).find(v => v);
+  const primera = (...nombres: string[]) => nombres.map(n => Deno.env.get(n)).find(v => v);
   const URL_PROYECTO   = primera('SUPABASE_URL', 'PROJECT_URL');
   const LLAVE_SERVICIO = primera('SUPABASE_SERVICE_ROLE_KEY', 'SB_SECRET_KEY', 'SERVICE_ROLE_KEY');
 
@@ -238,15 +239,23 @@ Deno.serve(async (peticion) => {
     return responder({ error: 'Faltan las variables del proyecto' }, 500);
   }
 
-  const intentos = [];
-  let r = null;
+  const intentos: Array<{ fuente: string; error: string }> = [];
+  let r: {
+    usd: number;
+    eur: number | null;
+    cny?: number | null;
+    try?: number | null;
+    rub?: number | null;
+    fecha: string;
+    fuente: string;
+  } | null = null;
 
-  for (const fuente of [desdeBCV, desdePortalIndirecto, desdeEspejo, desdeRepublicador]) {
+  for (const fuente of [desdePortalIndirecto, desdeBCV, desdeEspejo, desdeRepublicador]) {
     try {
       r = await fuente();
       break;
     } catch (e) {
-      intentos.push({ fuente: fuente.name, error: e.message });
+      intentos.push({ fuente: fuente.name, error: (e as Error).message });
     }
   }
 
@@ -264,11 +273,17 @@ Deno.serve(async (peticion) => {
     moneda: 'USD', fecha: r.fecha, tasa: r.usd, fuente: r.fuente, obtenida_en: ahora,
   }];
 
-  // El euro solo si la fuente lo trae; no se deduce ni se inventa
   if (razonable(r.eur)) {
-    filas.push({
-      moneda: 'EUR', fecha: r.fecha, tasa: r.eur, fuente: r.fuente, obtenida_en: ahora,
-    });
+    filas.push({ moneda: 'EUR', fecha: r.fecha, tasa: r.eur, fuente: r.fuente, obtenida_en: ahora });
+  }
+  if (razonable(r.cny)) {
+    filas.push({ moneda: 'CNY', fecha: r.fecha, tasa: r.cny, fuente: r.fuente, obtenida_en: ahora });
+  }
+  if (razonable(r.try)) {
+    filas.push({ moneda: 'TRY', fecha: r.fecha, tasa: r.try, fuente: r.fuente, obtenida_en: ahora });
+  }
+  if (razonable(r.rub)) {
+    filas.push({ moneda: 'RUB', fecha: r.fecha, tasa: r.rub, fuente: r.fuente, obtenida_en: ahora });
   }
 
   const { error } = await admin.from('tasas_cambio')
@@ -282,6 +297,9 @@ Deno.serve(async (peticion) => {
     rige_desde_hoy: r.fecha <= hoyCaracas(),
     usd: r.usd,
     eur: razonable(r.eur) ? r.eur : null,
+    cny: razonable(r.cny) ? r.cny : null,
+    try: razonable(r.try) ? r.try : null,
+    rub: razonable(r.rub) ? r.rub : null,
     fuente: r.fuente,
     intentos_fallidos: intentos,
   });

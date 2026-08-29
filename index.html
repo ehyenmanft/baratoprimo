@@ -92,30 +92,48 @@
       <span class="rail__comercio-nombre" id="comercio-actual">—</span>
       <select id="selector-comercio" hidden aria-label="Cambiar de comercio"></select>
     </div>
-    <p class="rail__grupo">Operación</p>
-    <nav class="rail__nav">
-      <a href="#/inicio"      class="rail__link" data-vista="inicio">Inicio</a>
-      <a href="#/ventas"      class="rail__link" data-vista="ventas">Ventas</a>
-      <a href="#/clientes"    class="rail__link" data-vista="clientes">Clientes</a>
-    </nav>
-    <p class="rail__grupo">Almacén</p>
-    <nav class="rail__nav">
-      <a href="#/movimientos" class="rail__link" data-vista="movimientos">Movimientos</a>
-      <a href="#/productos"   class="rail__link" data-vista="productos">Productos</a>
-      <a href="#/graficas"    class="rail__link" data-vista="graficas">Gráficas</a>
-      <a href="#/kardex"      class="rail__link" data-vista="kardex">Kardex</a>
-    </nav>
-    <p class="rail__grupo">Administración</p>
-    <nav class="rail__nav">
-      <a href="#/caja"        class="rail__link" data-vista="caja">Cuadre de caja</a>
-      <a href="#/comercios"   class="rail__link" data-vista="comercios">Comercios</a>
-      <a href="#/comercio"    class="rail__link" data-vista="comercio">Mi comercio</a>
-      <a href="#/operadores"  class="rail__link" data-vista="operadores">Operadores</a>
-    </nav>
+    <div class="rail__cuerpo">
+      <p class="rail__grupo">Operación</p>
+      <nav class="rail__nav">
+        <a href="#/inicio"      class="rail__link" data-vista="inicio">Inicio</a>
+        <a href="#/ventas"      class="rail__link" data-vista="ventas">Ventas</a>
+        <a href="#/clientes"    class="rail__link" data-vista="clientes">Clientes</a>
+      </nav>
+      <p class="rail__grupo">Almacén</p>
+      <nav class="rail__nav">
+        <a href="#/movimientos" class="rail__link" data-vista="movimientos">Movimientos</a>
+        <a href="#/productos"   class="rail__link" data-vista="productos">Productos</a>
+        <a href="#/graficas"    class="rail__link" data-vista="graficas">Gráficas</a>
+        <a href="#/kardex"      class="rail__link" data-vista="kardex">Kardex</a>
+      </nav>
+      <p class="rail__grupo">Administración</p>
+      <nav class="rail__nav">
+        <a href="#/caja"        class="rail__link" data-vista="caja">Cuadre de caja</a>
+        <a href="#/comercios"   class="rail__link" data-vista="comercios">Comercios</a>
+        <a href="#/comercio"    class="rail__link" data-vista="comercio">Mi comercio</a>
+        <a href="#/operadores"  class="rail__link" data-vista="operadores">Operadores</a>
+      </nav>
+    </div>
     <div class="rail__pie">
       <div class="tema" role="group" aria-label="Tema de la interfaz">
-        <button data-tema="claro" type="button">Claro</button>
-        <button data-tema="oscuro" type="button">Oscuro</button>
+        <button data-tema="claro" type="button" aria-label="Modo claro" title="Modo claro">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+        </button>
+        <button data-tema="oscuro" type="button" aria-label="Modo oscuro" title="Modo oscuro">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </button>
       </div>
       <span id="rol-actual" class="rol-marca"></span>
       <span id="usuario-correo" class="rail__usuario"></span>
