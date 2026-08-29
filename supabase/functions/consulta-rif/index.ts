@@ -95,6 +95,73 @@ async function desdeSeniatIntermediario(rif: string) {
   return { ...res, fuente: 'seniat-proxy' };
 }
 
+/* Fuente 3: CNE Registro Electoral para Personas Naturales (V y E) */
+function parsearHtmlCne(html: string, prefijo: string, numero: string) {
+  const mNombre = html.match(/Nombre:<\/b><\/td>\s*<td[^>]*><b>([^<]+)<\/b>/i) ||
+                  html.match(/<b>Nombre:<\/b>[\s\S]*?<b>([^<]+)<\/b>/i) ||
+                  html.match(/Nombre[:\s]*([A-ZÁÉÍÓÚÑ\s]{3,})/i);
+  if (!mNombre) return null;
+
+  const nombre = mNombre[1].trim().replace(/\s+/g, ' ');
+  if (!nombre || nombre.length < 3 || nombre.includes('No se encuentra')) return null;
+
+  const mEstado = html.match(/Estado:<\/b><\/td>\s*<td[^>]*>([^<]+)<\/td>/i);
+  const mMunicipio = html.match(/Municipio:<\/b><\/td>\s*<td[^>]*>([^<]+)<\/td>/i);
+  const mParroquia = html.match(/Parroquia:<\/b><\/td>\s*<td[^>]*>([^<]+)<\/td>/i);
+
+  const direccion = [
+    mParroquia ? mParroquia[1].trim() : '',
+    mMunicipio ? mMunicipio[1].trim() : '',
+    mEstado ? mEstado[1].trim() : '',
+  ].filter(Boolean).join(', ');
+
+  const nac = prefijo.toUpperCase() === 'E' ? 'E' : 'V';
+  const rif = `${nac}${numero}`.toUpperCase();
+  return {
+    encontrado: true,
+    rif,
+    rif_formateado: `${nac}-${numero}`,
+    nombre,
+    tipo_persona: 'natural',
+    es_agente_retencion: false,
+    retencion_iva_porcentaje: 0,
+    retencion_islr_porcentaje: 0,
+    contribuyente_iva: 'SI',
+    direccion: direccion || null,
+    fuente: 'cne-registro-electoral',
+  };
+}
+
+async function desdeCneDirecto(prefijo: string, numero: string) {
+  const nac = prefijo.toUpperCase() === 'E' ? 'E' : 'V';
+  const url = `http://www.cne.gob.ve/web/registro_electoral/ce.php?nac=${nac}&ced=${numero}`;
+  const resp = await fetch(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+    },
+    signal: AbortSignal.timeout(4000),
+  });
+  if (!resp.ok) throw new Error('CNE respondió ' + resp.status);
+  const html = await resp.text();
+  const res = parsearHtmlCne(html, nac, numero);
+  if (!res) throw new Error('Cédula no encontrada en CNE');
+  return res;
+}
+
+async function desdeCneIntermediario(prefijo: string, numero: string) {
+  const nac = prefijo.toUpperCase() === 'E' ? 'E' : 'V';
+  const url = `https://r.jina.ai/http://www.cne.gob.ve/web/registro_electoral/ce.php?nac=${nac}&ced=${numero}`;
+  const resp = await fetch(url, {
+    headers: { 'Accept': 'text/plain' },
+    signal: AbortSignal.timeout(4000),
+  });
+  if (!resp.ok) throw new Error('CNE intermediario respondió ' + resp.status);
+  const html = await resp.text();
+  const res = parsearHtmlCne(html, nac, numero);
+  if (!res) throw new Error('No se pudo parsear CNE desde intermediario');
+  return res;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
 
@@ -117,6 +184,10 @@ Deno.serve(async (req) => {
     return responder({ error: 'Indica un RIF o Cédula válido (ej. V13828612, J000029490)' }, 400);
   }
 
+  const prefijo = rif.slice(0, 1);
+  const numero = rif.slice(1);
+  const esPersonaNatural = prefijo === 'V' || prefijo === 'E';
+
   // 1. Consultar en la base de datos de Supabase (padron_contribuyentes)
   const sbUrl = Deno.env.get('SUPABASE_URL') || '';
   const sbKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_ANON_KEY') || '';
@@ -134,7 +205,7 @@ Deno.serve(async (req) => {
         return responder({
           encontrado: true,
           rif: item.rif,
-          rif_formateado: item.rif_formateado || `${rif.slice(0,1)}-${rif.slice(1)}`,
+          rif_formateado: item.rif_formateado || `${prefijo}-${numero}`,
           nombre: item.nombre,
           es_agente_retencion: !!item.es_agente_retencion,
           retencion_iva_porcentaje: Number(item.retencion_iva_porcentaje || 0),
@@ -148,39 +219,78 @@ Deno.serve(async (req) => {
     } catch (_e) { /* continuar a búsqueda externa */ }
   }
 
-  // 2. Si no está en el padrón, consultar servidores del SENIAT
+  // 2. Si no está en el padrón, consultar según tipo de contribuyente
   const errores: string[] = [];
-  for (const fuente of [desdeSeniatDirecto, desdeSeniatIntermediario]) {
-    try {
-      const datos = await fuente(rif);
-      // Guardar en Supabase para futuras consultas
-      if (sbUrl && sbKey) {
-        try {
-          const supabase = createClient(sbUrl, sbKey);
-          await supabase.from('padron_contribuyentes').upsert({
-            rif: datos.rif,
-            rif_formateado: datos.rif_formateado,
-            nombre: datos.nombre,
-            tipo_persona: ['J', 'G'].includes(datos.rif.slice(0, 1)) ? 'juridica' : 'natural',
-            es_agente_retencion: datos.es_agente_retencion,
-            retencion_iva_porcentaje: datos.retencion_iva_porcentaje,
-            retencion_islr_porcentaje: 0,
-            contribuyente_iva: datos.contribuyente_iva,
-            fuente: 'seniat-live',
-          }, { onConflict: 'rif' });
-        } catch (_err) {}
+
+  if (esPersonaNatural) {
+    // Para personas naturales: consultar CNE (Registro Electoral) y luego SENIAT
+    for (const fuente of [
+      () => desdeCneDirecto(prefijo, numero),
+      () => desdeCneIntermediario(prefijo, numero),
+      () => desdeSeniatDirecto(rif),
+      () => desdeSeniatIntermediario(rif),
+    ]) {
+      try {
+        const datos = await fuente();
+        // Guardar en Supabase para futuras consultas
+        if (sbUrl && sbKey && datos && datos.nombre) {
+          try {
+            const supabase = createClient(sbUrl, sbKey);
+            await supabase.from('padron_contribuyentes').upsert({
+              rif: datos.rif,
+              rif_formateado: datos.rif_formateado,
+              nombre: datos.nombre,
+              tipo_persona: 'natural',
+              es_agente_retencion: datos.es_agente_retencion,
+              retencion_iva_porcentaje: datos.retencion_iva_porcentaje,
+              retencion_islr_porcentaje: 0,
+              contribuyente_iva: datos.contribuyente_iva,
+              direccion: datos.direccion || null,
+              fuente: datos.fuente || 'cne-live',
+            }, { onConflict: 'rif' });
+          } catch (_err) {}
+        }
+        return responder(datos);
+      } catch (e) {
+        errores.push((e as Error).message);
       }
-      return responder(datos);
-    } catch (e) {
-      errores.push(`${fuente.name}: ${(e as Error).message}`);
+    }
+  } else {
+    // Para empresas / entes jurídicos: consultar SENIAT getContribuyente
+    for (const fuente of [
+      () => desdeSeniatDirecto(rif),
+      () => desdeSeniatIntermediario(rif),
+    ]) {
+      try {
+        const datos = await fuente();
+        if (sbUrl && sbKey && datos && datos.nombre) {
+          try {
+            const supabase = createClient(sbUrl, sbKey);
+            await supabase.from('padron_contribuyentes').upsert({
+              rif: datos.rif,
+              rif_formateado: datos.rif_formateado,
+              nombre: datos.nombre,
+              tipo_persona: ['J', 'G'].includes(prefijo) ? 'juridica' : 'natural',
+              es_agente_retencion: datos.es_agente_retencion,
+              retencion_iva_porcentaje: datos.retencion_iva_porcentaje,
+              retencion_islr_porcentaje: 0,
+              contribuyente_iva: datos.contribuyente_iva,
+              fuente: datos.fuente || 'seniat-live',
+            }, { onConflict: 'rif' });
+          } catch (_err) {}
+        }
+        return responder(datos);
+      } catch (e) {
+        errores.push((e as Error).message);
+      }
     }
   }
 
-  // 3. Si no respondió el SENIAT externo
+  // 3. Si no respondió ningún servicio externo
   return responder({
     encontrado: false,
     rif,
-    error: 'Contribuyente no encontrado en el padrón ni en el servidor del SENIAT.',
+    error: 'Contribuyente no encontrado en el padrón ni en los servidores oficiales.',
     detalles: errores,
   }, 404);
 });

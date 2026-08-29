@@ -75,6 +75,63 @@ async function consultarSeniat(rif) {
   });
 }
 
+function parsearHtmlCne(html, prefijo, numero) {
+  const mNombre = html.match(/Nombre:<\/b><\/td>\s*<td[^>]*><b>([^<]+)<\/b>/i) ||
+                  html.match(/<b>Nombre:<\/b>[\s\S]*?<b>([^<]+)<\/b>/i) ||
+                  html.match(/Nombre[:\s]*([A-ZÁÉÍÓÚÑ\s]{3,})/i);
+  if (!mNombre) return null;
+
+  const nombre = mNombre[1].trim().replace(/\s+/g, ' ');
+  if (!nombre || nombre.length < 3 || nombre.includes('No se encuentra')) return null;
+
+  const mEstado = html.match(/Estado:<\/b><\/td>\s*<td[^>]*>([^<]+)<\/td>/i);
+  const mMunicipio = html.match(/Municipio:<\/b><\/td>\s*<td[^>]*>([^<]+)<\/td>/i);
+  const mParroquia = html.match(/Parroquia:<\/b><\/td>\s*<td[^>]*>([^<]+)<\/td>/i);
+
+  const direccion = [
+    mParroquia ? mParroquia[1].trim() : '',
+    mMunicipio ? mMunicipio[1].trim() : '',
+    mEstado ? mEstado[1].trim() : '',
+  ].filter(Boolean).join(', ');
+
+  const nac = prefijo.toUpperCase() === 'E' ? 'E' : 'V';
+  return {
+    encontrado: true,
+    rif: `${nac}${numero}`.toUpperCase(),
+    rif_formateado: `${nac}-${numero}`,
+    nombre,
+    tipo_persona: 'natural',
+    es_agente_retencion: false,
+    retencion_iva_porcentaje: 0,
+    retencion_islr_porcentaje: 0,
+    contribuyente_iva: 'SI',
+    direccion: direccion || null,
+    fuente: 'cne-local-proxy',
+  };
+}
+
+async function consultarCne(prefijo, numero) {
+  const nac = prefijo.toUpperCase() === 'E' ? 'E' : 'V';
+  const target = `http://www.cne.gob.ve/web/registro_electoral/ce.php?nac=${nac}&ced=${numero}`;
+  return new Promise((resolve, reject) => {
+    http.get(target, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      },
+      timeout: 6000,
+    }, (res) => {
+      let data = '';
+      res.on('data', chunk => { data += chunk; });
+      res.on('end', () => {
+        const parsed = parsearHtmlCne(data, nac, numero);
+        if (parsed) resolve(parsed);
+        else reject(new Error('Cédula no encontrada en CNE'));
+      });
+    }).on('error', err => reject(err))
+      .on('timeout', () => reject(new Error('Timeout conectando con CNE')));
+  });
+}
+
 const server = http.createServer(async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', '*');
@@ -91,11 +148,25 @@ const server = http.createServer(async (req, res) => {
     const rawRif = (parsedUrl.query.rif || '').toString().toUpperCase().replace(/[^VEJPG0-9]/g, '');
     if (!rawRif || rawRif.length < 5) {
       res.writeHead(400);
-      return res.end(JSON.stringify({ error: 'RIF inválido' }));
+      return res.end(JSON.stringify({ error: 'RIF o Cédula inválido' }));
     }
 
+    const prefijo = rawRif.slice(0, 1);
+    const numero = rawRif.slice(1);
+    const esNatural = prefijo === 'V' || prefijo === 'E';
+
     try {
-      const datos = await consultarSeniat(rawRif);
+      let datos = null;
+      if (esNatural) {
+        try {
+          datos = await consultarCne(prefijo, numero);
+        } catch (_errCne) {
+          datos = await consultarSeniat(rawRif);
+        }
+      } else {
+        datos = await consultarSeniat(rawRif);
+      }
+
       res.writeHead(200);
       return res.end(JSON.stringify(datos));
     } catch (e) {
@@ -109,6 +180,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PUERTO, () => {
-  console.log(`[BaratoPrimo] Micro-proxy SENIAT activo en http://localhost:${PUERTO}`);
-  console.log(`Prueba: http://localhost:${PUERTO}/consulta?rif=V19273163`);
+  console.log(`[BaratoPrimo] Micro-proxy SENIAT/CNE activo en http://localhost:${PUERTO}`);
+  console.log(`Prueba Persona Natural: http://localhost:${PUERTO}/consulta?rif=V13828612`);
+  console.log(`Prueba Persona Jurídica: http://localhost:${PUERTO}/consulta?rif=J000029490`);
 });
