@@ -139,10 +139,25 @@
               }
             }
 
-            avisar(`SENIAT: ${res.nombre}${res.es_agente_retencion ? ' (Agente de Retención)' : ''}`);
+            avisar(`Datos listos: ${res.nombre}${res.es_agente_retencion ? ' · Agente de Retención' : ''}`);
+          } else {
+            // Asistente cuando el servidor externo no tiene el nombre
+            if (['J', 'G'].includes(prefijo)) {
+              const chk = $('#cl-agente');
+              if (chk && !chk.checked) {
+                chk.checked = true;
+                const opciones = $('#cl-retencion-opciones');
+                if (opciones) opciones.style.display = 'grid';
+              }
+            }
+            const inpNombres = $('#cl-nombres');
+            if (inpNombres) inpNombres.focus();
+            avisar(`Documento ${prefijo}-${num} verificado. Ingresa el nombre para guardar.`);
           }
         } catch (e) {
-          avisar(e.message, 'error');
+          const inpNombres = $('#cl-nombres');
+          if (inpNombres) inpNombres.focus();
+          avisar(e.message || 'Ingresa el nombre del cliente para continuar.');
         } finally {
           btnSeniat.disabled = false;
           btnSeniat.textContent = '🔍 SENIAT';

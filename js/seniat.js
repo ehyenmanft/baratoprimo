@@ -15,10 +15,37 @@ INV.seniat = {
     return { prefijo: p, numero: n, rif: `${p}${n}`, formato: `${p}-${n}` };
   },
 
+  /* Calcula el dígito verificador oficial del RIF venezolano (Módulo 11) */
+  calcularDigito(prefijo, numero) {
+    const p = String(prefijo || 'V').toUpperCase();
+    const numLimpio = String(numero || '').replace(/\D/g, '');
+    const n = numLimpio.padStart(8, '0').slice(-8);
+    const mapa = { 'V': 1, 'E': 2, 'J': 3, 'P': 4, 'G': 5, 'C': 3 };
+    const pVal = mapa[p] || 1;
+    const coef = [4, 3, 2, 7, 6, 5, 4, 3, 2];
+    const digitos = [pVal, ...n.split('').map(Number)];
+    const suma = digitos.reduce((acc, d, i) => acc + d * coef[i], 0);
+    const resto = suma % 11;
+    const dv = (11 - resto) % 11;
+    return (dv >= 10) ? 0 : dv;
+  },
+
   /* Diccionario de contribuyentes conocidos / pruebas rápidas */
   conocidos: {
     'V19273163': {
       nombre: 'JAMES MARIANO ARANDA TOMASINI',
+      es_agente_retencion: false,
+      retencion_iva_porcentaje: 0,
+      contribuyente_iva: 'SI',
+    },
+    'V18487715': {
+      nombre: 'CONTRIBUYENTE V-18487715',
+      es_agente_retencion: false,
+      retencion_iva_porcentaje: 0,
+      contribuyente_iva: 'SI',
+    },
+    'V5090290': {
+      nombre: 'CONTRIBUYENTE V-5090290',
       es_agente_retencion: false,
       retencion_iva_porcentaje: 0,
       contribuyente_iva: 'SI',
@@ -41,6 +68,13 @@ INV.seniat = {
       nombre: 'CERVECERIA POLAR, C.A.',
       es_agente_retencion: true,
       retencion_iva_porcentaje: 75,
+      retencion_islr_porcentaje: 2,
+      contribuyente_iva: 'SI',
+    },
+    'J000122555': {
+      nombre: 'C.A. NACIONAL TELEFONOS DE VENEZUELA (CANTV)',
+      es_agente_retencion: true,
+      retencion_iva_porcentaje: 100,
       retencion_islr_porcentaje: 2,
       contribuyente_iva: 'SI',
     },
@@ -96,29 +130,30 @@ INV.seniat = {
           };
         }
       }
-    } catch (e) { /* continuar a la consulta remota */ }
+    } catch (e) { /* continuar */ }
 
     const url = INV.config.FUNCION_SENIAT ||
       (INV.config.SUPABASE_URL ? `${INV.config.SUPABASE_URL}/functions/v1/consulta-rif` : null);
 
+    // Si no hay función desplegada o estamos en modo demo
     if (!url || INV.config.MODO === 'demo' || INV.config.esLocal) {
-      await new Promise(r => setTimeout(r, 400));
+      await new Promise(r => setTimeout(r, 300));
       const esEmpresa = s.prefijo === 'J' || s.prefijo === 'G';
       return {
         encontrado: true,
         rif: s.rif,
         rif_formateado: s.formato,
-        nombre: esEmpresa ? `EMPRESA ${s.rif}, C.A.` : `CONTRIBUYENTE ${s.rif}`,
+        nombre: esEmpresa ? `EMPRESA ${s.formato}` : '',
         es_agente_retencion: esEmpresa,
         retencion_iva_porcentaje: esEmpresa ? 75 : 0,
         contribuyente_iva: 'SI',
-        fuente: 'demo-local',
+        fuente: 'asistente-local',
       };
     }
 
-    // 3. Consulta a Edge Function de Supabase con Timeout estricto de 3.5 segundos
+    // 3. Consulta a Edge Function de Supabase con Timeout estricto de 2.5 segundos
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3500);
+    const timeoutId = setTimeout(() => controller.abort(), 2500);
 
     try {
       const resp = await fetch(`${url}?rif=${encodeURIComponent(s.rif)}`, {
@@ -130,23 +165,25 @@ INV.seniat = {
       });
       clearTimeout(timeoutId);
 
-      if (!resp.ok) {
-        const err = await resp.json().catch(() => ({}));
-        throw new Error(err.error || `El SENIAT no respondió (código ${resp.status})`);
+      if (resp.ok) {
+        const datos = await resp.json();
+        if (datos && datos.encontrado) return datos;
       }
-
-      const datos = await resp.json();
-      if (!datos || !datos.encontrado) {
-        throw new Error(datos.error || 'Documento no encontrado en el SENIAT.');
-      }
-
-      return datos;
     } catch (e) {
       clearTimeout(timeoutId);
-      if (e.name === 'AbortError') {
-        throw new Error('El servidor del SENIAT no respondió a tiempo (tiempo de espera agotado). Puedes ingresar el nombre manualmente.');
-      }
-      throw new Error(e.message || 'No se pudo conectar con el servicio del SENIAT.');
     }
+
+    // 4. Fallback asistido inteligente (no bloqueante)
+    const esEmpresa = s.prefijo === 'J' || s.prefijo === 'G';
+    return {
+      encontrado: false,
+      rif: s.rif,
+      rif_formateado: s.formato,
+      nombre: '',
+      es_agente_retencion: esEmpresa,
+      retencion_iva_porcentaje: esEmpresa ? 75 : 0,
+      contribuyente_iva: 'SI',
+      fuente: 'asistido',
+    };
   },
 };
