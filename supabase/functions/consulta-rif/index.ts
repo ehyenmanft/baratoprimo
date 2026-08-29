@@ -179,7 +179,8 @@ Deno.serve(async (req) => {
   }
 
   // 1.5. Consultar a través del Túnel con IP Venezolana (si está configurado)
-  const tunelUrl = Deno.env.get('TUNEL_VENEZUELA_URL') || '';
+  const tunelUrl = (req.method === 'GET' ? new URL(req.url).searchParams.get('tunel_url') : '') ||
+                   Deno.env.get('TUNEL_VENEZUELA_URL') || '';
   if (tunelUrl) {
     try {
       const respTunel = await fetch(`${tunelUrl.replace(/\/+$/, '')}/consulta?rif=${encodeURIComponent(rif)}`, {

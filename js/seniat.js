@@ -244,29 +244,48 @@ INV.seniat = {
       }
     } catch (e) { /* continuar */ }
 
-    // Nivel 2: Túnel con IP Venezolana (localhost:3030 o TUNEL_VENEZUELA_URL)
-    const urlTunel = (INV.config && INV.config.TUNEL_VENEZUELA_URL) ? INV.config.TUNEL_VENEZUELA_URL : 'http://localhost:3030';
-    try {
-      const respLocal = await fetch(`${urlTunel.replace(/\/+$/, '')}/consulta?rif=${encodeURIComponent(s.rif)}`, {
-        signal: AbortSignal.timeout(2000),
-      });
-      if (respLocal.ok) {
-        const dLocal = await respLocal.json();
-        if (dLocal && dLocal.encontrado && dLocal.nombre) {
-          if (INV.db && INV.db.padron) INV.db.padron.guardar(dLocal).catch(() => {});
-          return { ...dLocal, coinciden: true };
+    // Nivel 2: Túnel Seguro HTTPS con IP Venezolana (si está configurado)
+    const urlTunel = INV.config && INV.config.TUNEL_VENEZUELA_URL;
+    if (urlTunel) {
+      try {
+        const respTunel = await fetch(`${urlTunel.replace(/\/+$/, '')}/consulta?rif=${encodeURIComponent(s.rif)}`, {
+          signal: AbortSignal.timeout(3000),
+        });
+        if (respTunel.ok) {
+          const dTunel = await respTunel.json();
+          if (dTunel && dTunel.encontrado && dTunel.nombre) {
+            if (INV.db && INV.db.padron) INV.db.padron.guardar(dTunel).catch(() => {});
+            return { ...dTunel, coinciden: true };
+          }
         }
-      }
-    } catch (e) { /* continuar */ }
+      } catch (e) { /* continuar */ }
+    } else if (location.protocol === 'http:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+      // Si corre en localhost, consultar directamente al puerto 3030
+      try {
+        const respLocal = await fetch(`http://localhost:3030/consulta?rif=${encodeURIComponent(s.rif)}`, {
+          signal: AbortSignal.timeout(1500),
+        });
+        if (respLocal.ok) {
+          const dLocal = await respLocal.json();
+          if (dLocal && dLocal.encontrado && dLocal.nombre) {
+            if (INV.db && INV.db.padron) INV.db.padron.guardar(dLocal).catch(() => {});
+            return { ...dLocal, coinciden: true };
+          }
+        }
+      } catch (e) { /* continuar */ }
+    }
 
-    // Nivel 3: Cloud Edge Function en Supabase (con validación dual CNE / SENIAT)
+    // Nivel 3: Cloud Edge Function en Supabase (con reenvío de túnel y validación dual CNE / SENIAT)
     const url = INV.config.FUNCION_SENIAT ||
       (INV.config.SUPABASE_URL ? `${INV.config.SUPABASE_URL}/functions/v1/consulta-rif` : null);
 
     if (url && INV.config.MODO !== 'demo' && !INV.config.esLocal) {
       try {
-        const resp = await fetch(`${url}?rif=${encodeURIComponent(s.rif)}`, {
-          signal: AbortSignal.timeout(3500),
+        const params = new URLSearchParams({ rif: s.rif });
+        if (urlTunel) params.set('tunel_url', urlTunel);
+
+        const resp = await fetch(`${url}?${params.toString()}`, {
+          signal: AbortSignal.timeout(4000),
           headers: {
             'apikey': INV.config.SUPABASE_ANON || '',
             'Content-Type': 'application/json',
