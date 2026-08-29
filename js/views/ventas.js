@@ -670,10 +670,11 @@
 
   function pintarCliente() {
     const caja = $('#vn-datos-cliente');
-    const c = clientes.find(x => String(x.id) === $('#vn-cliente').value);
+    if (!caja) return;
+    const selectCliente = $('#vn-cliente');
+    const c = selectCliente ? clientes.find(x => String(x.id) === selectCliente.value) : null;
     if (!c) {
       caja.hidden = true;
-      pintarRenglones();
       return;
     }
     caja.hidden = false;
@@ -698,12 +699,14 @@
         <div class="datos__etiqueta">Dirección</div>
         <div class="datos__valor" style="font-size:13px; font-weight:400">${esc(c.direccion ?? 'No registrada')}</div>
       </div>`;
-    pintarRenglones();
   }
 
   function agregarRenglon() {
-    const id = Number($('#vn-producto').value);
-    const cant = Number($('#vn-cantidad').value);
+    const elProd = $('#vn-producto');
+    const elCant = $('#vn-cantidad');
+    if (!elProd || !elCant) return;
+    const id = Number(elProd.value);
+    const cant = Number(elCant.value);
     const p = catalogo.find(x => x.producto_id === id);
 
     if (!cant || cant <= 0) return avisar('Indica una cantidad mayor que cero', 'error');
@@ -727,7 +730,7 @@
       stock: Number(p.stock),
     });
 
-    $('#vn-cantidad').value = 1;
+    elCant.value = 1;
     pintarRenglones();
   }
 
@@ -737,25 +740,41 @@
   let monedaAnterior = null;
 
   function ajustarCamposPago() {
-    const m = metodo($('#pg-metodo').value);
-    $('#pg-caja-ref').hidden = !m.ref;
-    $('#pg-caja-detalle').hidden = !m.detalle;
-    $('#pg-caja-tasa').hidden = m.moneda === 'VES' || m.credito;
-    $('#pg-caja-monto').hidden = !!m.credito;
-    $('#pg-credito').hidden = !m.credito;
-    $('#pg-agregar').textContent = m.credito
-      ? (plan ? 'Actualizar el crédito' : 'Establecer crédito')
-      : 'Agregar pago';
+    const elMetodo = $('#pg-metodo');
+    if (!elMetodo) return;
+    const m = metodo(elMetodo.value);
+    const cajaRef = $('#pg-caja-ref');
+    const cajaDetalle = $('#pg-caja-detalle');
+    const cajaTasa = $('#pg-caja-tasa');
+    const cajaMonto = $('#pg-caja-monto');
+    const cajaCredito = $('#pg-credito');
+    const btnAgregar = $('#pg-agregar');
 
-    if (m.retencion) {
-      $('#pg-caja-ref').querySelector('span').textContent = 'N.° Comprobante Retención';
-      $('#pg-referencia').placeholder = 'Comprobante';
-      $('#pg-referencia').maxLength = 20;
+    if (cajaRef) cajaRef.hidden = !m.ref;
+    if (cajaDetalle) cajaDetalle.hidden = !m.detalle;
+    if (cajaTasa) cajaTasa.hidden = m.moneda === 'VES' || m.credito;
+    if (cajaMonto) cajaMonto.hidden = !m.credito;
+    if (cajaCredito) cajaCredito.hidden = !m.credito;
+    if (btnAgregar) {
+      btnAgregar.textContent = m.credito
+        ? (plan ? 'Actualizar el crédito' : 'Establecer crédito')
+        : 'Agregar pago';
+    }
+
+    if (m.retencion && cajaRef) {
+      const spanRef = cajaRef.querySelector('span');
+      if (spanRef) spanRef.textContent = 'N.° Comprobante Retención';
+      const inpRef = $('#pg-referencia');
+      if (inpRef) {
+        inpRef.placeholder = 'Comprobante';
+        inpRef.maxLength = 20;
+      }
 
       // Autocompletar el monto de retención si el cliente es agente
-      const c = clientes.find(x => String(x.id) === $('#vn-cliente').value);
-      const tasaIva = Number($('#vn-iva').value || 0);
-      const inc = $('#vn-incluido').value === 'si';
+      const selectCliente = $('#vn-cliente');
+      const c = selectCliente ? clientes.find(x => String(x.id) === selectCliente.value) : null;
+      const tasaIva = Number(($('#vn-iva') || {}).value || 0);
+      const inc = ($('#vn-incluido') || {}).value === 'si';
       const retIvaPct = (c && c.es_agente_retencion) ? Number(c.retencion_iva_porcentaje || 75) : 0;
       const retIslrPct = (c && c.es_agente_retencion) ? Number(c.retencion_islr_porcentaje || 0) : 0;
       const calc = calcular(renglones, tasaIva, inc, retIvaPct, retIslrPct);
@@ -765,43 +784,52 @@
       } else if (m.id === 'retencion_islr' && calc.retencion_islr_monto > 0) {
         INV.ui.fijarMonto('#pg-monto', calc.retencion_islr_monto);
       }
-    } else if (m.ref) {
-      $('#pg-caja-ref').querySelector('span').textContent = 'Referencia — últimos 6';
-      $('#pg-referencia').placeholder = '000000';
-      $('#pg-referencia').maxLength = 6;
+    } else if (m.ref && cajaRef) {
+      const spanRef = cajaRef.querySelector('span');
+      if (spanRef) spanRef.textContent = 'Referencia — últimos 6';
+      const inpRef = $('#pg-referencia');
+      if (inpRef) {
+        inpRef.placeholder = '000000';
+        inpRef.maxLength = 6;
+      }
     }
 
     if (m.credito) {
-      if (!$('#cr-tasa').value) $('#cr-tasa').value = tasasPorDefecto().USD || '';
-      if (!$('#cr-primera').value) {
+      const elCrTasa = $('#cr-tasa');
+      const elCrPrimera = $('#cr-primera');
+      if (elCrTasa && !elCrTasa.value) elCrTasa.value = tasasPorDefecto().USD || '';
+      if (elCrPrimera && !elCrPrimera.value) {
         const d = new Date();
         d.setDate(d.getDate() + 30);
-        $('#cr-primera').value = d.toISOString().slice(0, 10);
+        elCrPrimera.value = d.toISOString().slice(0, 10);
       }
       previaCredito();
     }
 
-    if (m.moneda !== 'VES') {
+    if (m.moneda !== 'VES' && cajaTasa) {
       const tasas = tasasPorDefecto();
-      if (monedaAnterior !== m.moneda) {
-        $('#pg-tasa').value = tasas[m.moneda] || '';
+      const elPgTasa = $('#pg-tasa');
+      if (elPgTasa && monedaAnterior !== m.moneda) {
+        elPgTasa.value = tasas[m.moneda] || '';
       }
-      $('#pg-caja-tasa').querySelector('span').textContent = `Tasa ${m.moneda} → Bs`;
-      $('#pg-tasa').placeholder = tasas[m.moneda] ? '' : 'Sin tasa configurada';
+      const spanTasa = cajaTasa.querySelector('span');
+      if (spanTasa) spanTasa.textContent = `Tasa ${m.moneda} → Bs`;
+      if (elPgTasa) elPgTasa.placeholder = tasas[m.moneda] ? '' : 'Sin tasa configurada';
     }
     monedaAnterior = m.moneda;
-    $('#pg-monto').placeholder = m.moneda === 'VES' ? '0,00' : '0,00 ' + m.moneda;
+    const elPgMonto = $('#pg-monto');
+    if (elPgMonto) elPgMonto.placeholder = m.moneda === 'VES' ? '0,00' : '0,00 ' + m.moneda;
     equivalenteDelPago();
   }
 
-  /* El monto del pago se ve en la otra moneda mientras se escribe. Ojo:
-     aquí la moneda la fija la forma de pago, no el catálogo — quien cobra
-     en efectivo USD escribe dólares aunque el catálogo esté en bolívares. */
+  /* El monto del pago se ve en la otra moneda mientras se escribe. */
   function equivalenteDelPago() {
     const salida = $('#pg-monto-eq');
     if (!salida || !INV.tasas) return;
 
-    const m = metodo($('#pg-metodo').value);
+    const elMetodo = $('#pg-metodo');
+    if (!elMetodo) return;
+    const m = metodo(elMetodo.value);
     const monto = INV.ui.leerMonto('#pg-monto');
     if (!monto) { salida.textContent = ''; return; }
 
@@ -812,7 +840,8 @@
     }
 
     // El monto está en divisa: se convierte con la tasa del propio pago
-    const tasa = Number($('#pg-tasa').value || 0) || INV.tasas.usd();
+    const elTasa = $('#pg-tasa');
+    const tasa = Number((elTasa ? elTasa.value : 0) || 0) || INV.tasas.usd();
     salida.textContent = tasa > 0
       ? '= ' + numero(Math.round(monto * tasa * 100) / 100) + ' Bs'
       : '';
@@ -821,55 +850,58 @@
   /* Total de la venta, que es la base sobre la que se calcula el
      porcentaje de la inicial. */
   function totalDeLaVenta() {
-    const c = clientes.find(x => String(x.id) === $('#vn-cliente').value);
+    const selectCliente = $('#vn-cliente');
+    const c = selectCliente ? clientes.find(x => String(x.id) === selectCliente.value) : null;
     const retIvaPct = (c && c.es_agente_retencion) ? Number(c.retencion_iva_porcentaje || 75) : 0;
     const retIslrPct = (c && c.es_agente_retencion) ? Number(c.retencion_islr_porcentaje || 0) : 0;
-    return calcular(renglones, Number($('#vn-iva').value || 0),
-                    $('#vn-incluido').value === 'si', retIvaPct, retIslrPct).total;
+    const tasa = Number(($('#vn-iva') || {}).value || 0);
+    const inc = ($('#vn-incluido') || {}).value === 'si';
+    return calcular(renglones, tasa, inc, retIvaPct, retIslrPct).total;
   }
 
-  /* La inicial también se ve en dólares: el cliente suele pensar el
-     enganche en divisa aunque pague en bolívares. */
+  /* La inicial también se ve en dólares */
   function equivalenteInicial() {
     const salida = $('#cr-inicial-eq');
     if (!salida) return;
     const monto = INV.ui.leerMonto('#cr-inicial');
-    const tasa = Number($('#cr-tasa').value || 0) || (INV.tasas ? INV.tasas.usd() : 0);
+    const elCrTasa = $('#cr-tasa');
+    const tasa = Number((elCrTasa ? elCrTasa.value : 0) || 0) || (INV.tasas ? INV.tasas.usd() : 0);
     salida.textContent = (monto > 0 && tasa > 0)
       ? '= ' + numero(redondear(monto / tasa)) + ' $'
       : '';
   }
 
-  /* Reparte el saldo financiado entre las cuotas: saldo ÷ número de cuotas.
-     Ese resultado es el MÍNIMO que hay que abonar en cada vencimiento; el
-     cliente puede pagar de más y el excedente adelanta las siguientes. El
-     redondeo sobrante se carga en la última para que la suma cuadre al
-     céntimo. */
   function calcularPlan() {
-    const tasa = Number($('#cr-tasa').value);
-    const inicial = INV.ui.leerMonto('#cr-inicial');
-    const n = Math.max(1, Math.round(Number($('#cr-cuotas').value || 1)));
-    const dias = Number($('#cr-frecuencia').value);
-    const primera = $('#cr-primera').value;
+    const elCrTasa = $('#cr-tasa');
+    const elCrCuotas = $('#cr-cuotas');
+    const elCrFrecuencia = $('#cr-frecuencia');
+    const elCrPrimera = $('#cr-primera');
+    const elCrRecargo = $('#cr-recargo');
 
-    const c = clientes.find(x => String(x.id) === $('#vn-cliente').value);
+    const tasa = Number((elCrTasa ? elCrTasa.value : 0) || 0);
+    const inicial = INV.ui.leerMonto('#cr-inicial');
+    const n = Math.max(1, Math.round(Number((elCrCuotas ? elCrCuotas.value : 1) || 1)));
+    const dias = Number((elCrFrecuencia ? elCrFrecuencia.value : 30) || 30);
+    const primera = elCrPrimera ? elCrPrimera.value : '';
+
+    const selectCliente = $('#vn-cliente');
+    const c = selectCliente ? clientes.find(x => String(x.id) === selectCliente.value) : null;
     const retIvaPct = (c && c.es_agente_retencion) ? Number(c.retencion_iva_porcentaje || 75) : 0;
     const retIslrPct = (c && c.es_agente_retencion) ? Number(c.retencion_islr_porcentaje || 0) : 0;
-    const calc = calcular(renglones, Number($('#vn-iva').value || 0),
-                          $('#vn-incluido').value === 'si', retIvaPct, retIslrPct);
+    const tasaIva = Number(($('#vn-iva') || {}).value || 0);
+    const inc = ($('#vn-incluido') || {}).value === 'si';
+    const calc = calcular(renglones, tasaIva, inc, retIvaPct, retIslrPct);
     const totalVenta = calc.total;
 
-    // Lo que ya se cobró con otras formas de pago no se financia.
     const otros = pagos.filter(p => p.metodo !== 'credito')
                        .reduce((s, p) => s + Number(p.monto_local), 0);
     const financiado = redondear(totalVenta - otros - inicial);
 
     if (!tasa || tasa <= 0) return { error: 'Indica la tasa de referencia en dólares.' };
     if (!primera) return { error: 'Indica la fecha de la primera cuota.' };
-    // Una inicial de cero es válida: se financia el total.
     if (financiado <= 0) return { error: 'La inicial ya cubre el total: no hay nada que financiar.' };
 
-    const recargoPct = Math.min(100, Math.max(0, Number($('#cr-recargo').value || 0)));
+    const recargoPct = Math.min(100, Math.max(0, Number((elCrRecargo ? elCrRecargo.value : 0) || 0)));
     const financiadoSinRecargo = redondear(financiado / tasa);
     const recargoUsd = redondear(financiadoSinRecargo * recargoPct / 100);
     const financiadoUsd = redondear(financiadoSinRecargo + recargoUsd);
@@ -889,7 +921,6 @@
       inicial, tasa, financiado, financiadoUsd, cuotas, totalVenta,
       minimoUsd: base, periodoDias: dias, n,
       recargoPct, recargoUsd, financiadoSinRecargo,
-      // Lo que el cliente termina pagando: inicial + cuotas con recargo
       aPagarUsd: redondear((inicial / tasa) + financiadoUsd),
     };
   }
@@ -897,6 +928,7 @@
   function previaCredito() {
     const r = calcularPlan();
     const caja = $('#cr-previa');
+    if (!caja) return;
     if (r.error) {
       caja.innerHTML = `<p class="subida__nota" style="margin-top:12px">${esc(r.error)}</p>`;
       return;
@@ -949,20 +981,24 @@
 
   function agregarPago() {
     const err = $('#pg-error');
-    err.hidden = true;
+    if (err) err.hidden = true;
 
-    const m = metodo($('#pg-metodo').value);
+    const elMetodo = $('#pg-metodo');
+    if (!elMetodo) return;
+    const m = metodo(elMetodo.value);
     const monto = INV.ui.leerMonto('#pg-monto');
-    const referencia = $('#pg-referencia').value.trim();
-    const detalle = $('#pg-detalle').value.trim();
-    const tasa = m.moneda === 'VES' ? 1 : Number($('#pg-tasa').value);
+    const referencia = ($('#pg-referencia') || {}).value ? $('#pg-referencia').value.trim() : '';
+    const detalle = ($('#pg-detalle') || {}).value ? $('#pg-detalle').value.trim() : '';
+    const tasa = m.moneda === 'VES' ? 1 : Number(($('#pg-tasa') || {}).value || 0);
 
-    const fallar = texto => { err.textContent = texto; err.hidden = false; };
+    const fallar = texto => {
+      if (err) { err.textContent = texto; err.hidden = false; }
+      else avisar(texto, 'error');
+    };
 
     if (m.credito) {
       const r = calcularPlan();
       if (r.error) return fallar(r.error);
-      // Solo puede haber un plan de crédito por venta
       pagos = pagos.filter(p => p.metodo !== 'credito');
       plan = r;
       if (r.inicial > 0) {
@@ -995,19 +1031,24 @@
     });
 
     INV.ui.fijarMonto('#pg-monto', 0);
-    $('#pg-referencia').value = '';
-    $('#pg-detalle').value = '';
+    const inpRef = $('#pg-referencia');
+    if (inpRef) inpRef.value = '';
+    const inpDet = $('#pg-detalle');
+    if (inpDet) inpDet.value = '';
     pintarRenglones();
   }
 
   function pintarPagos(total, r = null) {
+    const contPagos = $('#vn-pagos');
+    if (!contPagos) return;
+
     const netoCobrar = (r && r.hay_retencion) ? r.monto_neto_cobrar : total;
     const pagado = redondear(pagos.reduce((s, p) => s + Number(p.monto_local), 0));
     const tieneRetencionRegistrada = pagos.some(p => p.metodo === 'retencion_iva' || p.metodo === 'retencion_islr');
     const baseObjetivo = tieneRetencionRegistrada ? total : netoCobrar;
     const diferencia = redondear(baseObjetivo - pagado);
 
-    $('#vn-pagos').innerHTML = `
+    contPagos.innerHTML = `
       ${pagos.length ? `
       <div class="lista lista--pago">
         ${pagos.map((p, i) => `
@@ -1101,14 +1142,19 @@
   }
 
   function pintarRenglones() {
-    const tasa = Number($('#vn-iva').value || 0);
-    const incluido = $('#vn-incluido').value === 'si';
-    const c = clientes.find(x => String(x.id) === $('#vn-cliente').value);
+    const contRenglones = $('#vn-renglones');
+    const contTotales = $('#vn-totales');
+    if (!contRenglones || !contTotales) return;
+
+    const tasa = Number(($('#vn-iva') || {}).value || 0);
+    const incluido = ($('#vn-incluido') || {}).value === 'si';
+    const selectCliente = $('#vn-cliente');
+    const c = selectCliente ? clientes.find(x => String(x.id) === selectCliente.value) : null;
     const retIvaPct = (c && c.es_agente_retencion) ? Number(c.retencion_iva_porcentaje || 75) : 0;
     const retIslrPct = (c && c.es_agente_retencion) ? Number(c.retencion_islr_porcentaje || 0) : 0;
     const r = calcular(renglones, tasa, incluido, retIvaPct, retIslrPct);
 
-    $('#vn-renglones').innerHTML = renglones.length ? `
+    contRenglones.innerHTML = renglones.length ? `
       <div class="lista lista--ren">
         ${r.items.map((it, i) => `
           <div class="lista__item" style="--i:${i}">
@@ -1133,7 +1179,7 @@
       </div>`
       : '<div class="vacio" style="padding:32px"><h4>Sin renglones</h4><p>Agrega productos para armar la venta.</p></div>';
 
-    $('#vn-totales').innerHTML = `
+    contTotales.innerHTML = `
       <div class="totales">
         ${r.hay_exentos ? `
           <div class="totales__fila">
@@ -1188,7 +1234,6 @@
       pintarRenglones();
     }));
 
-    // El total cambió: hay que recalcular lo que falta por cobrar.
     pintarPagos(r.total, r);
   }
 
