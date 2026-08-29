@@ -17,11 +17,49 @@
   async function mostrarApp(s) {
     $('#pantalla-acceso').hidden = true;
     $('#pantalla-app').hidden = false;
-    $('#usuario-correo').textContent = s.user.email;
-    await prepararSesion(s.user.email);
+    const correo = s.user.email;
+    $('#usuario-correo').textContent = correo;
+    await prepararSesion(correo);
     if (!location.hash) location.hash = '#/inicio';
     enrutar();
     revisarAlertas();
+
+    /* ---- Popup de bienvenida ---- */
+    try {
+      const dato = await INV.db.operadores.datoDe(correo);
+      if (dato && dato.nombre) {
+        const nombre = dato.nombre.split(' ')[0]; // primer nombre
+        const hora = new Date().getHours();
+        const saludo = hora < 12 ? 'Buenos días' : hora < 18 ? 'Buenas tardes' : 'Buenas noches';
+
+        let ultimaVez = '';
+        if (dato.ultimo_acceso) {
+          const fecha = new Date(dato.ultimo_acceso);
+          ultimaVez = fecha.toLocaleString('es', {
+            weekday: 'long', day: '2-digit', month: 'long',
+            hour: '2-digit', minute: '2-digit',
+          });
+        }
+
+        const el = document.createElement('div');
+        el.className = 'bienvenida';
+        el.innerHTML =
+          `<div class="bienvenida__caja">` +
+          `<span class="bienvenida__emoji">👋</span>` +
+          `<p class="bienvenida__saludo">${saludo},</p>` +
+          `<p class="bienvenida__nombre">${INV.ui.esc(nombre)}</p>` +
+          (ultimaVez
+            ? `<p class="bienvenida__ultimo">Última conexión: ${INV.ui.esc(ultimaVez)}</p>`
+            : `<p class="bienvenida__ultimo">¡Es tu primera conexión!</p>`) +
+          `</div>`;
+        el.addEventListener('click', () => el.remove());
+        document.body.append(el);
+        setTimeout(() => { if (el.parentNode) el.remove(); }, 4500);
+
+        // Registrar este acceso para la próxima vez
+        INV.db.operadores.registrarAcceso(correo).catch(() => {});
+      }
+    } catch (e) { /* El saludo es decorativo: si falla no pasa nada */ }
   }
 
   /* Resuelve el rol del operador y ajusta menú y permisos. */
@@ -443,8 +481,22 @@
     });
 
     $('#btn-salir').addEventListener('click', async () => {
-      await INV.db.sesion.salir();
+      const btn = $('#btn-salir');
+      btn.disabled = true;
+      btn.textContent = 'Saliendo…';
+      cerrarMenu();
+      try {
+        await INV.db.sesion.salir();
+      } catch (e) {
+        console.warn('[BaratoPrimo] Error al cerrar sesión:', e.message);
+      }
       location.hash = '';
+      // Limpiar campos del formulario de acceso
+      $('#acceso-email').value = '';
+      $('#acceso-clave').value = '';
+      $('#acceso-error').hidden = true;
+      btn.disabled = false;
+      btn.textContent = 'Cerrar sesión';
       mostrarAcceso();
     });
 

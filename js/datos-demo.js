@@ -846,6 +846,19 @@
         operadorActivo = o || null;
         return o ? o.rol : null;
       },
+
+      datoDe: async correo => {
+        const o = bd.operadores.find(x =>
+          x.activo && x.correo.toLowerCase() === String(correo).toLowerCase());
+        if (!o) return null;
+        return { nombre: o.nombre, rol: o.rol, ultimo_acceso: o.ultimo_acceso || null };
+      },
+
+      registrarAcceso: async correo => {
+        const o = bd.operadores.find(x =>
+          x.activo && x.correo.toLowerCase() === String(correo).toLowerCase());
+        if (o) { o.ultimo_acceso = new Date().toISOString(); persistir(); }
+      },
     },
 
     tasas: {

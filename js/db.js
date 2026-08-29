@@ -266,6 +266,25 @@
         if (error || !data || !data.length) return null;
         return data[0].rol;
       },
+      /* Devuelve nombre, rol y último acceso del operador, para el saludo
+         de bienvenida al iniciar sesión. */
+      datoDe: async correo => {
+        const { data, error } = await sb.from('operadores')
+          .select('nombre, rol, ultimo_acceso')
+          .eq('activo', true).ilike('correo', correo).limit(1);
+        if (error || !data || !data.length) return null;
+        return data[0];
+      },
+      /* Marca el momento actual como último acceso del operador.
+         Si la columna no existe todavía (la migración no se ha corrido),
+         el error se silencia: el saludo funciona igual, solo sin fecha. */
+      registrarAcceso: async correo => {
+        try {
+          await sb.from('operadores')
+            .update({ ultimo_acceso: new Date().toISOString() })
+            .ilike('correo', correo);
+        } catch (e) { /* columna puede no existir aún */ }
+      },
     },
 
     tasas: {
