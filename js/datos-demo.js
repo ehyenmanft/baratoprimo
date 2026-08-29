@@ -26,10 +26,10 @@
       ],
       movimientos: generarMovimientos(ahora),
       clientes: [
-        { id:1, comercio_id:1, nombres:'María Fernanda', apellidos:'Rodríguez Salas', tipo_documento:'V', documento:'18456321', telefono:'0414-5567890', direccion:'Av. Bolívar, Res. El Parque, Torre A, Apt 5-B, Caracas', activo:true },
-        { id:2, comercio_id:1, nombres:'Distribuidora Andina', apellidos:'C.A.', tipo_documento:'J', documento:'403118225', telefono:'0212-7789012', direccion:'Zona Industrial La Yaguara, Galpón 14, Caracas', activo:true },
-        { id:3, comercio_id:1, nombres:'Carlos Eduardo', apellidos:'Mendoza Pérez', tipo_documento:'V', documento:'12987654', telefono:'0424-3312098', direccion:'Calle Sucre, Casa 22, Los Teques', activo:true },
-        { id:4, comercio_id:1, nombres:'Giuseppe', apellidos:'Rinaldi', tipo_documento:'E', documento:'82345671', telefono:'0416-8890123', direccion:'Urb. La Trinidad, Qta. Milano, Caracas', activo:true },
+        { id:1, comercio_id:1, nombres:'María Fernanda', apellidos:'Rodríguez Salas', tipo_documento:'V', documento:'18456321', telefono:'0414-5567890', direccion:'Av. Bolívar, Res. El Parque, Torre A, Apt 5-B, Caracas', activo:true, es_agente_retencion:false, retencion_iva_porcentaje:75, retencion_islr_porcentaje:0 },
+        { id:2, comercio_id:1, nombres:'Distribuidora Andina', apellidos:'C.A.', tipo_documento:'J', documento:'403118225', telefono:'0212-7789012', direccion:'Zona Industrial La Yaguara, Galpón 14, Caracas', activo:true, es_agente_retencion:true, retencion_iva_porcentaje:75, retencion_islr_porcentaje:0 },
+        { id:3, comercio_id:1, nombres:'Carlos Eduardo', apellidos:'Mendoza Pérez', tipo_documento:'V', documento:'12987654', telefono:'0424-3312098', direccion:'Calle Sucre, Casa 22, Los Teques', activo:true, es_agente_retencion:false, retencion_iva_porcentaje:75, retencion_islr_porcentaje:0 },
+        { id:4, comercio_id:1, nombres:'Giuseppe', apellidos:'Rinaldi', tipo_documento:'E', documento:'82345671', telefono:'0416-8890123', direccion:'Urb. La Trinidad, Qta. Milano, Caracas', activo:true, es_agente_retencion:false, retencion_iva_porcentaje:75, retencion_islr_porcentaje:0 },
       ],
       ventas: [],
       venta_items: [],
@@ -265,6 +265,9 @@
       ...c,
       cliente: (c.nombres + ' ' + c.apellidos).trim(),
       documento_completo: c.tipo_documento + '-' + c.documento,
+      es_agente_retencion: !!c.es_agente_retencion,
+      retencion_iva_porcentaje: Number(c.retencion_iva_porcentaje || 75),
+      retencion_islr_porcentaje: Number(c.retencion_islr_porcentaje || 0),
     };
   }
 
@@ -562,6 +565,13 @@
           a_credito: !!datos.a_credito,
           subtotal: Number(datos.subtotal), iva_monto: Number(datos.iva_monto),
           total: Number(datos.total), nota: datos.nota || null,
+          retencion_iva_porcentaje: Number(datos.retencion_iva_porcentaje || 0),
+          retencion_iva_monto: Number(datos.retencion_iva_monto || 0),
+          retencion_islr_porcentaje: Number(datos.retencion_islr_porcentaje || 0),
+          retencion_islr_monto: Number(datos.retencion_islr_monto || 0),
+          monto_neto_cobrar: Number(datos.monto_neto_cobrar || (Number(datos.total) - Number(datos.retencion_iva_monto || 0) - Number(datos.retencion_islr_monto || 0))),
+          comprobante_retencion_iva: datos.comprobante_retencion_iva || null,
+          comprobante_retencion_islr: datos.comprobante_retencion_islr || null,
         };
         bd.ventas.push(venta);
 

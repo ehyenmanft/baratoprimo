@@ -349,6 +349,9 @@ html[data-tema="oscuro"] .tema button.activo{
 .pastilla--entrada{ background:var(--teal-suave); color:var(--teal); }
 .pastilla--salida{ background:var(--frambuesa-suave); color:var(--frambuesa); }
 .pastilla--ajuste{ background:var(--linea-2); color:var(--tinta-2); }
+.pastilla--retencion{ background:var(--naranja-suave); color:var(--naranja); border:1px solid rgba(245,158,11,.25); }
+.pastilla--credito{ background:var(--cian-suave); color:var(--cian); }
+.pastilla--exento{ background:var(--teal-suave); color:var(--teal); }
 
 /* ========================= GRÁFICAS ========================== */
 .grafica{ width:100%; height:auto; display:block; overflow:visible; }

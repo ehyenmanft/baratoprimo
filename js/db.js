@@ -66,6 +66,9 @@
     ...c,
     cliente: ((c.nombres || '') + ' ' + (c.apellidos || '')).trim(),
     documento_completo: c.tipo_documento + '-' + c.documento,
+    es_agente_retencion: !!c.es_agente_retencion,
+    retencion_iva_porcentaje: Number(c.retencion_iva_porcentaje || 75),
+    retencion_islr_porcentaje: Number(c.retencion_islr_porcentaje || 0),
   });
 
   INV.db = {

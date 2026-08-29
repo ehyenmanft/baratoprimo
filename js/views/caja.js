@@ -26,6 +26,7 @@
     debito: 'Débito', efectivo_bs: 'Efectivo Bs', efectivo_usd: 'Efectivo USD',
     efectivo_eur: 'Efectivo EUR', pago_movil: 'Pago móvil',
     transferencia: 'Transferencia', otro: 'Otro', credito: 'Crédito',
+    retencion_iva: 'Comprobante Ret. IVA', retencion_islr: 'Comprobante Ret. ISLR',
   };
 
   const estado = { periodo: 'hoy', desde: null, hasta: null, vendedor: '' };
@@ -113,9 +114,12 @@
       if (v.a_credito) porVendedor[k].credito++;
     });
 
-    const cobrado = vigentes.reduce((s, v) =>
-      s + (v.pagos || []).filter(p => p.metodo !== 'credito')
+    const cobradoLiquido = vigentes.reduce((s, v) =>
+      s + (v.pagos || []).filter(p => p.metodo !== 'credito' && p.metodo !== 'retencion_iva' && p.metodo !== 'retencion_islr')
         .reduce((x, p) => x + Number(p.monto_local), 0), 0);
+
+    const retencionesIva = vigentes.reduce((s, v) => s + Number(v.retencion_iva_monto || 0), 0);
+    const retencionesIslr = vigentes.reduce((s, v) => s + Number(v.retencion_islr_monto || 0), 0);
 
     return {
       ventas: vigentes.length,
@@ -124,7 +128,10 @@
       facturado: vigentes.reduce((s, v) => s + Number(v.total), 0),
       base: vigentes.reduce((s, v) => s + Number(v.subtotal), 0),
       iva: vigentes.reduce((s, v) => s + Number(v.iva_monto), 0),
-      cobrado,
+      cobrado: cobradoLiquido,
+      retencionesIva,
+      retencionesIslr,
+      totalRetenido: retencionesIva + retencionesIslr,
       aCredito: vigentes.filter(v => v.a_credito).length,
       porMetodo: Object.values(porMetodo).sort((a, b) => b.monto - a.monto),
       porVendedor: Object.values(porVendedor).sort((a, b) => b.total - a.total),
@@ -152,7 +159,10 @@
         .filter(p => p.referencia).map(p => p.referencia).join(' ') },
     { titulo: 'Base',  valor: v => Number(v.subtotal).toFixed(2) },
     { titulo: 'IVA',   valor: v => Number(v.iva_monto).toFixed(2) },
-    { titulo: 'Total', valor: v => Number(v.total).toFixed(2) },
+    { titulo: 'Total Facturado', valor: v => Number(v.total).toFixed(2) },
+    { titulo: 'Retención IVA', valor: v => Number(v.retencion_iva_monto || 0).toFixed(2) },
+    { titulo: 'Comp. Ret. IVA', valor: v => v.comprobante_retencion_iva || ((v.pagos || []).find(p => p.metodo === 'retencion_iva') || {}).referencia || '' },
+    { titulo: 'Neto a Percibir', valor: v => Number(v.monto_neto_cobrar || (Number(v.total) - Number(v.retencion_iva_monto || 0) - Number(v.retencion_islr_monto || 0))).toFixed(2) },
     { titulo: 'Tasa Bs/USD', valor: v => Number(v.tasa_referencia || 0).toFixed(4) },
     { titulo: 'Total USD',   valor: v => Number(v.total_usd || 0).toFixed(2) },
     { titulo: 'A crédito',   valor: v => v.a_credito ? 'Sí' : 'No' },

@@ -57,6 +57,26 @@
           <textarea id="cl-direccion" rows="2" placeholder="Av. Bolívar, Res. El Parque, Torre A, Apt 5-B, Caracas">${esc(c ? (c.direccion ?? '') : '')}</textarea>
         </div>
 
+        <div class="campo" style="margin-top:16px; padding:12px 14px; background:var(--superficie-2); border-radius:var(--r-s); border:1px solid var(--linea)">
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer; margin:0; text-transform:none; font-size:13.5px; font-weight:600; color:var(--tinta)">
+            <input type="checkbox" id="cl-agente" style="width:auto; margin:0" ${c && c.es_agente_retencion ? 'checked' : ''}>
+            <span>Agente de Retención / Sujeto Pasivo Especial (SENIAT)</span>
+          </label>
+          <div id="cl-retencion-opciones" style="margin-top:10px; display:${c && c.es_agente_retencion ? 'grid' : 'none'}; grid-template-columns:1fr 1fr; gap:10px">
+            <div>
+              <label for="cl-ret-iva" style="font-size:10px">% Retención IVA</label>
+              <select id="cl-ret-iva">
+                <option value="75" ${!c || Number(c.retencion_iva_porcentaje) === 75 ? 'selected' : ''}>75% (General)</option>
+                <option value="100" ${c && Number(c.retencion_iva_porcentaje) === 100 ? 'selected' : ''}>100% (Especial)</option>
+              </select>
+            </div>
+            <div>
+              <label for="cl-ret-islr" style="font-size:10px">% Retención ISLR (opcional)</label>
+              <input id="cl-ret-islr" type="number" step="0.5" min="0" max="100" value="${c && c.retencion_islr_porcentaje ? c.retencion_islr_porcentaje : '0'}">
+            </div>
+          </div>
+        </div>
+
         <p id="cl-error" class="error" hidden></p>`,
       acciones: [
         ...(c ? [{ texto: 'Desactivar', alPulsar: () => desactivar(c.id) }] : []),
@@ -71,17 +91,29 @@
     };
     $('#cl-prefijo').addEventListener('change', nota);
     nota();
+
+    const chkAgente = $('#cl-agente');
+    if (chkAgente) {
+      chkAgente.addEventListener('change', () => {
+        const opciones = $('#cl-retencion-opciones');
+        if (opciones) opciones.style.display = chkAgente.checked ? 'grid' : 'none';
+      });
+    }
   }
 
   async function guardar(c, btn) {
     const err = $('#cl-error');
+    const esAgente = $('#cl-agente') ? $('#cl-agente').checked : false;
     const datos = {
-      nombres:        $('#cl-nombres').value.trim(),
-      apellidos:      $('#cl-apellidos').value.trim(),
-      tipo_documento: $('#cl-prefijo').value,
-      documento:      $('#cl-documento').value.trim().replace(/[^0-9A-Za-z]/g, ''),
-      telefono:       $('#cl-telefono').value.trim() || null,
-      direccion:      $('#cl-direccion').value.trim() || null,
+      nombres:                  $('#cl-nombres').value.trim(),
+      apellidos:                $('#cl-apellidos').value.trim(),
+      tipo_documento:           $('#cl-prefijo').value,
+      documento:                $('#cl-documento').value.trim().replace(/[^0-9A-Za-z]/g, ''),
+      telefono:                 $('#cl-telefono').value.trim() || null,
+      direccion:                $('#cl-direccion').value.trim() || null,
+      es_agente_retencion:      esAgente,
+      retencion_iva_porcentaje: esAgente && $('#cl-ret-iva') ? Number($('#cl-ret-iva').value) : 75,
+      retencion_islr_porcentaje:esAgente && $('#cl-ret-islr') ? Number($('#cl-ret-islr').value || 0) : 0,
     };
 
     if (!datos.nombres)   { err.textContent = 'El nombre es obligatorio.'; err.hidden = false; return; }
@@ -165,12 +197,13 @@
       const facturado = ventas.filter(v => !v.anulada).reduce((s, v) => s + Number(v.total), 0);
       const conCompras = Object.keys(resumen).length;
 
-      const ficha = (c, i) => {
+        const ficha = (c, i) => {
         const r = resumen[c.id] || { compras: 0, total: 0, ultima: null, deudaUsd: 0, cuotas: 0, vencidas: 0 };
         return `
           <div class="lista__item" style="--i:${Math.min(i, 20)}" data-abrir="${c.id}" role="button" tabindex="0">
             <span class="miniatura miniatura--vacia">${esc(iniciales(c.cliente))}</span>
             <span class="lista__nombre">${esc(c.cliente)}
+              ${c.es_agente_retencion ? `<span class="pastilla pastilla--retencion">Agente Ret. ${c.retencion_iva_porcentaje}%</span>` : ''}
               ${r.cuotas ? `<span class="pastilla pastilla--${r.vencidas ? 'salida' : 'credito'}">${
                 r.vencidas ? `${r.vencidas} vencida${r.vencidas > 1 ? 's' : ''}` : 'a crédito'}</span>` : ''}
               <span class="lista__sub">${esc(c.documento_completo)}${c.telefono ? ' · ' + esc(c.telefono) : ''}</span></span>
@@ -288,6 +321,7 @@
                 <div class="detalle__meta">
                   <span>${esc(c.documento_completo)}</span>
                   ${c.telefono ? `<span>${esc(c.telefono)}</span>` : ''}
+                  ${c.es_agente_retencion ? `<span class="pastilla pastilla--retencion" style="background:rgba(255,255,255,.22); color:#fff">Agente Retención IVA ${c.retencion_iva_porcentaje}%</span>` : ''}
                 </div>
               </div>
             </div>
@@ -301,6 +335,10 @@
             <div class="datos__celda">
               <div class="datos__etiqueta">Documento fiscal</div>
               <div class="datos__valor">${esc(c.documento_completo)}</div>
+            </div>
+            <div class="datos__celda">
+              <div class="datos__etiqueta">Condición fiscal</div>
+              <div class="datos__valor" style="font-size:13px">${c.es_agente_retencion ? `Agente Retención (${c.retencion_iva_porcentaje}% IVA${c.retencion_islr_porcentaje ? ` / ${c.retencion_islr_porcentaje}% ISLR` : ''})` : 'Contribuyente Ordinario'}</div>
             </div>
             <div class="datos__celda">
               <div class="datos__etiqueta">Contacto</div>

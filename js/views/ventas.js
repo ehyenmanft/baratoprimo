@@ -34,14 +34,16 @@
   /* Formas de pago. 'ref' pide los últimos 6 dígitos de la operación;
      'moneda' distinta de VES obliga a indicar la tasa del día. */
   const METODOS = [
-    { id: 'debito',        etiqueta: 'Débito',                moneda: 'VES', ref: true },
-    { id: 'efectivo_bs',   etiqueta: 'Efectivo Bs',           moneda: 'VES' },
-    { id: 'efectivo_usd',  etiqueta: 'Efectivo USD',          moneda: 'USD' },
-    { id: 'efectivo_eur',  etiqueta: 'Efectivo EUR',          moneda: 'EUR' },
-    { id: 'pago_movil',    etiqueta: 'Pago móvil',            moneda: 'VES', ref: true },
-    { id: 'transferencia', etiqueta: 'Transferencia',         moneda: 'VES', ref: true },
-    { id: 'otro',          etiqueta: 'Otro',                  moneda: 'VES', detalle: true },
-    { id: 'credito',       etiqueta: 'Crédito',               moneda: 'VES', credito: true },
+    { id: 'debito',         etiqueta: 'Débito',                moneda: 'VES', ref: true },
+    { id: 'efectivo_bs',    etiqueta: 'Efectivo Bs',           moneda: 'VES' },
+    { id: 'efectivo_usd',   etiqueta: 'Efectivo USD',          moneda: 'USD' },
+    { id: 'efectivo_eur',   etiqueta: 'Efectivo EUR',          moneda: 'EUR' },
+    { id: 'pago_movil',     etiqueta: 'Pago móvil',            moneda: 'VES', ref: true },
+    { id: 'transferencia',  etiqueta: 'Transferencia',         moneda: 'VES', ref: true },
+    { id: 'retencion_iva',  etiqueta: 'Comprobante Ret. IVA',  moneda: 'VES', ref: true, retencion: true },
+    { id: 'retencion_islr', etiqueta: 'Comprobante Ret. ISLR', moneda: 'VES', ref: true, retencion: true },
+    { id: 'otro',           etiqueta: 'Otro',                  moneda: 'VES', detalle: true },
+    { id: 'credito',        etiqueta: 'Crédito',               moneda: 'VES', credito: true },
   ];
 
   const FRECUENCIAS = [
@@ -79,13 +81,15 @@
     const m = metodo(p.metodo);
     if (p.metodo === 'credito') return 'Crédito — inicial';
     if (p.metodo === 'otro' && p.detalle) return 'Otro: ' + p.detalle;
+    if (p.metodo === 'retencion_iva') return 'Comprobante Ret. IVA' + (p.referencia ? ' N.° ' + p.referencia : '');
+    if (p.metodo === 'retencion_islr') return 'Comprobante Ret. ISLR' + (p.referencia ? ' N.° ' + p.referencia : '');
     return m.etiqueta + (p.referencia ? ' ····' + p.referencia : '');
   };
 
   /* ---------------- Cálculo ----------------
      Una sola función para toda la aritmética: la usa el formulario
      mientras escribes y también lo que se guarda en la base. */
-  function calcular(renglones, tasa, incluido) {
+  function calcular(renglones, tasa, incluido, retIvaPct = 0, retIslrPct = 0) {
     const t = Number(tasa) / 100;
 
     const items = renglones.map(r => {
@@ -110,17 +114,32 @@
 
     const gravados = items.filter(i => !i.exento);
     const exentos  = items.filter(i => i.exento);
+    const base_gravada = redondear(gravados.reduce((s, i) => s + i.base, 0));
+    const base_exenta  = redondear(exentos.reduce((s, i) => s + i.base, 0));
+    const subtotal  = redondear(items.reduce((s, i) => s + i.base, 0));
+    const iva_monto = redondear(items.reduce((s, i) => s + i.iva_monto, 0));
+    const total     = redondear(items.reduce((s, i) => s + i.total, 0));
+
+    const retencion_iva_monto = retIvaPct > 0 ? redondear(iva_monto * (Number(retIvaPct) / 100)) : 0;
+    const retencion_islr_monto = retIslrPct > 0 ? redondear(base_gravada * (Number(retIslrPct) / 100)) : 0;
+    const monto_neto_cobrar = redondear(total - retencion_iva_monto - retencion_islr_monto);
 
     return {
       items,
       // Base sobre la que se calcula el impuesto
-      base_gravada: redondear(gravados.reduce((s, i) => s + i.base, 0)),
+      base_gravada,
       // Lo que no paga impuesto: en Venezuela va separado en la factura
-      base_exenta:  redondear(exentos.reduce((s, i) => s + i.base, 0)),
+      base_exenta,
       hay_exentos:  exentos.length > 0,
-      subtotal:  redondear(items.reduce((s, i) => s + i.base, 0)),
-      iva_monto: redondear(items.reduce((s, i) => s + i.iva_monto, 0)),
-      total:     redondear(items.reduce((s, i) => s + i.total, 0)),
+      subtotal,
+      iva_monto,
+      total,
+      retencion_iva_porcentaje: Number(retIvaPct || 0),
+      retencion_iva_monto,
+      retencion_islr_porcentaje: Number(retIslrPct || 0),
+      retencion_islr_monto,
+      monto_neto_cobrar,
+      hay_retencion: (retencion_iva_monto > 0 || retencion_islr_monto > 0),
     };
   }
 
@@ -218,6 +237,13 @@
       { titulo: 'IVA',            valor: v => dosDec(v.iva_monto) },
       { titulo: 'IVA incluido en el precio', valor: v => v.iva_incluido ? 'Sí' : 'No' },
       { titulo: 'Total',          valor: v => dosDec(v.total) },
+      { titulo: 'Retención IVA %', valor: v => Number(v.retencion_iva_porcentaje || 0) },
+      { titulo: 'IVA Retenido',   valor: v => dosDec(v.retencion_iva_monto) },
+      { titulo: 'Comp. Retención IVA', valor: v => v.comprobante_retencion_iva || (pagosDe(v).find(p => p.metodo === 'retencion_iva') || {}).referencia || '' },
+      { titulo: 'Retención ISLR %', valor: v => Number(v.retencion_islr_porcentaje || 0) },
+      { titulo: 'ISLR Retenido',  valor: v => dosDec(v.retencion_islr_monto) },
+      { titulo: 'Comp. Retención ISLR', valor: v => v.comprobante_retencion_islr || (pagosDe(v).find(p => p.metodo === 'retencion_islr') || {}).referencia || '' },
+      { titulo: 'Neto Cobrado',   valor: v => dosDec(v.monto_neto_cobrar || (Number(v.total) - Number(v.retencion_iva_monto || 0) - Number(v.retencion_islr_monto || 0))) },
 
       { titulo: 'Tasa Bs/USD',    valor: v => Number(v.tasa_referencia || 0).toFixed(4) },
       { titulo: 'Total USD',      valor: v => dosDec(v.total_usd) },
@@ -618,19 +644,14 @@
     $('#cr-inicial-pct').addEventListener('input', () => {
       const pct = Math.min(100, Math.max(0, Number($('#cr-inicial-pct').value || 0)));
       INV.ui.fijarMonto('#cr-inicial', redondear(totalDeLaVenta() * pct / 100));
-      equivalenteInicial();
-      previaCredito();
-    });
-
-    pintarCliente();
-    ajustarCamposPago();
-    pintarRenglones();
-  }
-
-  function pintarCliente() {
+      equivalenteInicial();  function pintarCliente() {
     const caja = $('#vn-datos-cliente');
     const c = clientes.find(x => String(x.id) === $('#vn-cliente').value);
-    if (!c) { caja.hidden = true; return; }
+    if (!c) {
+      caja.hidden = true;
+      pintarRenglones();
+      return;
+    }
     caja.hidden = false;
     caja.innerHTML = `
       <div class="datos__celda">
@@ -641,10 +662,19 @@
         <div class="datos__etiqueta">Contacto</div>
         <div class="datos__valor" style="font-size:14px">${esc(c.telefono ?? '—')}</div>
       </div>
-      <div class="datos__celda" style="grid-column:span 2">
+      <div class="datos__celda" style="grid-column:1 / -1">
+        <div class="datos__etiqueta">Condición tributaria</div>
+        <div class="datos__valor" style="font-size:13.5px">
+          ${c.es_agente_retencion
+            ? `<span class="pastilla pastilla--retencion" style="margin-right:6px">Agente de Retención</span> Aplica retención del <b>${c.retencion_iva_porcentaje}% del IVA</b>${c.retencion_islr_porcentaje ? ` y ${c.retencion_islr_porcentaje}% ISLR` : ''}.`
+            : 'Contribuyente Ordinario — No aplica retenciones.'}
+        </div>
+      </div>
+      <div class="datos__celda" style="grid-column:1 / -1">
         <div class="datos__etiqueta">Dirección</div>
         <div class="datos__valor" style="font-size:13px; font-weight:400">${esc(c.direccion ?? 'No registrada')}</div>
       </div>`;
+    pintarRenglones();
   }
 
   function agregarRenglon() {
@@ -693,6 +723,30 @@
       ? (plan ? 'Actualizar el crédito' : 'Establecer crédito')
       : 'Agregar pago';
 
+    if (m.retencion) {
+      $('#pg-caja-ref').querySelector('span').textContent = 'N.° Comprobante Retención';
+      $('#pg-referencia').placeholder = 'Comprobante';
+      $('#pg-referencia').maxLength = 20;
+
+      // Autocompletar el monto de retención si el cliente es agente
+      const c = clientes.find(x => String(x.id) === $('#vn-cliente').value);
+      const tasaIva = Number($('#vn-iva').value || 0);
+      const inc = $('#vn-incluido').value === 'si';
+      const retIvaPct = (c && c.es_agente_retencion) ? Number(c.retencion_iva_porcentaje || 75) : 0;
+      const retIslrPct = (c && c.es_agente_retencion) ? Number(c.retencion_islr_porcentaje || 0) : 0;
+      const calc = calcular(renglones, tasaIva, inc, retIvaPct, retIslrPct);
+
+      if (m.id === 'retencion_iva' && calc.retencion_iva_monto > 0) {
+        INV.ui.fijarMonto('#pg-monto', calc.retencion_iva_monto);
+      } else if (m.id === 'retencion_islr' && calc.retencion_islr_monto > 0) {
+        INV.ui.fijarMonto('#pg-monto', calc.retencion_islr_monto);
+      }
+    } else if (m.ref) {
+      $('#pg-caja-ref').querySelector('span').textContent = 'Referencia — últimos 6';
+      $('#pg-referencia').placeholder = '000000';
+      $('#pg-referencia').maxLength = 6;
+    }
+
     if (m.credito) {
       if (!$('#cr-tasa').value) $('#cr-tasa').value = tasasPorDefecto().USD || '';
       if (!$('#cr-primera').value) {
@@ -704,10 +758,6 @@
     }
 
     if (m.moneda !== 'VES') {
-      /* La tasa se rehace en cada cambio de método. Antes solo se ponía si
-         el campo estaba vacío, así que pasar de Efectivo USD a Efectivo
-         EUR dejaba puesta la tasa del dólar y se cobraban euros al cambio
-         equivocado. */
       const tasas = tasasPorDefecto();
       if (monedaAnterior !== m.moneda) {
         $('#pg-tasa').value = tasas[m.moneda] || '';
@@ -747,8 +797,11 @@
   /* Total de la venta, que es la base sobre la que se calcula el
      porcentaje de la inicial. */
   function totalDeLaVenta() {
+    const c = clientes.find(x => String(x.id) === $('#vn-cliente').value);
+    const retIvaPct = (c && c.es_agente_retencion) ? Number(c.retencion_iva_porcentaje || 75) : 0;
+    const retIslrPct = (c && c.es_agente_retencion) ? Number(c.retencion_islr_porcentaje || 0) : 0;
     return calcular(renglones, Number($('#vn-iva').value || 0),
-                    $('#vn-incluido').value === 'si').total;
+                    $('#vn-incluido').value === 'si', retIvaPct, retIslrPct).total;
   }
 
   /* La inicial también se ve en dólares: el cliente suele pensar el
@@ -775,8 +828,13 @@
     const dias = Number($('#cr-frecuencia').value);
     const primera = $('#cr-primera').value;
 
-    const totalVenta = calcular(renglones, Number($('#vn-iva').value || 0),
-                                $('#vn-incluido').value === 'si').total;
+    const c = clientes.find(x => String(x.id) === $('#vn-cliente').value);
+    const retIvaPct = (c && c.es_agente_retencion) ? Number(c.retencion_iva_porcentaje || 75) : 0;
+    const retIslrPct = (c && c.es_agente_retencion) ? Number(c.retencion_islr_porcentaje || 0) : 0;
+    const calc = calcular(renglones, Number($('#vn-iva').value || 0),
+                          $('#vn-incluido').value === 'si', retIvaPct, retIslrPct);
+    const totalVenta = calc.total;
+
     // Lo que ya se cobró con otras formas de pago no se financia.
     const otros = pagos.filter(p => p.metodo !== 'credito')
                        .reduce((s, p) => s + Number(p.monto_local), 0);
@@ -787,9 +845,6 @@
     // Una inicial de cero es válida: se financia el total.
     if (financiado <= 0) return { error: 'La inicial ya cubre el total: no hay nada que financiar.' };
 
-    /* Recargo por vender a crédito: un porcentaje sobre el saldo que se
-       financia. No toca el precio de la mercancía —el comprobante sigue
-       diciendo lo que costó— sino lo que hay que pagar por diferirla. */
     const recargoPct = Math.min(100, Math.max(0, Number($('#cr-recargo').value || 0)));
     const financiadoSinRecargo = redondear(financiado / tasa);
     const recargoUsd = redondear(financiadoSinRecargo * recargoPct / 100);
@@ -897,7 +952,9 @@
     }
 
     if (!monto || monto <= 0) return fallar('Indica el monto del pago.');
-    if (m.ref && referencia.length !== 6)
+    if (m.retencion && !referencia)
+      return fallar('Indica el número de comprobante de retención.');
+    if (m.ref && !m.retencion && referencia.length !== 6)
       return fallar('La referencia debe tener los 6 últimos dígitos de la operación.');
     if (m.detalle && !detalle) return fallar('Especifica de qué otra forma se pagó.');
     if (m.moneda !== 'VES' && (!tasa || tasa <= 0))
@@ -919,9 +976,12 @@
     pintarRenglones();
   }
 
-  function pintarPagos(total) {
+  function pintarPagos(total, r = null) {
+    const netoCobrar = (r && r.hay_retencion) ? r.monto_neto_cobrar : total;
     const pagado = redondear(pagos.reduce((s, p) => s + Number(p.monto_local), 0));
-    const diferencia = redondear(total - pagado);
+    const tieneRetencionRegistrada = pagos.some(p => p.metodo === 'retencion_iva' || p.metodo === 'retencion_islr');
+    const baseObjetivo = tieneRetencionRegistrada ? total : netoCobrar;
+    const diferencia = redondear(baseObjetivo - pagado);
 
     $('#vn-pagos').innerHTML = `
       ${pagos.length ? `
@@ -956,11 +1016,26 @@
 
       <div class="totales">
         <div class="totales__fila"><span>Total de la mercancía</span><b>${numero(total)}</b></div>
+        ${(r && r.hay_retencion && !tieneRetencionRegistrada) ? `
+          ${r.retencion_iva_monto > 0 ? `
+            <div class="totales__fila" style="color:var(--naranja)">
+              <span>(-) Retención IVA ${r.retencion_iva_porcentaje}%</span>
+              <b>-${numero(r.retencion_iva_monto)}</b>
+            </div>` : ''}
+          ${r.retencion_islr_monto > 0 ? `
+            <div class="totales__fila" style="color:var(--naranja)">
+              <span>(-) Retención ISLR ${r.retencion_islr_porcentaje}%</span>
+              <b>-${numero(r.retencion_islr_monto)}</b>
+            </div>` : ''}
+          <div class="totales__fila" style="color:var(--esmeralda)">
+            <span>Neto a percibir en dinero</span>
+            <b>${numero(r.monto_neto_cobrar)}</b>
+          </div>` : ''}
         ${(() => {
           const otra = INV.tasas ? INV.tasas.aDolares(total) : null;
           return otra === null ? '' : `
             <div class="totales__fila" style="color:var(--cian)">
-              <span>Equivalente</span><b>${numero(otra)} $</b></div>`;
+              <span>Equivalente total</span><b>${numero(otra)} $</b></div>`;
         })()}
         ${plan && plan.recargoUsd > 0 ? `
           <div class="totales__fila" style="color:var(--naranja)">
@@ -971,7 +1046,7 @@
             <span>Total a cancelar con el crédito</span>
             <b>${numero(redondear(total + plan.recargoUsd * plan.tasa))}<span class="equivalente equivalente--usd">${
               numero(plan.aPagarUsd)} $</span></b></div>` : ''}
-        <div class="totales__fila"><span>${plan ? 'Pagado hoy · inicial' : 'Pagado'}</span><b>${numero(pagado)}</b></div>
+        <div class="totales__fila"><span>${plan ? 'Pagado hoy · inicial' : 'Pagado / Cubierto'}</span><b>${numero(pagado)}</b></div>
         ${plan ? `
           <div class="totales__fila" style="color:var(--cian)">
             <span>Por cobrar en ${plan.cuotas.length} cuota${plan.cuotas.length > 1 ? 's' : ''} ·
@@ -1004,7 +1079,10 @@
   function pintarRenglones() {
     const tasa = Number($('#vn-iva').value || 0);
     const incluido = $('#vn-incluido').value === 'si';
-    const r = calcular(renglones, tasa, incluido);
+    const c = clientes.find(x => String(x.id) === $('#vn-cliente').value);
+    const retIvaPct = (c && c.es_agente_retencion) ? Number(c.retencion_iva_porcentaje || 75) : 0;
+    const retIslrPct = (c && c.es_agente_retencion) ? Number(c.retencion_islr_porcentaje || 0) : 0;
+    const r = calcular(renglones, tasa, incluido, retIvaPct, retIslrPct);
 
     $('#vn-renglones').innerHTML = renglones.length ? `
       <div class="lista lista--ren">
@@ -1047,19 +1125,30 @@
           <b>${numero(r.iva_monto)}</b>
         </div>
         <div class="totales__fila totales__fila--total">
-          <span>Total a pagar</span>
+          <span>Total factura</span>
           <b>${numero(r.total)}</b>
         </div>
+        ${r.hay_retencion ? `
+          ${r.retencion_iva_monto > 0 ? `
+            <div class="totales__fila" style="color:var(--naranja)">
+              <span>(-) Retención IVA ${r.retencion_iva_porcentaje}%</span>
+              <b>-${numero(r.retencion_iva_monto)}</b>
+            </div>` : ''}
+          ${r.retencion_islr_monto > 0 ? `
+            <div class="totales__fila" style="color:var(--naranja)">
+              <span>(-) Retención ISLR ${r.retencion_islr_porcentaje}%</span>
+              <b>-${numero(r.retencion_islr_monto)}</b>
+            </div>` : ''}
+          <div class="totales__fila totales__fila--total" style="color:var(--esmeralda); border-top:1px dashed var(--linea)">
+            <span>Neto a percibir en dinero</span>
+            <b>${numero(r.monto_neto_cobrar)}</b>
+          </div>` : ''}
         ${(() => {
-          /* El equivalente en la otra moneda, a la tasa del día. Con el
-             catálogo en dólares el cliente ve en qué se traduce lo que
-             va a pagar; con el catálogo en bolívares, al revés. */
           if (!INV.tasas) return '';
-          const enDolares = INV.tasas.catalogoEnDolares();
-          const otra = enDolares ? INV.tasas.aDolares(r.total) : INV.tasas.aDolares(r.total);
+          const otra = INV.tasas.aDolares(r.total);
           if (otra === null) return '';
           return `<div class="totales__fila" style="color:var(--cian)">
-            <span>Equivalente</span><b>${numero(otra)} $</b></div>`;
+            <span>Equivalente total</span><b>${numero(otra)} $</b></div>`;
         })()}
       </div>`;
 
@@ -1076,7 +1165,7 @@
     }));
 
     // El total cambió: hay que recalcular lo que falta por cobrar.
-    pintarPagos(r.total);
+    pintarPagos(r.total, r);
   }
 
   /* Antes de escribir nada: se muestra la venta armada y se pide
@@ -1085,10 +1174,6 @@
   function confirmarEmision() {
     if (!renglones.length) return avisar('Agrega al menos un producto', 'error');
 
-    /* Si el método elegido es Crédito y el plan está completo pero nadie
-       pulsó "Establecer crédito", se aplica solo. Antes la venta salía
-       sin cuotas y sin marcar como crédito, que es justo lo contrario de
-       lo que la pantalla estaba mostrando. */
     if (!plan && metodo($('#pg-metodo').value).credito) {
       const r = calcularPlan();
       if (r.error) {
@@ -1101,10 +1186,15 @@
 
     const tasa = Number($('#vn-iva').value || 0);
     const incluido = $('#vn-incluido').value === 'si';
-    const r = calcular(renglones, tasa, incluido);
-    const cliente = clientes.find(c => String(c.id) === $('#vn-cliente').value);
+    const c = clientes.find(cl => String(cl.id) === $('#vn-cliente').value);
+    const retIvaPct = (c && c.es_agente_retencion) ? Number(c.retencion_iva_porcentaje || 75) : 0;
+    const retIslrPct = (c && c.es_agente_retencion) ? Number(c.retencion_islr_porcentaje || 0) : 0;
+    const r = calcular(renglones, tasa, incluido, retIvaPct, retIslrPct);
+
     const pagado = redondear(pagos.reduce((s, p) => s + Number(p.monto_local), 0));
-    const diferencia = redondear(r.total - pagado);
+    const tieneRet = pagos.some(p => p.metodo === 'retencion_iva' || p.metodo === 'retencion_islr');
+    const objetivo = tieneRet ? r.total : (r.hay_retencion ? r.monto_neto_cobrar : r.total);
+    const diferencia = redondear(objetivo - pagado);
 
     abrirModal({
       titulo: plan ? 'Confirmar la venta a crédito' : 'Confirmar la venta',
@@ -1112,8 +1202,10 @@
         <div class="datos" style="border-radius:var(--r-s); overflow:hidden; margin-bottom:16px">
           <div class="datos__celda" style="grid-column:1 / -1">
             <div class="datos__etiqueta">Cliente</div>
-            <div class="datos__valor" style="font-size:15px">${esc(cliente ? cliente.cliente : 'Consumidor final')}</div>
-            ${cliente ? `<div class="lista__sub">${esc(cliente.documento_completo)}</div>` : ''}
+            <div class="datos__valor" style="font-size:15px">${esc(c ? c.cliente : 'Consumidor final')}</div>
+            ${c ? `<div class="lista__sub">${esc(c.documento_completo)}${
+              c.es_agente_retencion ? ` · <span class="pastilla pastilla--retencion">Agente Ret. ${c.retencion_iva_porcentaje}%</span>` : ''
+            }</div>` : ''}
           </div>
         </div>
 
@@ -1129,7 +1221,19 @@
         <div class="totales" style="border-radius:var(--r-s); margin-top:14px">
           <div class="totales__fila"><span>Subtotal${incluido ? ' (base)' : ''}</span><b>${numero(r.subtotal)}</b></div>
           <div class="totales__fila"><span>IVA ${numero(tasa, tasa % 1 ? 2 : 0)}%</span><b>${numero(r.iva_monto)}</b></div>
-          <div class="totales__fila totales__fila--total"><span>Total</span><b>${numero(r.total)}</b></div>
+          <div class="totales__fila totales__fila--total"><span>Total Factura</span><b>${numero(r.total)}</b></div>
+          ${r.hay_retencion ? `
+            ${r.retencion_iva_monto > 0 ? `
+              <div class="totales__fila" style="color:var(--naranja)">
+                <span>(-) Retención IVA ${r.retencion_iva_porcentaje}%</span>
+                <b>-${numero(r.retencion_iva_monto)}</b></div>` : ''}
+            ${r.retencion_islr_monto > 0 ? `
+              <div class="totales__fila" style="color:var(--naranja)">
+                <span>(-) Retención ISLR ${r.retencion_islr_porcentaje}%</span>
+                <b>-${numero(r.retencion_islr_monto)}</b></div>` : ''}
+            <div class="totales__fila totales__fila--total" style="color:var(--esmeralda)">
+              <span>Neto a Percibir</span>
+              <b>${numero(r.monto_neto_cobrar)}</b></div>` : ''}
         </div>
 
         <div class="datos__etiqueta" style="margin-top:16px">Forma de pago</div>
@@ -1201,6 +1305,8 @@
     btnModal.textContent = 'Emitiendo…';
     btn.disabled = true;
     try {
+      const retPagoIva = pagos.find(p => p.metodo === 'retencion_iva');
+      const retPagoIslr = pagos.find(p => p.metodo === 'retencion_islr');
       const venta = await INV.db.ventas.crear({
         cliente_id: $('#vn-cliente').value || null,
         iva_tasa: tasa,
@@ -1208,6 +1314,13 @@
         subtotal: r.subtotal,
         iva_monto: r.iva_monto,
         total: r.total,
+        retencion_iva_porcentaje: r.retencion_iva_porcentaje || 0,
+        retencion_iva_monto: r.retencion_iva_monto || 0,
+        retencion_islr_porcentaje: r.retencion_islr_porcentaje || 0,
+        retencion_islr_monto: r.retencion_islr_monto || 0,
+        monto_neto_cobrar: r.monto_neto_cobrar || r.total,
+        comprobante_retencion_iva: retPagoIva ? retPagoIva.referencia : null,
+        comprobante_retencion_islr: retPagoIslr ? retPagoIslr.referencia : null,
         nota: $('#vn-nota').value || null,
         a_credito: !!plan,
         tasa_referencia: plan ? plan.tasa : Number(tasasPorDefecto().USD || 0),
@@ -1330,8 +1443,14 @@
           </div>
           <hr class="tk__regla">
           <div class="tk__total-fila tk__total-fila--grande">
-            <span>TOTAL</span><span>${numero(v.total)}</span>
+            <span>TOTAL FACTURA</span><span>${numero(v.total)}</span>
           </div>
+          ${Number(v.retencion_iva_monto) > 0 ? `
+            <div class="tk__total-fila"><span>RETENCION IVA (${numero(v.retencion_iva_porcentaje || 75, 0)}%)</span><span>-${numero(v.retencion_iva_monto)}</span></div>` : ''}
+          ${Number(v.retencion_islr_monto) > 0 ? `
+            <div class="tk__total-fila"><span>RETENCION ISLR (${numero(v.retencion_islr_porcentaje || 0, 0)}%)</span><span>-${numero(v.retencion_islr_monto)}</span></div>` : ''}
+          ${(Number(v.retencion_iva_monto) > 0 || Number(v.retencion_islr_monto) > 0) ? `
+            <div class="tk__total-fila tk__total-fila--grande"><span>NETO A COBRAR</span><span>${numero(v.monto_neto_cobrar || (Number(v.total) - Number(v.retencion_iva_monto || 0) - Number(v.retencion_islr_monto || 0)))}</span></div>` : ''}
           ${Number(v.tasa_referencia) > 0 ? `
             <div class="tk__total-fila"><span>TASA DEL DIA</span><span>${numero(v.tasa_referencia, 2)} Bs/$</span></div>
             <div class="tk__total-fila"><span>EQUIVALENTE</span><span>${numero(v.total_usd)} $</span></div>` : ''}
@@ -1518,9 +1637,24 @@
               <b>${numero(v.iva_monto)}</b>
             </div>
             <div class="totales__fila totales__fila--total">
-              <span>Total a pagar</span>
+              <span>Total factura</span>
               <b>${numero(v.total)}</b>
             </div>
+            ${Number(v.retencion_iva_monto) > 0 ? `
+              <div class="totales__fila" style="color:var(--naranja)">
+                <span>(-) Retención IVA ${numero(v.retencion_iva_porcentaje || 75, 0)}%</span>
+                <b>-${numero(v.retencion_iva_monto)}</b>
+              </div>` : ''}
+            ${Number(v.retencion_islr_monto) > 0 ? `
+              <div class="totales__fila" style="color:var(--naranja)">
+                <span>(-) Retención ISLR ${numero(v.retencion_islr_porcentaje || 0, 0)}%</span>
+                <b>-${numero(v.retencion_islr_monto)}</b>
+              </div>` : ''}
+            ${(Number(v.retencion_iva_monto) > 0 || Number(v.retencion_islr_monto) > 0) ? `
+              <div class="totales__fila totales__fila--total" style="color:var(--esmeralda)">
+                <span>Neto a percibir en dinero</span>
+                <b>${numero(v.monto_neto_cobrar || (Number(v.total) - Number(v.retencion_iva_monto || 0) - Number(v.retencion_islr_monto || 0)))}</b>
+              </div>` : ''}
             ${Number(v.tasa_referencia) > 0 ? `
               <div class="totales__fila" style="color:var(--cian)">
                 <span>Equivalente · tasa ${numero(v.tasa_referencia, 2)} Bs/$</span>
