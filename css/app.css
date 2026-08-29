@@ -485,11 +485,25 @@ input[type=number], input[type=date]{ font-family:var(--dato); }
 /* ========================== AVISOS =========================== */
 .avisos{ position:fixed; right:22px; bottom:22px; display:flex; flex-direction:column; gap:8px; z-index:50; }
 .aviso{
-  background:var(--tinta); color:#fff; font-size:13.5px; font-weight:500;
-  padding:12px 18px; border-radius:var(--r-p); box-shadow:var(--sombra-3);
+  background:#1C1830; color:#fff; font-size:13.5px; font-weight:600;
+  padding:12px 20px; border-radius:var(--r-p);
+  box-shadow:0 10px 25px rgba(12,6,38,.35), 0 2px 6px rgba(12,6,38,.2);
+  border:1px solid rgba(255,255,255,.14);
   animation:emerger .3s var(--curva);
+  backdrop-filter:blur(8px);
 }
-.aviso--error{ background:var(--frambuesa); }
+.aviso--error{
+  background:var(--rosa) !important; color:#fff !important;
+  border-color:rgba(255,255,255,.2) !important;
+  box-shadow:0 10px 25px rgba(240,53,107,.4) !important;
+}
+
+html[data-tema="oscuro"] .aviso{
+  background:linear-gradient(135deg, #2D234C 0%, #20173B 100%);
+  color:#EFEDF7;
+  border:1px solid rgba(139,99,255,.35);
+  box-shadow:0 14px 34px rgba(0,0,0,.6), 0 0 16px rgba(108,59,244,.25);
+}
 
 /* ========================== TABLET =========================== */
 @media (max-width:1080px){
