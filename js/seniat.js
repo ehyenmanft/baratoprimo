@@ -86,14 +86,41 @@ INV.seniat = {
     },
   },
 
-  /* Consulta el RIF en el backend (Edge Function de Supabase) o fallback */
+  /* Consulta el RIF en todas las fuentes disponibles:
+     1. Padrón en Supabase (Base de datos cloud)
+     2. Micro-proxy Local en Venezuela (localhost:3030)
+     3. Edge Function de Supabase
+     4. Diccionario de conocidos / cartera
+  */
   async consultar(prefijo, numero) {
     const s = this.sanear(prefijo, numero);
     if (!s.prefijo || !s.numero || s.numero.length < 5) {
       throw new Error('Indica un prefijo y número de documento válido (mínimo 5 dígitos).');
     }
 
-    // 1. Revisar si está en el diccionario de conocidos/frecuentes
+    // Nivel 1: Consulta en la tabla padron_contribuyentes de Supabase (Ultra rápido: < 15ms)
+    try {
+      if (window.INV && INV.db && INV.db.padron) {
+        const enPadron = await INV.db.padron.buscar(s.rif);
+        if (enPadron && enPadron.nombre) {
+          return {
+            encontrado: true,
+            rif: enPadron.rif,
+            rif_formateado: enPadron.rif_formateado || s.formato,
+            nombre: enPadron.nombre,
+            es_agente_retencion: !!enPadron.es_agente_retencion,
+            retencion_iva_porcentaje: Number(enPadron.retencion_iva_porcentaje || 0),
+            retencion_islr_porcentaje: Number(enPadron.retencion_islr_porcentaje || 0),
+            contribuyente_iva: enPadron.contribuyente_iva || 'SI',
+            direccion: enPadron.direccion || null,
+            telefono: enPadron.telefono || null,
+            fuente: 'padron-supabase',
+          };
+        }
+      }
+    } catch (e) { /* continuar */ }
+
+    // Nivel 2: Diccionario local de conocidos / pruebas rápidas
     if (this.conocidos[s.rif]) {
       const c = this.conocidos[s.rif];
       return {
@@ -109,7 +136,25 @@ INV.seniat = {
       };
     }
 
-    // 2. Revisar si ya existe en la cartera local de clientes
+    // Nivel 3: Consulta al Micro-Proxy Local con IP Venezolana (si está corriendo en localhost:3030)
+    try {
+      const ctrlLocal = new AbortController();
+      const tLocal = setTimeout(() => ctrlLocal.abort(), 1800);
+      const respLocal = await fetch(`http://localhost:3030/consulta?rif=${encodeURIComponent(s.rif)}`, {
+        signal: ctrlLocal.signal,
+      });
+      clearTimeout(tLocal);
+      if (respLocal.ok) {
+        const datosLocal = await respLocal.json();
+        if (datosLocal && datosLocal.encontrado) {
+          // Guardar automáticamente en el padrón de Supabase para toda la empresa
+          if (INV.db && INV.db.padron) INV.db.padron.guardar(datosLocal).catch(() => {});
+          return datosLocal;
+        }
+      }
+    } catch (e) { /* continuar */ }
+
+    // Nivel 4: Cartera local de clientes ya registrados
     try {
       if (window.INV && INV.db && INV.db.clientes) {
         const clientes = await INV.db.clientes.listar();
@@ -126,54 +171,44 @@ INV.seniat = {
             retencion_iva_porcentaje: Number(existente.retencion_iva_porcentaje || (existente.es_agente_retencion ? 75 : 0)),
             retencion_islr_porcentaje: Number(existente.retencion_islr_porcentaje || 0),
             contribuyente_iva: 'SI',
+            direccion: existente.direccion || null,
+            telefono: existente.telefono || null,
             fuente: 'cartera-local',
           };
         }
       }
     } catch (e) { /* continuar */ }
 
+    // Nivel 5: Cloud Edge Function en Supabase
     const url = INV.config.FUNCION_SENIAT ||
       (INV.config.SUPABASE_URL ? `${INV.config.SUPABASE_URL}/functions/v1/consulta-rif` : null);
 
-    // Si no hay función desplegada o estamos en modo demo
-    if (!url || INV.config.MODO === 'demo' || INV.config.esLocal) {
-      await new Promise(r => setTimeout(r, 300));
-      const esEmpresa = s.prefijo === 'J' || s.prefijo === 'G';
-      return {
-        encontrado: true,
-        rif: s.rif,
-        rif_formateado: s.formato,
-        nombre: esEmpresa ? `EMPRESA ${s.formato}` : '',
-        es_agente_retencion: esEmpresa,
-        retencion_iva_porcentaje: esEmpresa ? 75 : 0,
-        contribuyente_iva: 'SI',
-        fuente: 'asistente-local',
-      };
-    }
+    if (url && INV.config.MODO !== 'demo' && !INV.config.esLocal) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      try {
+        const resp = await fetch(`${url}?rif=${encodeURIComponent(s.rif)}`, {
+          signal: controller.signal,
+          headers: {
+            'apikey': INV.config.SUPABASE_ANON || '',
+            'Content-Type': 'application/json',
+          },
+        });
+        clearTimeout(timeoutId);
 
-    // 3. Consulta a Edge Function de Supabase con Timeout estricto de 2.5 segundos
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2500);
-
-    try {
-      const resp = await fetch(`${url}?rif=${encodeURIComponent(s.rif)}`, {
-        signal: controller.signal,
-        headers: {
-          'apikey': INV.config.SUPABASE_ANON || '',
-          'Content-Type': 'application/json',
-        },
-      });
-      clearTimeout(timeoutId);
-
-      if (resp.ok) {
-        const datos = await resp.json();
-        if (datos && datos.encontrado) return datos;
+        if (resp.ok) {
+          const datos = await resp.json();
+          if (datos && datos.encontrado) {
+            if (INV.db && INV.db.padron) INV.db.padron.guardar(datos).catch(() => {});
+            return datos;
+          }
+        }
+      } catch (e) {
+        clearTimeout(timeoutId);
       }
-    } catch (e) {
-      clearTimeout(timeoutId);
     }
 
-    // 4. Fallback asistido inteligente (no bloqueante)
+    // Nivel 6: Asistente fiscal inteligente
     const esEmpresa = s.prefijo === 'J' || s.prefijo === 'G';
     return {
       encontrado: false,

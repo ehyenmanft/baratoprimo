@@ -290,6 +290,26 @@
       },
     },
 
+    padron: {
+      buscar: async rifLimpio => {
+        try {
+          const { data, error } = await sb.from('padron_contribuyentes')
+            .select('*')
+            .ilike('rif', rifLimpio)
+            .limit(1);
+          if (error || !data || !data.length) return null;
+          return data[0];
+        } catch (e) { return null; }
+      },
+      guardar: async datos => {
+        try {
+          return await sb.from('padron_contribuyentes')
+            .upsert(datos, { onConflict: 'rif' })
+            .select().single().then(ok);
+        } catch (e) { return null; }
+      },
+    },
+
     tasas: {
       vigente: async (moneda = 'USD') => sb.from('tasa_vigente').select('*')
         .eq('moneda', moneda).maybeSingle().then(ok),

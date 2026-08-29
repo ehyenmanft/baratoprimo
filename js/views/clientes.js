@@ -195,6 +195,23 @@
     btn.disabled = true;
     try {
       const guardado = c ? await INV.db.clientes.actualizar(c.id, datos) : await INV.db.clientes.crear(datos);
+
+      // Sincronizar automáticamente con el padrón fiscal en Supabase
+      if (INV.db && INV.db.padron) {
+        INV.db.padron.guardar({
+          rif: `${datos.tipo_documento}${datos.documento}`.toUpperCase(),
+          rif_formateado: `${datos.tipo_documento}-${datos.documento}`,
+          nombre: `${datos.nombres} ${datos.apellidos || ''}`.trim(),
+          tipo_persona: ['J', 'G'].includes(datos.tipo_documento) ? 'juridica' : 'natural',
+          es_agente_retencion: datos.es_agente_retencion,
+          retencion_iva_porcentaje: datos.retencion_iva_porcentaje,
+          retencion_islr_porcentaje: datos.retencion_islr_porcentaje,
+          direccion: datos.direccion,
+          telefono: datos.telefono,
+          fuente: 'registro-comercio',
+        }).catch(() => {});
+      }
+
       cerrarModal();
       avisar(c ? 'Cliente actualizado' : 'Cliente registrado');
       if (alGuardar) alGuardar(guardado || datos);
