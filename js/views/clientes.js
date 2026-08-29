@@ -26,23 +26,26 @@
       cuerpo: `
         <div class="campos-fila">
           <div class="campo">
-            <label for="cl-nombres">Nombres</label>
-            <input id="cl-nombres" type="text" value="${esc(c ? c.nombres : '')}" placeholder="María Fernanda">
+            <label for="cl-nombres">Nombres / Razón Social</label>
+            <input id="cl-nombres" type="text" value="${esc(c ? c.nombres : '')}" placeholder="Distribuidora Andina C.A. o María Fernanda">
           </div>
           <div class="campo">
             <label for="cl-apellidos">Apellidos</label>
-            <input id="cl-apellidos" type="text" value="${esc(c ? c.apellidos : '')}" placeholder="Rodríguez Salas">
+            <input id="cl-apellidos" type="text" value="${esc(c ? c.apellidos : '')}" placeholder="Opcional para empresas">
           </div>
         </div>
 
         <div class="campo">
-          <label for="cl-documento">Documento de identificación fiscal</label>
-          <div style="display:grid; grid-template-columns:88px 1fr; gap:8px">
+          <label for="cl-documento">Documento fiscal (RIF / Cédula)</label>
+          <div style="display:grid; grid-template-columns:84px 1fr auto; gap:8px">
             <select id="cl-prefijo" title="Tipo de documento">
               ${PREFIJOS.map(p => `<option value="${p.id}" ${c && c.tipo_documento === p.id ? 'selected' : ''}>${p.id}-</option>`).join('')}
             </select>
             <input id="cl-documento" type="text" inputmode="numeric"
-                   value="${esc(c ? c.documento : '')}" placeholder="18456321">
+                   value="${esc(c ? c.documento : '')}" placeholder="403118225">
+            <button type="button" class="btn btn--secundario btn--chico" id="cl-btn-seniat" title="Consultar RIF en SENIAT" style="white-space:nowrap; padding:0 12px; font-size:12px">
+              🔍 SENIAT
+            </button>
           </div>
           <span class="subida__nota" id="cl-prefijo-nota" style="margin-top:6px; display:block"></span>
         </div>
@@ -53,8 +56,8 @@
         </div>
 
         <div class="campo">
-          <label for="cl-direccion">Dirección de residencia</label>
-          <textarea id="cl-direccion" rows="2" placeholder="Av. Bolívar, Res. El Parque, Torre A, Apt 5-B, Caracas">${esc(c ? (c.direccion ?? '') : '')}</textarea>
+          <label for="cl-direccion">Dirección fiscal / residencia</label>
+          <textarea id="cl-direccion" rows="2" placeholder="Av. Principal, Edif. Centro, Local 4, Caracas">${esc(c ? (c.direccion ?? '') : '')}</textarea>
         </div>
 
         <div class="campo" style="margin-top:16px; padding:12px 14px; background:var(--superficie-2); border-radius:var(--r-s); border:1px solid var(--linea)">
@@ -81,7 +84,7 @@
       acciones: [
         ...(c ? [{ texto: 'Desactivar', alPulsar: () => desactivar(c.id) }] : []),
         { texto: 'Cancelar', alPulsar: cerrarModal },
-        { texto: 'Guardar', estilo: 'btn--primario', alPulsar: btn => guardar(c, btn) },
+        { texto: 'Guardar', estilo: 'btn--primario', alPulsar: btn => guardar(c, btn, alGuardar) },
       ],
     });
 
@@ -99,9 +102,64 @@
         if (opciones) opciones.style.display = chkAgente.checked ? 'grid' : 'none';
       });
     }
+
+    const btnSeniat = $('#cl-btn-seniat');
+    if (btnSeniat) {
+      const consultarSeniat = async () => {
+        const prefijo = $('#cl-prefijo').value;
+        const num = $('#cl-documento').value.trim();
+        if (!num) return avisar('Escribe el número de documento para consultar en SENIAT', 'error');
+
+        btnSeniat.disabled = true;
+        btnSeniat.textContent = 'Buscando…';
+        try {
+          const res = await INV.seniat.consultar(prefijo, num);
+          if (res && res.nombre) {
+            if (['J', 'G', 'C'].includes(prefijo)) {
+              $('#cl-nombres').value = res.nombre;
+              $('#cl-apellidos').value = '';
+            } else {
+              const partes = res.nombre.split(/\s+/);
+              if (partes.length >= 2) {
+                $('#cl-nombres').value = partes.slice(0, Math.ceil(partes.length / 2)).join(' ');
+                $('#cl-apellidos').value = partes.slice(Math.ceil(partes.length / 2)).join(' ');
+              } else {
+                $('#cl-nombres').value = res.nombre;
+              }
+            }
+
+            if (res.es_agente_retencion) {
+              const chk = $('#cl-agente');
+              if (chk) {
+                chk.checked = true;
+                const opciones = $('#cl-retencion-opciones');
+                if (opciones) opciones.style.display = 'grid';
+                const sel = $('#cl-ret-iva');
+                if (sel) sel.value = String(res.retencion_iva_porcentaje || 75);
+              }
+            }
+
+            avisar(`SENIAT: ${res.nombre}${res.es_agente_retencion ? ' (Agente de Retención)' : ''}`);
+          }
+        } catch (e) {
+          avisar(e.message, 'error');
+        } finally {
+          btnSeniat.disabled = false;
+          btnSeniat.textContent = '🔍 SENIAT';
+        }
+      };
+
+      btnSeniat.addEventListener('click', consultarSeniat);
+      $('#cl-documento').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          consultarSeniat();
+        }
+      });
+    }
   }
 
-  async function guardar(c, btn) {
+  async function guardar(c, btn, alGuardar = null) {
     const err = $('#cl-error');
     const esAgente = $('#cl-agente') ? $('#cl-agente').checked : false;
     const datos = {
@@ -121,9 +179,10 @@
 
     btn.disabled = true;
     try {
-      c ? await INV.db.clientes.actualizar(c.id, datos) : await INV.db.clientes.crear(datos);
+      const guardado = c ? await INV.db.clientes.actualizar(c.id, datos) : await INV.db.clientes.crear(datos);
       cerrarModal();
       avisar(c ? 'Cliente actualizado' : 'Cliente registrado');
+      if (alGuardar) alGuardar(guardado || datos);
       window.dispatchEvent(new Event('recargar-vista'));
     } catch (e) {
       err.textContent = e.message.includes('duplicate')

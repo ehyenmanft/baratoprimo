@@ -46,6 +46,9 @@ INV.config = {
      cuentas nuevas. */
   FUNCION_CUENTAS: 'https://goqqmcibcdaeuienjmuy.supabase.co/functions/v1/cuentas',
 
+  /* URL de la función para consultar RIF y Agentes de Retención en SENIAT */
+  FUNCION_SENIAT: 'https://goqqmcibcdaeuienjmuy.supabase.co/functions/v1/consulta-rif',
+
   /* Para MODO 'drive': ID de cliente OAuth de Google Cloud, tipo
      "aplicación web", con tu dominio en los orígenes autorizados. */
   GOOGLE: { CLIENT_ID: 'TU-ID-DE-CLIENTE.apps.googleusercontent.com' },

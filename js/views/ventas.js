@@ -603,7 +603,25 @@
     $('#vn-iva').addEventListener('input', pintarRenglones);
     $('#vn-incluido').addEventListener('change', pintarRenglones);
     $('#vn-emitir').addEventListener('click', confirmarEmision);
-    $('#vn-nuevo-cliente').addEventListener('click', () => INV.vistas.clientes.abrirFormulario());
+    $('#vn-nuevo-cliente').addEventListener('click', () => {
+      INV.vistas.clientes.abrirFormulario(null, async (nuevo) => {
+        const actualizados = await INV.db.clientes.listar();
+        clientes = actualizados;
+        const sel = $('#vn-cliente');
+        if (sel) {
+          sel.innerHTML = `
+            <option value="">Consumidor final — sin datos fiscales</option>
+            ${clientes.map(cl => `<option value="${cl.id}">${esc(cl.cliente)} — ${esc(cl.documento_completo)}</option>`).join('')}
+          `;
+          if (nuevo && nuevo.id) sel.value = String(nuevo.id);
+          else if (nuevo && nuevo.documento) {
+            const encontrado = clientes.find(cl => cl.documento === nuevo.documento);
+            if (encontrado) sel.value = String(encontrado.id);
+          }
+          pintarCliente();
+        }
+      });
+    });
     INV.ui.montoAutomatico('#pg-monto');
     INV.ui.montoAutomatico('#cr-inicial');
 
@@ -625,9 +643,6 @@
     ['cr-inicial','cr-tasa','cr-cuotas','cr-frecuencia','cr-primera','cr-recargo']
       .forEach(id => $('#' + id).addEventListener('input', previaCredito));
 
-    /* Inicial y porcentaje son dos caras del mismo dato: al tocar uno se
-       recalcula el otro. Sin esto habría que hacer la regla de tres a
-       mano cada vez que el cliente pide "el 30 por ciento de inicial". */
     $('#cr-inicial').addEventListener('input', () => {
       const total = totalDeLaVenta();
       const pct = total > 0 ? (INV.ui.leerMonto('#cr-inicial') / total) * 100 : 0;
@@ -644,7 +659,16 @@
     $('#cr-inicial-pct').addEventListener('input', () => {
       const pct = Math.min(100, Math.max(0, Number($('#cr-inicial-pct').value || 0)));
       INV.ui.fijarMonto('#cr-inicial', redondear(totalDeLaVenta() * pct / 100));
-      equivalenteInicial();  function pintarCliente() {
+      equivalenteInicial();
+      previaCredito();
+    });
+
+    pintarCliente();
+    ajustarCamposPago();
+    pintarRenglones();
+  }
+
+  function pintarCliente() {
     const caja = $('#vn-datos-cliente');
     const c = clientes.find(x => String(x.id) === $('#vn-cliente').value);
     if (!c) {
