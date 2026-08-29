@@ -154,7 +154,7 @@ INV.seniat = {
     }
   },
 
-  /* Intenta consultar CNE a través de gateways públicos concurrentes */
+  /* Intenta consultar CNE a través de gateways públicos concurrentes 24/7 */
   async consultarCneGateways(prefijo, numero) {
     const nac = prefijo.toUpperCase() === 'E' ? 'E' : 'V';
     const cneUrl = `http://www.cne.gob.ve/web/registro_electoral/ce.php?nac=${nac}&ced=${numero}`;
@@ -162,39 +162,47 @@ INV.seniat = {
       `https://api.allorigins.win/raw?url=${encodeURIComponent(cneUrl)}`,
       `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(cneUrl)}`,
       `https://corsproxy.io/?url=${encodeURIComponent(cneUrl)}`,
+      `https://r.jina.ai/${cneUrl}`,
     ];
 
-    for (const gw of gateways) {
-      try {
-        const txt = await this.fetchConTimeout(gw, 2500);
-        if (txt) {
-          const parseado = this.parsearHtmlCne(txt, nac, numero);
-          if (parseado && parseado.nombre) return parseado;
-        }
-      } catch (_e) {}
+    const promesas = gateways.map(async (gw) => {
+      const txt = await this.fetchConTimeout(gw, 3000);
+      if (!txt) throw new Error('Gateway falló');
+      const parseado = this.parsearHtmlCne(txt, nac, numero);
+      if (!parseado || !parseado.nombre) throw new Error('Sin datos en CNE');
+      return parseado;
+    });
+
+    try {
+      return await Promise.any(promesas);
+    } catch (_e) {
+      return null;
     }
-    return null;
   },
 
-  /* Intenta consultar SENIAT a través de gateways públicos concurrentes */
+  /* Intenta consultar SENIAT a través de gateways públicos concurrentes 24/7 */
   async consultarSeniatGateways(rif) {
     const seniatUrl = `http://contribuyente.seniat.gob.ve/getContribuyente/getContribuyente?p_rif=${rif}`;
     const gateways = [
       `https://api.allorigins.win/raw?url=${encodeURIComponent(seniatUrl)}`,
       `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(seniatUrl)}`,
       `https://corsproxy.io/?url=${encodeURIComponent(seniatUrl)}`,
+      `https://r.jina.ai/${seniatUrl}`,
     ];
 
-    for (const gw of gateways) {
-      try {
-        const txt = await this.fetchConTimeout(gw, 2500);
-        if (txt) {
-          const parseado = this.parsearXmlSeniat(txt, rif);
-          if (parseado && parseado.nombre) return parseado;
-        }
-      } catch (_e) {}
+    const promesas = gateways.map(async (gw) => {
+      const txt = await this.fetchConTimeout(gw, 3000);
+      if (!txt) throw new Error('Gateway falló');
+      const parseado = this.parsearXmlSeniat(txt, rif);
+      if (!parseado || !parseado.nombre) throw new Error('Sin datos en SENIAT');
+      return parseado;
+    });
+
+    try {
+      return await Promise.any(promesas);
+    } catch (_e) {
+      return null;
     }
-    return null;
   },
 
   /* Diccionario de entidades verificadas (Bancos e Instituciones) */
