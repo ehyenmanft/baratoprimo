@@ -2010,3 +2010,110 @@ html[data-tema="oscuro"] .bienvenida__caja::before{
   .bienvenida__caja{ padding:28px 24px 24px; }
   .bienvenida__nombre{ font-size:24px; }
 }
+
+/* =====================================================================
+   Escáner de Códigos de Barras y QR
+   ===================================================================== */
+.escaner-overlay{
+  position:fixed; inset:0; z-index:1100;
+  background:rgba(10, 10, 20, 0.82);
+  backdrop-filter:blur(8px);
+  display:flex; align-items:center; justify-content:center;
+  padding:16px;
+}
+.escaner-caja{
+  background:var(--superficie);
+  border:1px solid var(--linea);
+  border-radius:var(--r);
+  box-shadow:0 24px 60px rgba(0,0,0,0.45), 0 0 30px rgba(108,59,244,0.15);
+  width:100%; max-width:460px;
+  padding:20px;
+  display:flex; flex-direction:column; gap:14px;
+}
+.escaner-cabecera{
+  display:flex; justify-content:space-between; align-items:flex-start; gap:12px;
+}
+.escaner-titulo{
+  font-size:17px; font-weight:700; color:var(--tinta); margin:0 0 2px;
+}
+.escaner-desc{
+  font-size:12.5px; color:var(--tinta-3); margin:0;
+}
+.escaner-visor-wrapper{
+  position:relative; width:100%; height:260px;
+  border-radius:var(--r-s); overflow:hidden;
+  background:#05050a;
+  display:flex; align-items:center; justify-content:center;
+}
+.escaner-video{
+  width:100%; height:100%; object-fit:cover;
+}
+.escaner-mira{
+  position:absolute; inset:20px;
+  pointer-events:none;
+  display:flex; align-items:center; justify-content:center;
+}
+.escaner-esquinas{
+  position:absolute; inset:0;
+  border:2px solid rgba(255,255,255,0.25);
+  border-radius:12px;
+  box-shadow:0 0 0 9999px rgba(0, 0, 0, 0.38);
+}
+.escaner-esquinas::before, .escaner-esquinas::after{
+  content:''; position:absolute;
+  width:24px; height:24px;
+  border-color:var(--violeta-claro);
+  border-style:solid;
+}
+.escaner-esquinas::before{
+  top:-2px; left:-2px;
+  border-width:3px 0 0 3px;
+  border-top-left-radius:10px;
+}
+.escaner-esquinas::after{
+  bottom:-2px; right:-2px;
+  border-width:0 3px 3px 0;
+  border-bottom-right-radius:10px;
+}
+.escaner-laser{
+  position:absolute; left:6px; right:6px; height:3px;
+  background:linear-gradient(90deg, transparent, #2CC3E0, var(--violeta-claro), #2CC3E0, transparent);
+  box-shadow:0 0 12px var(--violeta-claro), 0 0 6px #2CC3E0;
+  border-radius:2px;
+  animation:escaner-barrido 1.8s ease-in-out infinite alternate;
+}
+@keyframes escaner-barrido{
+  0%   { top:8%; opacity:0.3; }
+  50%  { opacity:1; }
+  100% { top:90%; opacity:0.3; }
+}
+.escaner-pill{
+  position:absolute; bottom:12px; left:50%; transform:translateX(-50%);
+  padding:6px 14px; border-radius:20px;
+  font-size:12.5px; font-weight:700; text-align:center;
+  white-space:nowrap; z-index:5;
+  box-shadow:0 6px 16px rgba(0,0,0,0.3);
+}
+.escaner-pill--exito{
+  background:var(--esmeralda); color:#fff;
+}
+.escaner-pill--error{
+  background:var(--rosa); color:#fff;
+}
+.escaner-acciones{
+  display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;
+}
+.escaner-chk-continuo{
+  display:inline-flex; align-items:center; gap:6px;
+  font-size:12.5px; color:var(--tinta-2); cursor:pointer; user-select:none;
+}
+.escaner-chk-continuo input{
+  accent-color:var(--violeta); width:auto; margin:0;
+}
+.escaner-manual{
+  padding-top:10px; border-top:1px solid var(--linea-2);
+}
+.escaner-manual label{
+  font-size:11.5px; font-weight:600; color:var(--tinta-3); text-transform:uppercase; letter-spacing:0.04em;
+}
+

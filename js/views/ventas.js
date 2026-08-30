@@ -445,9 +445,12 @@
         </div>
         <div class="ficha__cuerpo" style="padding-bottom:14px">
           <div class="filtros">
-            <label class="filtro" style="min-width:150px"><span>Buscar por código o nombre</span>
-              <input type="search" id="vn-buscar-prod" placeholder="Escribe el código…"
-                     autocomplete="off" style="max-width:200px"></label>
+            <label class="filtro" style="min-width:160px"><span>Buscar por código o nombre</span>
+              <div style="display:flex; gap:6px; align-items:center">
+                <input type="search" id="vn-buscar-prod" placeholder="Escribe el código…"
+                       autocomplete="off" style="max-width:170px">
+                <button type="button" class="btn btn--secundario btn--chico" id="vn-btn-escanear" title="Escanear código de barras o QR" style="padding:7px 11px">📷</button>
+              </div></label>
             <label class="filtro" style="flex:2; min-width:220px"><span>Producto</span>
               <select id="vn-producto">
                 ${catalogo.map(p => {
@@ -614,6 +617,40 @@
     });
 
     $('#vn-agregar').addEventListener('click', e => { e.preventDefault(); agregarRenglon(); });
+    const btnEscanear = $('#vn-btn-escanear');
+    if (btnEscanear) {
+      btnEscanear.addEventListener('click', () => {
+        if (!INV.escaner) return avisar('Módulo de escáner no disponible', 'error');
+        INV.escaner.abrirModalEscaneo({
+          titulo: 'Escanear producto para la venta',
+          descripcion: 'Apunta la cámara al código de barras o QR del empaque.',
+          modoContinuo: true,
+          onScan: (codigo, { mostrarMensaje }) => {
+            const t = String(codigo || '').trim().toLowerCase();
+            const p = catalogo.find(x =>
+              (x.sku && String(x.sku).toLowerCase() === t) ||
+              String(x.producto_id || x.id) === t
+            );
+            if (!p) {
+              mostrarMensaje(`⚠️ No encontrado: "${codigo}"`, true);
+              return;
+            }
+            const sel = $('#vn-producto');
+            if (sel) {
+              sel.value = String(p.producto_id || p.id);
+              ajustarPasoCantidad();
+            }
+            const stockActual = Number(p.stock != null ? p.stock : 0);
+            if (stockActual <= 0) {
+              mostrarMensaje(`⚠️ Sin stock: "${p.nombre}"`, true);
+              return;
+            }
+            agregarRenglon();
+            mostrarMensaje(`✓ Agregado: ${p.nombre} (+1)`);
+          }
+        });
+      });
+    }
     $('#vn-iva').addEventListener('input', pintarRenglones);
     $('#vn-incluido').addEventListener('change', pintarRenglones);
     $('#vn-emitir').addEventListener('click', confirmarEmision);

@@ -39,9 +39,12 @@
       cuerpo: `
         <div class="campo">
           <label for="mv-producto">Producto</label>
-          <select id="mv-producto">
-            ${productos.map(p => `<option value="${p.producto_id}" ${String(p.producto_id) === String(productoId) ? 'selected' : ''}>${esc(p.sku)} — ${esc(p.nombre)} (${cantidad(p.stock)} ${esc(p.unidad)})</option>`).join('')}
-          </select>
+          <div style="display:grid; grid-template-columns:1fr auto; gap:6px">
+            <select id="mv-producto">
+              ${productos.map(p => `<option value="${p.producto_id}" ${String(p.producto_id) === String(productoId) ? 'selected' : ''}>${esc(p.sku)} — ${esc(p.nombre)} (${cantidad(p.stock)} ${esc(p.unidad)})</option>`).join('')}
+            </select>
+            <button type="button" class="btn btn--secundario btn--chico" id="mv-escanear-prod" title="Escanear producto con cámara">📷</button>
+          </div>
         </div>
         ${esAjuste ? `
         <div class="campo">
@@ -101,6 +104,34 @@
     }
 
     $('#mv-producto').addEventListener('change', ajustarPasoMv);
+    const btnEscanearMv = $('#mv-escanear-prod');
+    if (btnEscanearMv) {
+      btnEscanearMv.addEventListener('click', () => {
+        if (!INV.escaner) return avisar('Módulo de escáner no disponible', 'error');
+        INV.escaner.abrirModalEscaneo({
+          titulo: 'Escanear producto para movimiento',
+          descripcion: 'Apunta la cámara al código de barras o QR del producto.',
+          modoContinuo: false,
+          onScan: (codigo, { cerrar, mostrarMensaje }) => {
+            const t = String(codigo || '').trim().toLowerCase();
+            const p = productos.find(x =>
+              (x.sku && String(x.sku).toLowerCase() === t) ||
+              String(x.producto_id || x.id) === t
+            );
+            if (!p) {
+              mostrarMensaje(`⚠️ No encontrado: "${codigo}"`, true);
+              return;
+            }
+            const sel = $('#mv-producto');
+            if (sel) {
+              sel.value = String(p.producto_id || p.id);
+              ajustarPasoMv();
+            }
+            cerrar();
+          }
+        });
+      });
+    }
     ajustarPasoMv();
 
     // El costo también se ve en la otra moneda mientras se escribe

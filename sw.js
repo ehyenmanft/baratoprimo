@@ -10,7 +10,7 @@
    que los dispositivos ya instalados se enteren de la actualización.
    ===================================================================== */
 
-const VERSION = 'baratoprimo-v1.5';
+const VERSION = 'baratoprimo-v1.6';
 
 /* El armazón: lo imprescindible para pintar la aplicación sin red. */
 const ARMAZON = [
@@ -33,6 +33,7 @@ const ARMAZON = [
   './js/periodos.js',
   './js/graficos.js',
   './js/qr.js',
+  './js/escaner.js',
   './js/seniat.js',
   './js/app.js',
   './js/instalar.js',

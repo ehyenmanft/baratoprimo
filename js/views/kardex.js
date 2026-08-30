@@ -104,9 +104,12 @@
       contenedor.innerHTML = `
         <div class="ficha anim">
           <div class="ficha__cabecera">
-            <select id="kx-producto" style="max-width:320px">
-              ${productos.map(p => `<option value="${p.producto_id}" ${String(p.producto_id) === String(param) ? 'selected' : ''}>${esc(p.sku)} — ${esc(p.nombre)}</option>`).join('')}
-            </select>
+            <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap">
+              <select id="kx-producto" style="max-width:320px">
+                ${productos.map(p => `<option value="${p.producto_id}" ${String(p.producto_id) === String(param) ? 'selected' : ''}>${esc(p.sku)} — ${esc(p.nombre)}</option>`).join('')}
+              </select>
+              <button type="button" class="btn btn--secundario btn--chico" id="kx-btn-escanear" title="Escanear código de barras o QR" style="padding:7px 11px">📷</button>
+            </div>
             <div class="filtros">
               <label class="filtro"><span>Desde</span><input type="date" id="kx-desde"></label>
               <label class="filtro"><span>Hasta</span><input type="date" id="kx-hasta"></label>
@@ -118,6 +121,34 @@
 
       $('#kx-producto').addEventListener('change', cargar);
       $('#kx-filtrar').addEventListener('click', cargar);
+      const btnEscanearKx = $('#kx-btn-escanear');
+      if (btnEscanearKx) {
+        btnEscanearKx.addEventListener('click', () => {
+          if (!INV.escaner) return avisar('Módulo de escáner no disponible', 'error');
+          INV.escaner.abrirModalEscaneo({
+            titulo: 'Escanear producto para Kardex',
+            descripcion: 'Apunta la cámara al código de barras o QR del producto.',
+            modoContinuo: false,
+            onScan: (codigo, { cerrar, mostrarMensaje }) => {
+              const t = String(codigo || '').trim().toLowerCase();
+              const p = productos.find(x =>
+                (x.sku && String(x.sku).toLowerCase() === t) ||
+                String(x.producto_id || x.id) === t
+              );
+              if (!p) {
+                mostrarMensaje(`⚠️ No encontrado: "${codigo}"`, true);
+                return;
+              }
+              const sel = $('#kx-producto');
+              if (sel) {
+                sel.value = String(p.producto_id || p.id);
+                cargar();
+              }
+              cerrar();
+            }
+          });
+        });
+      }
       cargar();
     },
   };

@@ -217,8 +217,11 @@
       cuerpo: `
         <div class="campos-fila">
           <div class="campo">
-            <label for="pr-sku">SKU</label>
-            <input id="pr-sku" type="text" value="${esc(p ? p.sku : '')}" placeholder="SKU-001">
+            <label for="pr-sku">SKU / Código de barras</label>
+            <div style="display:grid; grid-template-columns:1fr auto; gap:6px">
+              <input id="pr-sku" type="text" value="${esc(p ? p.sku : '')}" placeholder="SKU-001 o código de barras">
+              <button type="button" class="btn btn--secundario btn--chico" id="pr-escanear-sku" title="Escanear código con cámara">📷</button>
+            </div>
           </div>
           <div class="campo">
             <label for="pr-unidad">Unidad</label>
@@ -329,6 +332,22 @@
     INV.tasas.enlazarEquivalente('#pr-precio', '#pr-precio-eq');
 
     $('#pr-elegir').addEventListener('click', () => $('#pr-archivo').click());
+    const btnEscanearSku = $('#pr-escanear-sku');
+    if (btnEscanearSku) {
+      btnEscanearSku.addEventListener('click', () => {
+        if (!INV.escaner) return avisar('Módulo de escáner no disponible', 'error');
+        INV.escaner.abrirModalEscaneo({
+          titulo: 'Escanear código para el producto',
+          descripcion: 'Apunta la cámara al código de barras del producto.',
+          modoContinuo: false,
+          onScan: (codigo, { cerrar }) => {
+            const inp = $('#pr-sku');
+            if (inp) inp.value = codigo;
+            cerrar();
+          }
+        });
+      });
+    }
     $('#pr-quitar').addEventListener('click', () => {
       imagenPendiente = null;
       $('#pr-vista').removeAttribute('src');
@@ -494,7 +513,10 @@
           <div class="ficha__cabecera">
             <h3 class="ficha__titulo">Existencias</h3>
             <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
-              <input class="buscador" type="search" id="pr-buscar" placeholder="Buscar por nombre o SKU">
+              <div style="display:flex; gap:6px; align-items:center">
+                <input class="buscador" type="search" id="pr-buscar" placeholder="Buscar por nombre o SKU">
+                <button type="button" class="btn btn--secundario btn--chico" id="pr-btn-escanear" title="Escanear código de barras o QR" style="padding:7px 11px">📷</button>
+              </div>
               ${inactivos.length ? `<button id="pr-inactivos" class="btn btn--secundario btn--chico">${verInactivos ? 'Ocultar' : 'Ver'} inactivos</button>` : ''}
             </div>
           </div>
@@ -505,6 +527,27 @@
         $('#pr-lista').innerHTML = pintar(e.target.value.toLowerCase());
         enlazar();
       });
+
+      const btnEscanearList = $('#pr-btn-escanear');
+      if (btnEscanearList) {
+        btnEscanearList.addEventListener('click', () => {
+          if (!INV.escaner) return avisar('Módulo de escáner no disponible', 'error');
+          INV.escaner.abrirModalEscaneo({
+            titulo: 'Buscar producto por código',
+            descripcion: 'Apunta la cámara al código de barras o QR.',
+            modoContinuo: false,
+            onScan: (codigo, { cerrar }) => {
+              const inp = $('#pr-buscar');
+              if (inp) {
+                inp.value = codigo;
+                $('#pr-lista').innerHTML = pintar(codigo.toLowerCase());
+                enlazar();
+              }
+              cerrar();
+            }
+          });
+        });
+      }
 
       const btnInact = $('#pr-inactivos');
       if (btnInact) btnInact.addEventListener('click', () => {
