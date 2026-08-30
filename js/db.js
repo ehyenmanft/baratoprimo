@@ -146,9 +146,29 @@
       },
       obtener: id => sb.from('clientes').select('*').eq('id', id).maybeSingle()
         .then(ok).then(derivados),
-      crear: datos => sb.from('clientes').insert(datos).select().single().then(ok).then(derivados),
-      actualizar: (id, datos) => sb.from('clientes').update(datos).eq('id', id)
-        .select().single().then(ok).then(derivados),
+      crear: async datos => {
+        try {
+          return await sb.from('clientes').insert(datos).select().single().then(ok).then(derivados);
+        } catch (err) {
+          // Si el esquema de Supabase aún no tiene las columnas de retención
+          if (/column.*does not exist/i.test(err.message || '')) {
+            const { es_agente_retencion, retencion_iva_porcentaje, retencion_islr_porcentaje, ...datosBase } = datos;
+            return await sb.from('clientes').insert(datosBase).select().single().then(ok).then(derivados);
+          }
+          throw err;
+        }
+      },
+      actualizar: async (id, datos) => {
+        try {
+          return await sb.from('clientes').update(datos).eq('id', id).select().single().then(ok).then(derivados);
+        } catch (err) {
+          if (/column.*does not exist/i.test(err.message || '')) {
+            const { es_agente_retencion, retencion_iva_porcentaje, retencion_islr_porcentaje, ...datosBase } = datos;
+            return await sb.from('clientes').update(datosBase).eq('id', id).select().single().then(ok).then(derivados);
+          }
+          throw err;
+        }
+      },
       desactivar: id => sb.from('clientes').update({ activo: false }).eq('id', id).then(ok),
     },
 
