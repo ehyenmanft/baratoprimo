@@ -450,7 +450,10 @@
                      autocomplete="off" style="max-width:200px"></label>
             <label class="filtro" style="flex:2; min-width:220px"><span>Producto</span>
               <select id="vn-producto">
-                ${catalogo.map(p => `<option value="${p.producto_id}" data-sku="${esc(p.sku)}">${esc(p.sku)} — ${esc(p.nombre)} (${cantidad(p.stock)} ${esc(p.unidad)})</option>`).join('')}
+                ${catalogo.map(p => {
+                  const precioD = INV.tasas ? INV.tasas.dual(Number(p.precio_venta)).principal : `${numero(p.precio_venta)} Bs`;
+                  return `<option value="${p.producto_id || p.id}" data-sku="${esc(p.sku)}">${esc(p.sku)} — ${esc(p.nombre)} (${cantidad(p.stock)} ${esc(p.unidad)}) · ${precioD}</option>`;
+                }).join('')}
               </select>
               <span class="subida__nota" id="vn-encontrados" style="margin-top:4px; display:block"></span></label>
             <label class="filtro"><span>Cantidad</span>
@@ -629,6 +632,13 @@
       buscador.focus();
     });
 
+    $('#vn-cantidad').addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        agregarRenglon();
+      }
+    });
+
     $('#vn-agregar').addEventListener('click', agregarRenglon);
     $('#vn-iva').addEventListener('input', pintarRenglones);
     $('#vn-incluido').addEventListener('change', pintarRenglones);
@@ -670,6 +680,12 @@
     $('#pg-referencia').addEventListener('input', e => {
       e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6);
     });
+    $('#pg-referencia').addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); agregarPago(); }
+    });
+    $('#pg-monto').addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); agregarPago(); }
+    });
     ['cr-inicial','cr-tasa','cr-cuotas','cr-frecuencia','cr-primera','cr-recargo']
       .forEach(id => $('#' + id).addEventListener('input', previaCredito));
 
@@ -699,6 +715,29 @@
     pintarRenglones();
   }
 
+  function sugerirMontoPago() {
+    const elMetodo = $('#pg-metodo');
+    const elMonto = $('#pg-monto');
+    if (!elMetodo || !elMonto) return;
+    const m = metodo(elMetodo.value);
+    if (m.credito) return;
+    const total = totalDeLaVenta();
+    const pagado = redondear(pagos.reduce((s, p) => s + Number(p.monto_local), 0));
+    const faltaBs = Math.max(0, redondear(total - pagado));
+    if (faltaBs > 0) {
+      if (m.moneda === 'VES') {
+        INV.ui.fijarMonto('#pg-monto', faltaBs);
+      } else {
+        const elTasa = $('#pg-tasa');
+        const tasa = Number((elTasa ? elTasa.value : 0) || 0) || INV.tasas.usd();
+        if (tasa > 0) INV.ui.fijarMonto('#pg-monto', redondear(faltaBs / tasa));
+      }
+    } else if (pagos.length > 0 && faltaBs === 0) {
+      INV.ui.fijarMonto('#pg-monto', 0);
+    }
+    equivalenteDelPago();
+  }
+
   function pintarCliente() {
     const caja = $('#vn-datos-cliente');
     if (!caja) return;
@@ -706,23 +745,24 @@
     const c = selectCliente ? clientes.find(x => String(x.id) === selectCliente.value) : null;
     if (!c) {
       caja.hidden = true;
+      pintarRenglones();
       return;
     }
     caja.hidden = false;
     caja.innerHTML = `
       <div class="datos__celda">
         <div class="datos__etiqueta">Documento fiscal</div>
-        <div class="datos__valor">${esc(c.documento_completo)}</div>
+        <div class="datos__valor">${esc(c.documento_completo || (c.tipo_documento ? c.tipo_documento + '-' + c.documento : c.documento || '—'))}</div>
       </div>
       <div class="datos__celda">
         <div class="datos__etiqueta">Contacto</div>
-        <div class="datos__valor" style="font-size:14px">${esc(c.telefono ?? '—')}</div>
+        <div class="datos__valor" style="font-size:14px">${esc(c.telefono || c.correo || '—')}</div>
       </div>
       <div class="datos__celda" style="grid-column:1 / -1">
         <div class="datos__etiqueta">Condición tributaria</div>
         <div class="datos__valor" style="font-size:13.5px">
           ${c.es_agente_retencion
-            ? `<span class="pastilla pastilla--retencion" style="margin-right:6px">Agente de Retención</span> Aplica retención del <b>${c.retencion_iva_porcentaje}% del IVA</b>${c.retencion_islr_porcentaje ? ` y ${c.retencion_islr_porcentaje}% ISLR` : ''}.`
+            ? `<span class="pastilla pastilla--retencion" style="margin-right:6px">Agente de Retención</span> Aplica retención del <b>${c.retencion_iva_porcentaje || 75}% del IVA</b>${c.retencion_islr_porcentaje ? ` y ${c.retencion_islr_porcentaje}% ISLR` : ''}.`
             : 'Contribuyente Ordinario — No aplica retenciones.'}
         </div>
       </div>
@@ -730,27 +770,31 @@
         <div class="datos__etiqueta">Dirección</div>
         <div class="datos__valor" style="font-size:13px; font-weight:400">${esc(c.direccion ?? 'No registrada')}</div>
       </div>`;
+    pintarRenglones();
   }
 
   function agregarRenglon() {
     const elProd = $('#vn-producto');
     const elCant = $('#vn-cantidad');
     if (!elProd || !elCant) return;
-    const id = Number(elProd.value);
-    const cant = Number(elCant.value);
-    const p = catalogo.find(x => x.producto_id === id);
+    const rawId = elProd.value;
+    const rawCant = elCant.value ? elCant.value.replace(',', '.') : '1';
+    const cant = Number(rawCant);
+    const p = catalogo.find(x => String(x.producto_id || x.id) === String(rawId));
 
+    if (!p) return avisar('Selecciona un producto válido del catálogo', 'error');
     if (!cant || cant <= 0) return avisar('Indica una cantidad mayor que cero', 'error');
 
-    const yaPuesto = renglones.filter(r => r.producto_id === id)
+    const pid = p.producto_id || p.id;
+    const yaPuesto = renglones.filter(r => String(r.producto_id) === String(pid))
       .reduce((s, r) => s + Number(r.cantidad), 0);
     if (yaPuesto + cant > Number(p.stock))
       return avisar(`Solo hay ${cantidad(Number(p.stock) - yaPuesto)} ${p.unidad} disponibles de ${p.nombre}`, 'error');
 
-    const existente = renglones.find(r => r.producto_id === id);
+    const existente = renglones.find(r => String(r.producto_id) === String(pid));
     if (existente) existente.cantidad = Number(existente.cantidad) + cant;
     else renglones.push({
-      producto_id: id, descripcion: p.nombre, sku: p.sku, unidad: p.unidad,
+      producto_id: pid, descripcion: p.nombre, sku: p.sku, unidad: p.unidad,
       cantidad: cant,
       /* El catálogo puede estar en dólares, pero la factura se emite en
          bolívares: el precio se convierte aquí, a la tasa del día, y esa
@@ -764,6 +808,7 @@
     elCant.value = 1;
     ajustarPasoCantidad();
     pintarRenglones();
+    sugerirMontoPago();
   }
 
   /* Muestra solo los campos que el método elegido necesita. */
@@ -851,6 +896,7 @@
     monedaAnterior = m.moneda;
     const elPgMonto = $('#pg-monto');
     if (elPgMonto) elPgMonto.placeholder = m.moneda === 'VES' ? '0,00' : '0,00 ' + m.moneda;
+    sugerirMontoPago();
     equivalenteDelPago();
   }
 
