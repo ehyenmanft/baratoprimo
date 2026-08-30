@@ -1461,6 +1461,8 @@
     return `
       <div class="tk">
         <div class="tk__centro">
+          ${n.logo_url ? `<div class="tk__logo-caja"><img src="${esc(n.logo_url)}" class="tk__logo" alt="Logo"></div>` : ''}
+          <p class="tk__seniat">SENIAT</p>
           ${n.nombre ? `<p class="tk__negocio">${esc(n.nombre)}</p>` : ''}
           ${n.rif ? `<p class="tk__sub">RIF ${esc(n.rif)}</p>` : ''}
           ${n.direccion ? `<p class="tk__sub">${esc(n.direccion)}</p>` : ''}

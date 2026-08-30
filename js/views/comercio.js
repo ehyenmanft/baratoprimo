@@ -55,6 +55,24 @@
               </div>
               <div class="ficha__cuerpo">
                 <div class="campo">
+                  <label>Logo del comercio (aparecerá en la factura y ticket)</label>
+                  <div class="logo-subida" style="display:flex; align-items:center; gap:14px; margin-top:6px;">
+                    <div id="co-logo-vista" style="width:72px; height:72px; border:1px dashed var(--linea); border-radius:var(--r-s); display:grid; place-items:center; background:var(--superficie-2); overflow:hidden; flex-shrink:0;">
+                      ${c.logo_url ? `<img src="${esc(c.logo_url)}" alt="Logo" style="max-width:100%; max-height:100%; object-fit:contain;">` : '<span style="font-size:11px; color:var(--tinta-3); text-align:center;">Sin logo</span>'}
+                    </div>
+                    <div style="flex:1;">
+                      <input type="file" id="co-logo-file" accept="image/png,image/jpeg,image/svg+xml,image/webp" style="display:none;">
+                      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                        <button type="button" class="btn btn--secundario btn--chico" id="co-logo-btn">Subir logo</button>
+                        <button type="button" class="btn btn--fantasma btn--chico" id="co-logo-quitar" style="color:var(--rosa);" ${c.logo_url ? '' : 'hidden'}>Quitar</button>
+                      </div>
+                      <span class="subida__nota" style="display:block; margin-top:6px; font-size:11.5px;">
+                        Aparecerá en la parte superior antes del texto SENIAT e identificación fiscal.
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div class="campo">
                   <label for="co-nombre">Razón social</label>
                   <input id="co-nombre" type="text" value="${esc(c.nombre ?? '')}" placeholder="Mi Comercio, C.A.">
                 </div>
@@ -172,13 +190,91 @@
         </div>`;
 
       if (!puede) {
-        contenedor.querySelectorAll('input, textarea, select').forEach(e => { e.disabled = true; });
+        contenedor.querySelectorAll('input, textarea, select, button').forEach(e => {
+          if (e.id !== 'mc-ir-comercios') e.disabled = true;
+        });
         avisar('Tu rol permite ver los datos del comercio, pero no cambiarlos');
+      }
+
+      let logoActual = c.logo_url || null;
+
+      const logoFile = $('#co-logo-file');
+      const logoBtn = $('#co-logo-btn');
+      const logoQuitar = $('#co-logo-quitar');
+      const logoVista = $('#co-logo-vista');
+
+      if (logoBtn && logoFile && puede) {
+        logoBtn.addEventListener('click', () => logoFile.click());
+        logoFile.addEventListener('change', e => {
+          const file = e.target.files && e.target.files[0];
+          if (!file) return;
+          if (file.size > 2 * 1024 * 1024) {
+            return avisar('La imagen no debe superar 2 MB', 'error');
+          }
+          const reader = new FileReader();
+          reader.onload = ev => {
+            const img = new Image();
+            img.onload = () => {
+              const canvas = document.createElement('canvas');
+              const maxW = 400, maxH = 200;
+              let w = img.width, h = img.height;
+              if (w > maxW || h > maxH) {
+                const ratio = Math.min(maxW / w, maxH / h);
+                w = Math.round(w * ratio);
+                h = Math.round(h * ratio);
+              }
+              canvas.width = w;
+              canvas.height = h;
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(img, 0, 0, w, h);
+              logoActual = canvas.toDataURL(file.type === 'image/png' ? 'image/png' : 'image/jpeg', 0.9);
+              if (logoVista) {
+                logoVista.innerHTML = `<img src="${esc(logoActual)}" alt="Logo" style="max-width:100%; max-height:100%; object-fit:contain;">`;
+              }
+              if (logoQuitar) logoQuitar.hidden = false;
+              previa();
+            };
+            img.src = ev.target.result;
+          };
+          reader.readAsDataURL(file);
+        });
+      }
+
+      if (logoQuitar && puede) {
+        logoQuitar.addEventListener('click', () => {
+          logoActual = null;
+          if (logoFile) logoFile.value = '';
+          if (logoVista) {
+            logoVista.innerHTML = '<span style="font-size:11px; color:var(--tinta-3); text-align:center;">Sin logo</span>';
+          }
+          logoQuitar.hidden = true;
+          previa();
+        });
+      }
+
+      function previa() {
+        $('#co-previa').innerHTML = `
+          <div class="previa__papel">
+            ${logoActual ? `<div class="previa__logo-caja"><img src="${esc(logoActual)}" class="previa__logo" alt="Logo"></div>` : ''}
+            <p class="previa__seniat">SENIAT</p>
+            <p class="previa__nombre">${esc($('#co-nombre').value || 'Mi Comercio')}</p>
+            ${$('#co-rif').value ? `<p>RIF ${esc($('#co-rif').value)}</p>` : ''}
+            ${$('#co-direccion').value ? `<p>${esc($('#co-direccion').value)}</p>` : ''}
+            ${$('#co-telefono').value ? `<p>Telf. ${esc($('#co-telefono').value)}</p>` : ''}
+            <hr>
+            <p>COMPROBANTE DE VENTA</p>
+            <p class="previa__numero">F-000001</p>
+            <hr>
+            <p style="margin-top:10px">${esc($('#co-mensaje').value || '')}</p>
+          </div>`;
       }
 
       ['co-nombre','co-rif','co-direccion','co-telefono','co-mensaje']
         .forEach(id => $('#' + id).addEventListener('input', previa));
       previa();
+
+      // Guardar referencia en el scope del formulario
+      INV.vistas.comercio._obtenerLogoActual = () => logoActual;
 
       /* Estado de la tasa: de dónde sale y qué antigüedad tiene. Con la
          automática encendida, la casilla manual queda inerte para que no
@@ -341,27 +437,16 @@
       </div>`;
   }
 
-  function previa() {
-    $('#co-previa').innerHTML = `
-      <div class="previa__papel">
-        <p class="previa__nombre">${esc($('#co-nombre').value || 'Mi Comercio')}</p>
-        ${$('#co-rif').value ? `<p>RIF ${esc($('#co-rif').value)}</p>` : ''}
-        ${$('#co-direccion').value ? `<p>${esc($('#co-direccion').value)}</p>` : ''}
-        ${$('#co-telefono').value ? `<p>Telf. ${esc($('#co-telefono').value)}</p>` : ''}
-        <hr>
-        <p>COMPROBANTE DE VENTA</p>
-        <p class="previa__numero">F-000001</p>
-        <hr>
-        <p style="margin-top:10px">${esc($('#co-mensaje').value || '')}</p>
-      </div>`;
-  }
-
   async function guardar(btn) {
     if (!INV.permisos.puede('ajustes.comercio'))
       return avisar('Tu rol no permite cambiar los datos del comercio', 'error');
 
     btn.disabled = true;
     try {
+      const logo = INV.vistas.comercio._obtenerLogoActual
+        ? INV.vistas.comercio._obtenerLogoActual()
+        : null;
+
       await INV.db.comercio.guardar({
         nombre:       $('#co-nombre').value.trim() || 'Mi Comercio',
         rif:          $('#co-rif').value.trim(),
@@ -376,6 +461,7 @@
         moneda_precios:  $('#co-moneda-precios').value,
         tasa_eur:     Number($('#co-eur').value || 0),
         ticket_ancho: $('#co-ticket').value,
+        logo_url:     logo,
       });
       await INV.comercio.recargar();
       avisar('Datos del comercio actualizados');
