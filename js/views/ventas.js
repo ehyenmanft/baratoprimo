@@ -530,7 +530,7 @@
               <label class="filtro"><span>Inicial en %</span>
                 <input type="number" id="cr-inicial-pct" min="0" max="100" step="1" value="0"
                        style="max-width:100px" placeholder="0"></label>
-              <label class="filtro"><span>Tasa de referencia</span>
+              <label class="filtros"><span>Tasa de referencia</span>
                 <input type="number" id="cr-tasa" min="0" step="0.0001" style="max-width:140px"></label>
               <label class="filtro"><span>N.º de cuotas</span>
                 <input type="number" id="cr-cuotas" min="1" max="36" step="1" value="3" style="max-width:110px"></label>
@@ -799,18 +799,11 @@
     const rawCant = elCant.value ? elCant.value.replace(',', '.') : '1';
     const cant = Number(rawCant);
 
-    console.log('[ventas] agregarRenglon rawId=', rawId, 'cant=', cant,
-      'catalogo.length=', catalogo.length,
-      'primeros ids=', catalogo.slice(0,3).map(x => x.producto_id + '|' + x.id + '|stock=' + x.stock));
-
     const p = catalogo.find(x => String(x.producto_id || x.id) === rawId);
 
     if (!p) {
-      console.error('[ventas] producto no encontrado en catálogo. rawId=', rawId);
       return avisar('Selecciona un producto válido del catálogo', 'error');
     }
-
-    console.log('[ventas] producto encontrado:', p.nombre, 'stock=', p.stock, 'precio_venta=', p.precio_venta);
 
     if (!cant || cant <= 0) return avisar('Indica una cantidad mayor que cero', 'error');
 
@@ -819,8 +812,6 @@
       .reduce((s, r) => s + Number(r.cantidad), 0);
     const stockActual = Number(p.stock != null ? p.stock : 0);
     const disponible = stockActual - yaPuesto;
-
-    console.log('[ventas] stockActual=', stockActual, 'yaPuesto=', yaPuesto, 'disponible=', disponible);
 
     if (stockActual <= 0) {
       return avisar(`⚠️ "${p.nombre}" no tiene existencias en inventario (Stock: 0 ${p.unidad}). Registra una entrada en Movimientos antes de venderlo.`, 'error');
@@ -846,8 +837,6 @@
         stock: stockActual,
       });
     }
-
-    console.log('[ventas] renglones ahora:', renglones.length, 'items');
 
     elCant.value = 1;
     ajustarPasoCantidad();
@@ -1267,11 +1256,7 @@
     const contRenglones = $('#vn-renglones');
     const contTotales = $('#vn-totales');
 
-    console.log('[ventas] pintarRenglones → renglones=', renglones.length,
-      'contRenglones=', !!contRenglones, 'contTotales=', !!contTotales);
-
     if (!contRenglones || !contTotales) {
-      console.warn('[ventas] pintarRenglones: contenedor no encontrado, abortando');
       return;
     }
 
@@ -1283,19 +1268,16 @@
     const retIslrPct = (c && c.es_agente_retencion) ? Number(c.retencion_islr_porcentaje || 0) : 0;
     const r = calcular(renglones, tasa, incluido, retIvaPct, retIslrPct);
 
-    console.log('[ventas] pintarRenglones → tasa=', tasa, 'r.total=', r.total, 'r.items=', r.items.length);
-
     contRenglones.innerHTML = renglones.length ? `
       <div class="lista lista--ren">
         ${r.items.map((it, i) => `
           <div class="lista__item" style="--i:${i}">
             <span class="lista__nombre">${esc(it.descripcion)}
               ${it.exento ? '<span class="pastilla pastilla--exento">exento</span>' : ''}
-              <span class="lista__sub">${esc(it.sku)}${INV.tasas.catalogoEnDolares() && it.precio_catalogo ? ` · <span style="color:var(--cian)">${numero(it.precio_catalogo)} $</span>` : ''}</span></span>
-            <span class="lista__dato">
-              <b style="font-size:1.1em; color:var(--violeta-claro)">${cantidad(it.cantidad)}</b>
-              <small>${esc(it.unidad)}</small>
-            </span>
+              <span class="lista__sub">
+                <b style="color:var(--violeta-claro); font-weight:700">${cantidad(it.cantidad)} ${esc(it.unidad)}</b>
+                &nbsp;·&nbsp;${esc(it.sku)}${INV.tasas.catalogoEnDolares() && it.precio_catalogo ? ` · <span style="color:var(--cian)">${numero(it.precio_catalogo)} $/u</span>` : ''}
+              </span></span>
             <span class="lista__dato">
               <input type="number" min="0.01" step="0.01" value="${it.precio_unitario}"
                      data-precio="${i}" style="width:104px; text-align:right; padding:6px 8px">
@@ -1307,7 +1289,7 @@
                 const eq = INV.tasas ? INV.tasas.aDolares(it.total) : null;
                 return eq === null ? '' : `<span class="equivalente">${numero(eq)} $</span>`;
               })()}</span>
-            <button class="btn btn--fantasma btn--chico" data-quitar="${i}" aria-label="Quitar">✕</button>
+            <button type="button" class="btn btn--fantasma btn--chico" data-quitar="${i}" aria-label="Quitar">✕</button>
           </div>`).join('')}
       </div>`
       : '<div class="vacio" style="padding:32px"><h4>Sin renglones</h4><p>Agrega productos para armar la venta.</p></div>';
