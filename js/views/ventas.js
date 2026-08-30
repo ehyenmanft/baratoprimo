@@ -753,7 +753,7 @@
     if (cajaRef) cajaRef.hidden = !m.ref;
     if (cajaDetalle) cajaDetalle.hidden = !m.detalle;
     if (cajaTasa) cajaTasa.hidden = m.moneda === 'VES' || m.credito;
-    if (cajaMonto) cajaMonto.hidden = !m.credito;
+    if (cajaMonto) cajaMonto.hidden = !!m.credito;
     if (cajaCredito) cajaCredito.hidden = !m.credito;
     if (btnAgregar) {
       btnAgregar.textContent = m.credito
