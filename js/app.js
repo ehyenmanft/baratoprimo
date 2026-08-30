@@ -311,6 +311,16 @@
         'Los datos se guardan en un archivo dentro de tu Google Drive. ' +
         'Al conectar se pedirá permiso solo sobre ese archivo.';
     }
+    const hash = window.location.hash || '';
+    const search = window.location.search || '';
+    const esRecuperacion = hash.includes('type=recovery') || search.includes('type=recovery') || (hash.includes('access_token') && hash.includes('type=recovery'));
+
+    if (esRecuperacion) {
+      mostrarAcceso();
+      alternarTab('recuperar');
+      return;
+    }
+
     const s = await INV.db.sesion.actual();
     s ? await mostrarApp(s) : mostrarAcceso();
   }
@@ -415,26 +425,35 @@
     const tabRegistro = $('#tab-registro');
     const bloqueEntrar = $('#bloque-entrar');
     const bloqueRegistro = $('#bloque-registro');
+    const bloqueNuevaClave = $('#bloque-nueva-clave');
     const errAcceso = $('#acceso-error');
     const exitoAcceso = $('#acceso-exito');
 
-    function alternarTab(aRegistro) {
+    function alternarTab(modo) {
+      // modo puede ser 'entrar', 'registro' o 'recuperar' (o boolean para compatibilidad)
+      const aRegistro = modo === 'registro' || modo === true;
+      const aRecuperar = modo === 'recuperar';
+
+      const tabs = $('.acceso__tabs');
+      if (tabs) tabs.hidden = aRecuperar;
+
       if (tabEntrar) {
-        tabEntrar.classList.toggle('acceso__tab--activo', !aRegistro);
-        tabEntrar.setAttribute('aria-selected', String(!aRegistro));
+        tabEntrar.classList.toggle('acceso__tab--activo', !aRegistro && !aRecuperar);
+        tabEntrar.setAttribute('aria-selected', String(!aRegistro && !aRecuperar));
       }
       if (tabRegistro) {
         tabRegistro.classList.toggle('acceso__tab--activo', aRegistro);
         tabRegistro.setAttribute('aria-selected', String(aRegistro));
       }
-      if (bloqueEntrar) bloqueEntrar.hidden = aRegistro;
-      if (bloqueRegistro) bloqueRegistro.hidden = !aRegistro;
+      if (bloqueEntrar) bloqueEntrar.hidden = aRegistro || aRecuperar;
+      if (bloqueRegistro) bloqueRegistro.hidden = !aRegistro || aRecuperar;
+      if (bloqueNuevaClave) bloqueNuevaClave.hidden = !aRecuperar;
       if (errAcceso) errAcceso.hidden = true;
       if (exitoAcceso) exitoAcceso.hidden = true;
     }
 
-    if (tabEntrar) tabEntrar.addEventListener('click', () => alternarTab(false));
-    if (tabRegistro) tabRegistro.addEventListener('click', () => alternarTab(true));
+    if (tabEntrar) tabEntrar.addEventListener('click', () => alternarTab('entrar'));
+    if (tabRegistro) tabRegistro.addEventListener('click', () => alternarTab('registro'));
 
     /* ============ Olvido de Contraseña ============ */
     const btnOlvido = $('#btn-olvido-clave');
@@ -554,6 +573,87 @@
         btnOjoReg.setAttribute('aria-pressed', String(!visible));
         btnOjoReg.setAttribute('aria-label', visible ? 'Mostrar la contraseña' : 'Ocultar la contraseña');
         campo.focus();
+      });
+    }
+
+    /* Ojo de ver contraseña en restablecer clave */
+    const btnOjoReset = $('#ver-clave-reset');
+    if (btnOjoReset) {
+      btnOjoReset.addEventListener('click', () => {
+        const campo = $('#reset-nueva-clave');
+        if (!campo) return;
+        const visible = campo.type === 'text';
+        campo.type = visible ? 'password' : 'text';
+        btnOjoReset.setAttribute('aria-pressed', String(!visible));
+        btnOjoReset.setAttribute('aria-label', visible ? 'Mostrar la contraseña' : 'Ocultar la contraseña');
+        campo.focus();
+      });
+    }
+
+    /* Botón cancelar restablecimiento */
+    const btnCancelarReset = $('#btn-cancelar-reset');
+    if (btnCancelarReset) {
+      btnCancelarReset.addEventListener('click', () => alternarTab('entrar'));
+    }
+
+    /* Botón guardar nueva contraseña desde pantalla de acceso */
+    const btnGuardarNuevaClave = $('#btn-guardar-nueva-clave');
+    if (btnGuardarNuevaClave) {
+      btnGuardarNuevaClave.addEventListener('click', async () => {
+        const inpNueva = $('#reset-nueva-clave');
+        const inpConf = $('#reset-confirmar-clave');
+        const err = $('#acceso-error');
+        const exito = $('#acceso-exito');
+        if (err) err.hidden = true;
+        if (exito) exito.hidden = true;
+
+        const pass = (inpNueva ? inpNueva.value : '').trim();
+        const conf = (inpConf ? inpConf.value : '').trim();
+
+        if (pass.length < 8) {
+          if (err) {
+            err.textContent = 'La nueva contraseña debe tener al menos 8 caracteres.';
+            err.hidden = false;
+          }
+          return;
+        }
+
+        if (pass !== conf) {
+          if (err) {
+            err.textContent = 'Las contraseñas no coinciden. Por favor verifícalas.';
+            err.hidden = false;
+          }
+          return;
+        }
+
+        btnGuardarNuevaClave.disabled = true;
+        btnGuardarNuevaClave.textContent = 'Guardando…';
+
+        try {
+          await INV.db.sesion.actualizarClave(pass);
+          INV.ui.avisar('¡Contraseña actualizada con éxito!');
+          if (exito) {
+            exito.textContent = '¡Contraseña actualizada correctamente! Iniciando sesión…';
+            exito.hidden = false;
+          }
+          const sesion = await INV.db.sesion.actual();
+          if (sesion) {
+            await mostrarApp(sesion);
+          } else {
+            setTimeout(() => {
+              alternarTab('entrar');
+              if (exito) exito.textContent = 'Tu contraseña fue cambiada. Ya puedes iniciar sesión.';
+            }, 1200);
+          }
+        } catch (e) {
+          if (err) {
+            err.textContent = e.message;
+            err.hidden = false;
+          }
+        } finally {
+          btnGuardarNuevaClave.disabled = false;
+          btnGuardarNuevaClave.textContent = 'Guardar contraseña y entrar';
+        }
       });
     }
 
@@ -724,7 +824,8 @@
     if (INV.db.sesion.alCambiar) {
       INV.db.sesion.alCambiar((e, s) => {
         if (e === 'PASSWORD_RECOVERY') {
-          mostrarModalNuevaClave();
+          mostrarAcceso();
+          alternarTab('recuperar');
         } else if (!s) {
           mostrarAcceso();
         }

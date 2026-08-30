@@ -130,6 +130,46 @@
       <button id="btn-registrarse" class="btn btn--primario btn--ancho" style="margin-top:12px;">Solicitar cuenta</button>
     </div>
 
+    <!-- ============ FORMULARIO RESTABLECER CONTRASEÑA ============ -->
+    <div id="bloque-nueva-clave" hidden>
+      <div style="text-align:center; margin-bottom:16px;">
+        <span style="font-size:32px; display:inline-block; margin-bottom:4px;">🔑</span>
+        <h3 style="margin:0 0 6px; font-size:17px; font-weight:700; color:var(--tinta);">Nueva contraseña</h3>
+        <p style="margin:0; font-size:13px; color:var(--tinta-2);">
+          Escribe tu nueva contraseña de acceso (mínimo 8 caracteres).
+        </p>
+      </div>
+      <div class="campo campo--clave">
+        <label for="reset-nueva-clave">Nueva contraseña</label>
+        <input id="reset-nueva-clave" type="password" autocomplete="new-password" placeholder="Mínimo 8 caracteres">
+        <button type="button" class="ojo" id="ver-clave-reset"
+                aria-label="Mostrar la contraseña" aria-pressed="false" title="Mostrar la contraseña">
+          <svg class="ojo__abierto" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+            <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"
+                  fill="none" stroke="currentColor" stroke-width="1.7"
+                  stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.7"/>
+          </svg>
+          <svg class="ojo__cerrado" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+            <path d="M4 4l16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+            <path d="M9.6 5.9A9.6 9.6 0 0112 5.5c6 0 9.5 6.5 9.5 6.5a17 17 0 01-3.4 4.1M6.4 7.9A17 17 0 002.5 12S6 18.5 12 18.5c.9 0 1.7-.1 2.5-.4"
+                  fill="none" stroke="currentColor" stroke-width="1.7"
+                  stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M9.9 9.9a3.2 3.2 0 004.3 4.3" fill="none" stroke="currentColor" stroke-width="1.7"
+                  stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+      <div class="campo campo--clave" style="margin-top:10px;">
+        <label for="reset-confirmar-clave">Confirmar contraseña</label>
+        <input id="reset-confirmar-clave" type="password" autocomplete="new-password" placeholder="Repite la contraseña">
+      </div>
+      <button id="btn-guardar-nueva-clave" class="btn btn--primario btn--ancho" style="margin-top:14px;">Guardar contraseña y entrar</button>
+      <div style="text-align:center; margin-top:10px;">
+        <button type="button" id="btn-cancelar-reset" class="btn btn--fantasma btn--chico">Volver a inicio de sesión</button>
+      </div>
+    </div>
+
     <p id="acceso-error" class="error" hidden></p>
     <p id="acceso-exito" class="panel" style="margin-top:14px; padding:10px; background:rgba(46,125,50,0.12); color:var(--verde, #2e7d32); border:1px solid rgba(46,125,50,0.3); border-radius:8px; font-size:12.5px; font-weight:600; text-align:center;" hidden></p>
   </div>
@@ -278,33 +318,33 @@
 <!-- ============ SCRIPTS ============ -->
 <!-- Scripts clásicos, sin módulos ES: así index.html abre con doble clic.
      El orden importa: config -> supabase -> sync -> datos -> ui -> vistas -> app. -->
-<script src="js/config.js?v=1.8"></script>
+<script src="js/config.js?v=1.9"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/sync.js?v=1.8"></script>
-<script src="js/datos-demo.js?v=1.8"></script>
-<script src="js/drive.js?v=1.8"></script>
-<script src="js/db.js?v=1.8"></script>
-<script src="js/ui.js?v=1.8"></script>
-<script src="js/permisos.js?v=1.8"></script>
-<script src="js/tasas.js?v=1.8"></script>
-<script src="js/periodos.js?v=1.8"></script>
-<script src="js/graficos.js?v=1.8"></script>
-<script src="js/qr.js?v=1.8"></script>
-<script src="js/escaner.js?v=1.8"></script>
-<script src="js/seniat.js?v=1.8"></script>
-<script src="js/views/inicio.js?v=1.8"></script>
-<script src="js/views/movimientos.js?v=1.8"></script>
-<script src="js/views/kardex.js?v=1.8"></script>
-<script src="js/views/productos.js?v=1.8"></script>
-<script src="js/views/producto.js?v=1.8"></script>
-<script src="js/views/graficas.js?v=1.8"></script>
-<script src="js/views/clientes.js?v=1.8"></script>
-<script src="js/views/ventas.js?v=1.8"></script>
-<script src="js/views/comercio.js?v=1.8"></script>
-<script src="js/views/operadores.js?v=1.8"></script>
-<script src="js/views/comercios.js?v=1.8"></script>
-<script src="js/views/caja.js?v=1.8"></script>
-<script src="js/app.js?v=1.8"></script>
-<script src="js/instalar.js?v=1.8"></script>
+<script src="js/sync.js?v=1.9"></script>
+<script src="js/datos-demo.js?v=1.9"></script>
+<script src="js/drive.js?v=1.9"></script>
+<script src="js/db.js?v=1.9"></script>
+<script src="js/ui.js?v=1.9"></script>
+<script src="js/permisos.js?v=1.9"></script>
+<script src="js/tasas.js?v=1.9"></script>
+<script src="js/periodos.js?v=1.9"></script>
+<script src="js/graficos.js?v=1.9"></script>
+<script src="js/qr.js?v=1.9"></script>
+<script src="js/escaner.js?v=1.9"></script>
+<script src="js/seniat.js?v=1.9"></script>
+<script src="js/views/inicio.js?v=1.9"></script>
+<script src="js/views/movimientos.js?v=1.9"></script>
+<script src="js/views/kardex.js?v=1.9"></script>
+<script src="js/views/productos.js?v=1.9"></script>
+<script src="js/views/producto.js?v=1.9"></script>
+<script src="js/views/graficas.js?v=1.9"></script>
+<script src="js/views/clientes.js?v=1.9"></script>
+<script src="js/views/ventas.js?v=1.9"></script>
+<script src="js/views/comercio.js?v=1.9"></script>
+<script src="js/views/operadores.js?v=1.9"></script>
+<script src="js/views/comercios.js?v=1.9"></script>
+<script src="js/views/caja.js?v=1.9"></script>
+<script src="js/app.js?v=1.9"></script>
+<script src="js/instalar.js?v=1.9"></script>
 </body>
 </html>
