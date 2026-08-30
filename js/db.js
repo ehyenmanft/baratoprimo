@@ -931,40 +931,67 @@
         .select().single().then(ok),
       eliminar: id => sb.from('operadores').delete().eq('id', id).then(ok),
       solicitarRegistro: async datos => {
-        // 1. Crear el usuario en auth primero para que tenga acceso asignado
         let usuarioId = null;
+        const correoLimpio = datos.correo.trim().toLowerCase();
+        const nombreLimpio = datos.nombre.trim();
+        const rolSolicitado = datos.rol || 'operador_facturador';
+
+        // 1. Crear el usuario en Supabase Auth con cliente independiente (sin requerir sesión previa)
         if (datos.clave) {
           try {
-            const resCuenta = await INV.db.cuentas.crear(datos.correo, datos.clave);
-            if (resCuenta && resCuenta.usuario_id) usuarioId = resCuenta.usuario_id;
-          } catch (errCuenta) {
-            // Si el error es que ya existe en auth, continuamos para registrar la solicitud
-            if (!/already registered|already been registered/i.test(errCuenta.message || '')) {
-              throw errCuenta;
+            const aparte = window.supabase.createClient(
+              INV.config.SUPABASE_URL,
+              INV.config.SUPABASE_ANON,
+              { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } }
+            );
+            const { data: authData, error: authErr } = await aparte.auth.signUp({
+              email: correoLimpio,
+              password: datos.clave,
+              options: {
+                data: {
+                  nombre: nombreLimpio,
+                  rol_solicitado: rolSolicitado,
+                }
+              }
+            });
+
+            if (authErr) {
+              const msg = (authErr.message || '').toLowerCase();
+              if (!msg.includes('already registered') && !msg.includes('already been registered')) {
+                throw new Error(traducirAlta(authErr.message));
+              }
+            }
+            if (authData && authData.user) {
+              usuarioId = authData.user.id;
+            }
+          } catch (errAuth) {
+            if (!/already registered|already been registered/i.test(errAuth.message || '')) {
+              throw errAuth;
             }
           }
         }
 
-        // 2. Intentar llamar a la función RPC solicitar_registro
+        // 2. Registrar la solicitud en la tabla operadores (activo = false, comercio_id = null)
+        const payload = {
+          nombre: nombreLimpio,
+          correo: correoLimpio,
+          rol: rolSolicitado,
+          usuario_id: usuarioId,
+        };
+
         try {
-          const payload = {
-            nombre: datos.nombre,
-            correo: datos.correo,
-            rol: datos.rol || 'operador_facturador',
-            usuario_id: usuarioId
-          };
           const { data, error } = await sb.rpc('solicitar_registro', { p: payload });
-          if (!error) return { id: data, ...payload, activo: false };
+          if (!error && data) return { id: data, ...payload, activo: false };
         } catch (e) { /* fallback a inserción directa */ }
 
         // Fallback a inserción directa
         const op = {
-          nombre: datos.nombre,
-          correo: datos.correo.toLowerCase(),
-          rol: datos.rol || 'operador_facturador',
+          nombre: nombreLimpio,
+          correo: correoLimpio,
+          rol: rolSolicitado,
           activo: false,
           comercio_id: null,
-          usuario_id: usuarioId
+          usuario_id: usuarioId,
         };
         return sb.from('operadores').insert(op).select().single().then(ok).catch(() => op);
       },

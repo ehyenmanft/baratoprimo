@@ -1,15 +1,29 @@
 -- =====================================================================
 -- BARATOPRIMO — migración: Solicitudes de Registro y Auto-Alta de Operadores
 -- ---------------------------------------------------------------------
--- Permite que los usuarios soliciten una cuenta desde la pantalla de
--- acceso eligiendo un rol solicitado (excepto super_admin).
--- La cuenta queda inactiva (activo = false) hasta que un super administrador
--- la apruebe, asigne el comercio correspondiente y la habilite.
+-- Permite que los usuarios creen cuenta desde la pantalla de acceso
+-- eligiendo su rol solicitado (excepto super_admin).
+-- La cuenta queda registrada en Supabase Auth y en la tabla operadores
+-- con estado pendiente (activo = false) hasta que un super administrador
+-- la apruebe y le asigne un comercio.
 --
 -- Se puede ejecutar varias veces sin romper nada.
 -- =====================================================================
 
--- 1. Función con permisos de seguridad para registrar solicitudes públicas
+-- 1. Política RLS para permitir inserción de solicitudes pendientes
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies 
+    where tablename = 'operadores' and policyname = 'solicitar operador publico'
+  ) then
+    create policy "solicitar operador publico" on operadores
+      for insert to anon, authenticated
+      with check (activo = false and comercio_id is null and rol <> 'super_admin');
+  end if;
+end $$;
+
+-- 2. Función con seguridad definer para registrar solicitudes
 create or replace function solicitar_registro(p jsonb)
 returns bigint language plpgsql security definer as $BLOQUE$
 declare
@@ -46,7 +60,7 @@ begin
   -- Si ya existe un operador con ese correo
   select id into v_id from operadores where lower(correo) = v_correo;
   if v_id is not null then
-    -- Si ya existe, actualizamos los datos básicos de la solicitud si está inactivo
+    -- Si ya existe y está inactivo, actualizamos los datos de la solicitud
     update operadores
        set nombre = v_nombre,
            rol = v_rol,
@@ -64,7 +78,7 @@ begin
 end;
 $BLOQUE$;
 
--- Conceder permisos de ejecución a usuarios anónimos y autenticados
+-- 3. Conceder permisos de ejecución
 do $$
 begin
   if exists (select 1 from pg_roles where rolname = 'anon') then
@@ -75,6 +89,39 @@ begin
   end if;
 end $$;
 
-select 'función solicitar_registro' as pieza,
-       case when exists (select 1 from pg_proc where proname = 'solicitar_registro')
-            then 'listo' else 'FALTA' end as estado;
+-- 4. Trigger opcional para auto-sincronizar usuarios de auth.users si se registran directamente
+create or replace function public.manejar_nuevo_usuario_auth()
+returns trigger language plpgsql security definer as $BLOQUE$
+declare
+  v_nombre text;
+  v_rol_solicitado text;
+  v_rol rol_usuario;
+begin
+  v_nombre := coalesce(new.raw_user_meta_data->>'nombre', split_part(new.email, '@', 1));
+  v_rol_solicitado := coalesce(new.raw_user_meta_data->>'rol_solicitado', 'operador_facturador');
+  
+  if v_rol_solicitado = 'super_admin' then
+    v_rol := 'operador_facturador'::rol_usuario;
+  else
+    v_rol := v_rol_solicitado::rol_usuario;
+  end if;
+
+  if not exists (select 1 from public.operadores where lower(correo) = lower(new.email)) then
+    insert into public.operadores (nombre, correo, rol, activo, comercio_id, usuario_id)
+    values (v_nombre, lower(new.email), v_rol, false, null, new.id);
+  else
+    update public.operadores
+       set usuario_id = new.id
+     where lower(correo) = lower(new.email) and usuario_id is null;
+  end if;
+
+  return new;
+end;
+$BLOQUE$;
+
+drop trigger if exists tr_nuevo_usuario_auth on auth.users;
+create trigger tr_nuevo_usuario_auth
+  after insert on auth.users
+  for each row execute function public.manejar_nuevo_usuario_auth();
+
+select 'migración de solicitudes de registro' as pieza, 'completada con éxito' as estado;
