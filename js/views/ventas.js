@@ -788,41 +788,66 @@
   function agregarRenglon() {
     const elProd = $('#vn-producto');
     const elCant = $('#vn-cantidad');
-    if (!elProd || !elCant) return;
-    const rawId = elProd.value;
+    if (!elProd || !elCant) {
+      console.error('[ventas] agregarRenglon: no se encontró #vn-producto o #vn-cantidad');
+      return;
+    }
+
+    const rawId = String(elProd.value || '').trim();
+    if (!rawId) return avisar('Selecciona un producto del catálogo', 'error');
+
     const rawCant = elCant.value ? elCant.value.replace(',', '.') : '1';
     const cant = Number(rawCant);
-    const p = catalogo.find(x => String(x.producto_id || x.id) === String(rawId));
 
-    if (!p) return avisar('Selecciona un producto válido del catálogo', 'error');
+    console.log('[ventas] agregarRenglon rawId=', rawId, 'cant=', cant,
+      'catalogo.length=', catalogo.length,
+      'primeros ids=', catalogo.slice(0,3).map(x => x.producto_id + '|' + x.id + '|stock=' + x.stock));
+
+    const p = catalogo.find(x => String(x.producto_id || x.id) === rawId);
+
+    if (!p) {
+      console.error('[ventas] producto no encontrado en catálogo. rawId=', rawId);
+      return avisar('Selecciona un producto válido del catálogo', 'error');
+    }
+
+    console.log('[ventas] producto encontrado:', p.nombre, 'stock=', p.stock, 'precio_venta=', p.precio_venta);
+
     if (!cant || cant <= 0) return avisar('Indica una cantidad mayor que cero', 'error');
 
     const pid = p.producto_id || p.id;
     const yaPuesto = renglones.filter(r => String(r.producto_id) === String(pid))
       .reduce((s, r) => s + Number(r.cantidad), 0);
-    const stockActual = Number(p.stock || 0);
+    const stockActual = Number(p.stock != null ? p.stock : 0);
     const disponible = stockActual - yaPuesto;
 
-    if (disponible <= 0) {
+    console.log('[ventas] stockActual=', stockActual, 'yaPuesto=', yaPuesto, 'disponible=', disponible);
+
+    if (stockActual <= 0) {
       return avisar(`⚠️ "${p.nombre}" no tiene existencias en inventario (Stock: 0 ${p.unidad}). Registra una entrada en Movimientos antes de venderlo.`, 'error');
     }
     if (cant > disponible) {
       return avisar(`Solo hay ${cantidad(disponible)} ${p.unidad} disponibles de "${p.nombre}".`, 'error');
     }
 
+    const precioUnitario = INV.tasas && INV.tasas.aFactura
+      ? (INV.tasas.aFactura(Number(p.precio_venta)) ?? Number(p.precio_venta))
+      : Number(p.precio_venta);
+
     const existente = renglones.find(r => String(r.producto_id) === String(pid));
-    if (existente) existente.cantidad = Number(existente.cantidad) + cant;
-    else renglones.push({
-      producto_id: pid, descripcion: p.nombre, sku: p.sku, unidad: p.unidad,
-      cantidad: cant,
-      /* El catálogo puede estar en dólares, pero la factura se emite en
-         bolívares: el precio se convierte aquí, a la tasa del día, y esa
-         es la que queda guardada en el comprobante. */
-      precio_catalogo: Number(p.precio_venta),
-      precio_unitario: INV.tasas.aFactura(Number(p.precio_venta)) ?? Number(p.precio_venta),
-      exento: !!p.exento_iva,
-      stock: stockActual,
-    });
+    if (existente) {
+      existente.cantidad = Number(existente.cantidad) + cant;
+    } else {
+      renglones.push({
+        producto_id: pid, descripcion: p.nombre, sku: p.sku, unidad: p.unidad,
+        cantidad: cant,
+        precio_catalogo: Number(p.precio_venta),
+        precio_unitario: precioUnitario,
+        exento: !!p.exento_iva,
+        stock: stockActual,
+      });
+    }
+
+    console.log('[ventas] renglones ahora:', renglones.length, 'items');
 
     elCant.value = 1;
     ajustarPasoCantidad();
