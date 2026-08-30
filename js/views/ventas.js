@@ -454,7 +454,7 @@
               </select>
               <span class="subida__nota" id="vn-encontrados" style="margin-top:4px; display:block"></span></label>
             <label class="filtro"><span>Cantidad</span>
-              <input type="number" id="vn-cantidad" min="0.001" step="0.001" value="1"></label>
+              <input type="number" id="vn-cantidad" min="1" step="1" value="1"></label>
             <button class="btn btn--primario" id="vn-agregar">Agregar</button>
           </div>
         </div>
@@ -585,9 +585,39 @@
       // El código exacto manda sobre la coincidencia parcial
       const exacto = coinciden.find(o => o.sku === t);
       if (exacto) selector.value = exacto.valor;
+      ajustarPasoCantidad();
+    }
+
+    function esUnidadDecimal(unidad) {
+      if (!unidad) return false;
+      const u = String(unidad).trim().toLowerCase();
+      return /^(kg|kilo|kilos|kilogramo|kilogramos|g|gr|grs|gramo|gramos|mg|miligramo|miligramos|m|mt|mts|metro|metros|cm|centimetro|centimetros|centímetro|centímetros|mm|milimetro|milimetros|l|lt|lts|litro|litros|ml|mililitro|mililitros|cc|decimal|fraccionable|granel)$/i.test(u)
+        || /(kg|kilo|gram|metro|centim|milim|litro|granel|peso)/i.test(u);
+    }
+
+    function ajustarPasoCantidad() {
+      const elProd = $('#vn-producto');
+      const elCant = $('#vn-cantidad');
+      if (!elProd || !elCant) return;
+      const id = Number(elProd.value);
+      const p = catalogo.find(x => x.producto_id === id);
+      const esDecimal = p && esUnidadDecimal(p.unidad);
+
+      if (esDecimal) {
+        elCant.step = '0.001';
+        elCant.min = '0.001';
+      } else {
+        elCant.step = '1';
+        elCant.min = '1';
+        const val = Number(elCant.value);
+        if (!Number.isInteger(val) || val < 1) {
+          elCant.value = Math.max(1, Math.round(val || 1));
+        }
+      }
     }
 
     buscador.addEventListener('input', filtrarProductos);
+    selector.addEventListener('change', ajustarPasoCantidad);
 
     buscador.addEventListener('keydown', e => {
       if (e.key !== 'Enter') return;
@@ -665,6 +695,7 @@
 
     pintarCliente();
     ajustarCamposPago();
+    ajustarPasoCantidad();
     pintarRenglones();
   }
 
@@ -731,6 +762,7 @@
     });
 
     elCant.value = 1;
+    ajustarPasoCantidad();
     pintarRenglones();
   }
 

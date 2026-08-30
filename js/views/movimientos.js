@@ -83,6 +83,26 @@
       ],
     });
 
+    function esUnidadDecimal(unidad) {
+      if (!unidad) return false;
+      const u = String(unidad).trim().toLowerCase();
+      return /^(kg|kilo|kilos|kilogramo|kilogramos|g|gr|grs|gramo|gramos|mg|miligramo|miligramos|m|mt|mts|metro|metros|cm|centimetro|centimetros|centímetro|centímetros|mm|milimetro|milimetros|l|lt|lts|litro|litros|ml|mililitro|mililitros|cc|decimal|fraccionable|granel)$/i.test(u)
+        || /(kg|kilo|gram|metro|centim|milim|litro|granel|peso)/i.test(u);
+    }
+
+    function ajustarPasoMv() {
+      const selProd = $('#mv-producto');
+      const inpCant = $('#mv-cantidad');
+      if (!selProd || !inpCant) return;
+      const p = productos.find(x => String(x.producto_id) === String(selProd.value));
+      const decimal = p && esUnidadDecimal(p.unidad);
+      inpCant.step = decimal ? '0.001' : '1';
+      inpCant.min = decimal ? '0.001' : '1';
+    }
+
+    $('#mv-producto').addEventListener('change', ajustarPasoMv);
+    ajustarPasoMv();
+
     // El costo también se ve en la otra moneda mientras se escribe
     INV.ui.montoAutomatico('#mv-costo');
     if (INV.tasas) INV.tasas.enlazarEquivalente('#mv-costo', '#mv-costo-eq');
