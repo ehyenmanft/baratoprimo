@@ -235,12 +235,14 @@
                  src="${esc((p && INV.db.archivos.url(p.imagen_path)) || 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==')}">
             <div class="subida__acciones">
               <div style="display:flex; gap:6px; flex-wrap:wrap">
-                <button type="button" class="btn btn--secundario btn--chico" id="pr-elegir">Elegir imagen</button>
+                <button type="button" class="btn btn--secundario btn--chico" id="pr-elegir">📁 Galería</button>
+                <button type="button" class="btn btn--secundario btn--chico" id="pr-tomar-foto">📷 Tomar foto</button>
                 <button type="button" class="btn btn--fantasma btn--chico" id="pr-quitar">Quitar</button>
               </div>
               <span class="subida__nota" id="pr-img-nota">JPG o PNG · se reduce a 480 px</span>
             </div>
-            <input type="file" id="pr-archivo" accept="image/*">
+            <input type="file" id="pr-archivo" accept="image/*" style="display:none">
+            <input type="file" id="pr-camara" accept="image/*" capture="environment" style="display:none">
           </div>
         </div>
         <div class="campo">
@@ -348,13 +350,7 @@
         });
       });
     }
-    $('#pr-quitar').addEventListener('click', () => {
-      imagenPendiente = null;
-      $('#pr-vista').removeAttribute('src');
-      $('#pr-img-nota').textContent = 'Sin imagen';
-    });
-    $('#pr-archivo').addEventListener('change', async e => {
-      const file = e.target.files[0];
+    const procesarArchivoImagen = async (file) => {
       if (!file) return;
       const nota = $('#pr-img-nota');
       nota.textContent = 'Procesando…';
@@ -366,7 +362,17 @@
         imagenPendiente = undefined;
         nota.textContent = err.message;
       }
+    };
+
+    $('#pr-elegir').addEventListener('click', () => $('#pr-archivo').click());
+    $('#pr-tomar-foto').addEventListener('click', () => $('#pr-camara').click());
+    $('#pr-quitar').addEventListener('click', () => {
+      imagenPendiente = null;
+      $('#pr-vista').removeAttribute('src');
+      $('#pr-img-nota').textContent = 'Sin imagen';
     });
+    $('#pr-archivo').addEventListener('change', e => procesarArchivoImagen(e.target.files[0]));
+    $('#pr-camara').addEventListener('change', e => procesarArchivoImagen(e.target.files[0]));
   }
 
   async function guardar(p, btn) {
