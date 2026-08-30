@@ -6,7 +6,7 @@
 <title>BaratoPrimo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="icon" type="image/svg+xml" href="img/logo.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="img/icono-192.png">
 <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
@@ -39,25 +39,72 @@
   <div class="acceso__caja">
     <img class="acceso__logo" src="img/logo.svg" alt="" width="56" height="56">
     <h1 class="acceso__titulo">BaratoPrimo</h1>
-    <p class="acceso__nota" id="acceso-nota">Entra con tu correo y contraseña para ver el stock y registrar movimientos.</p>
-    <div id="acceso-campos">
+    <p class="acceso__nota" id="acceso-nota">Gestión de inventario, ventas y facturación.</p>
+
+    <!-- Tabs para alternar entre entrar y registrarse -->
+    <div class="acceso__tabs" role="tablist">
+      <button type="button" class="acceso__tab acceso__tab--activo" id="tab-entrar" role="tab" aria-selected="true">Iniciar sesión</button>
+      <button type="button" class="acceso__tab" id="tab-registro" role="tab" aria-selected="false">Crear cuenta</button>
+    </div>
+
+    <!-- ============ FORMULARIO INICIAR SESIÓN ============ -->
+    <div id="bloque-entrar">
+      <div id="acceso-campos">
+        <div class="campo">
+          <label for="acceso-email">Correo</label>
+          <input id="acceso-email" type="email" autocomplete="username" placeholder="tu@correo.com">
+        </div>
+        <div class="campo campo--clave">
+          <label for="acceso-clave">Contraseña</label>
+          <input id="acceso-clave" type="password" autocomplete="current-password" placeholder="********">
+          <button type="button" class="ojo" id="ver-clave"
+                  aria-label="Mostrar la contraseña" aria-pressed="false" title="Mostrar la contraseña">
+            <!-- Ojo abierto: la contraseña está oculta y se puede revelar -->
+            <svg class="ojo__abierto" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+              <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"
+                    fill="none" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.7"/>
+            </svg>
+            <!-- Ojo tachado: la contraseña está a la vista y se puede ocultar -->
+            <svg class="ojo__cerrado" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+              <path d="M4 4l16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+              <path d="M9.6 5.9A9.6 9.6 0 0112 5.5c6 0 9.5 6.5 9.5 6.5a17 17 0 01-3.4 4.1M6.4 7.9A17 17 0 002.5 12S6 18.5 12 18.5c.9 0 1.7-.1 2.5-.4"
+                    fill="none" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M9.9 9.9a3.2 3.2 0 004.3 4.3" fill="none" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <button id="btn-entrar" class="btn btn--primario btn--ancho">Entrar</button>
+      <div style="text-align:center; margin-top:8px;">
+        <button type="button" id="btn-olvido-clave" class="acceso__olvido">¿Olvidaste tu contraseña?</button>
+      </div>
+    </div>
+
+    <!-- ============ FORMULARIO CREAR CUENTA ============ -->
+    <div id="bloque-registro" hidden>
       <div class="campo">
-        <label for="acceso-email">Correo</label>
-        <input id="acceso-email" type="email" autocomplete="username" placeholder="tu@correo.com">
+        <label for="reg-nombre">Nombre y apellido</label>
+        <input id="reg-nombre" type="text" placeholder="Ej. Ana Torres">
+      </div>
+      <div class="campo">
+        <label for="reg-email">Correo electrónico</label>
+        <input id="reg-email" type="email" autocomplete="username" placeholder="tu@correo.com">
       </div>
       <div class="campo campo--clave">
-        <label for="acceso-clave">Contraseña</label>
-        <input id="acceso-clave" type="password" autocomplete="current-password" placeholder="********">
-        <button type="button" class="ojo" id="ver-clave"
+        <label for="reg-clave">Contraseña</label>
+        <input id="reg-clave" type="password" autocomplete="new-password" placeholder="Mínimo 8 caracteres">
+        <button type="button" class="ojo" id="ver-clave-reg"
                 aria-label="Mostrar la contraseña" aria-pressed="false" title="Mostrar la contraseña">
-          <!-- Ojo abierto: la contraseña está oculta y se puede revelar -->
           <svg class="ojo__abierto" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
             <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"
                   fill="none" stroke="currentColor" stroke-width="1.7"
                   stroke-linecap="round" stroke-linejoin="round"/>
             <circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.7"/>
           </svg>
-          <!-- Ojo tachado: la contraseña está a la vista y se puede ocultar -->
           <svg class="ojo__cerrado" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
             <path d="M4 4l16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
             <path d="M9.6 5.9A9.6 9.6 0 0112 5.5c6 0 9.5 6.5 9.5 6.5a17 17 0 01-3.4 4.1M6.4 7.9A17 17 0 002.5 12S6 18.5 12 18.5c.9 0 1.7-.1 2.5-.4"
@@ -68,9 +115,23 @@
           </svg>
         </button>
       </div>
+      <div class="campo">
+        <label for="reg-rol">Rol solicitado</label>
+        <select id="reg-rol">
+          <option value="operador_facturador">Operador facturador (Ventas y Clientes)</option>
+          <option value="operador_inventario">Operador de inventario (Almacén y Stock)</option>
+          <option value="operador_mixto">Operador mixto (Ventas y Almacén)</option>
+          <option value="administrador">Administrador de comercio</option>
+        </select>
+        <span class="subida__nota" style="display:block; margin-top:5px; font-size:11.5px;">
+          Un Super Administrador revisará tu solicitud y habilitará tu acceso asignándote un comercio.
+        </span>
+      </div>
+      <button id="btn-registrarse" class="btn btn--primario btn--ancho" style="margin-top:12px;">Solicitar cuenta</button>
     </div>
-    <button id="btn-entrar" class="btn btn--primario btn--ancho">Entrar</button>
+
     <p id="acceso-error" class="error" hidden></p>
+    <p id="acceso-exito" class="panel" style="margin-top:14px; padding:10px; background:rgba(46,125,50,0.12); color:var(--verde, #2e7d32); border:1px solid rgba(46,125,50,0.3); border-radius:8px; font-size:12.5px; font-weight:600; text-align:center;" hidden></p>
   </div>
 </section>
 
@@ -137,6 +198,7 @@
       </div>
       <span id="rol-actual" class="rol-marca"></span>
       <span id="usuario-correo" class="rail__usuario"></span>
+      <div id="sync-status-pill" class="sync-pill sync-pill--online" style="margin-bottom:6px;"></div>
       <button id="btn-salir" class="btn btn--fantasma btn--chico">Cerrar sesión</button>
     </div>
   </aside>
@@ -193,7 +255,8 @@
 <!-- Aviso de que se está trabajando sin conexión -->
 <div id="sin-conexion" class="sin-conexion" role="status" hidden>
   <span class="sin-conexion__punto" aria-hidden="true"></span>
-  Sin conexión: los datos que veas pueden estar desactualizados y no podrás guardar.
+  <span>Modo sin conexión activo · Los cambios se guardan localmente y se sincronizarán al reconectar.</span>
+  <button type="button" id="btn-ver-sync-banner" class="btn btn--fantasma btn--chico" style="color:#fff; border-color:rgba(255,255,255,0.4); margin-left:8px; padding:3px 8px; font-size:11px;">Ver cambios</button>
 </div>
 
 <!-- Invitación a instalar, solo cuando el navegador la ofrece -->
@@ -214,32 +277,33 @@
 
 <!-- ============ SCRIPTS ============ -->
 <!-- Scripts clásicos, sin módulos ES: así index.html abre con doble clic.
-     El orden importa: config -> supabase -> datos -> ui -> vistas -> app. -->
-<script src="js/config.js?v=1.2"></script>
+     El orden importa: config -> supabase -> sync -> datos -> ui -> vistas -> app. -->
+<script src="js/config.js?v=1.3"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/datos-demo.js?v=1.2"></script>
-<script src="js/drive.js?v=1.2"></script>
-<script src="js/db.js?v=1.2"></script>
-<script src="js/ui.js?v=1.2"></script>
-<script src="js/permisos.js?v=1.2"></script>
-<script src="js/tasas.js?v=1.2"></script>
-<script src="js/periodos.js?v=1.2"></script>
-<script src="js/graficos.js?v=1.2"></script>
-<script src="js/qr.js?v=1.2"></script>
-<script src="js/seniat.js?v=1.2"></script>
-<script src="js/views/inicio.js?v=1.2"></script>
-<script src="js/views/movimientos.js?v=1.2"></script>
-<script src="js/views/kardex.js?v=1.2"></script>
-<script src="js/views/productos.js?v=1.2"></script>
-<script src="js/views/producto.js?v=1.2"></script>
-<script src="js/views/graficas.js?v=1.2"></script>
-<script src="js/views/clientes.js?v=1.2"></script>
-<script src="js/views/ventas.js?v=1.2"></script>
-<script src="js/views/comercio.js?v=1.2"></script>
-<script src="js/views/operadores.js?v=1.2"></script>
-<script src="js/views/comercios.js?v=1.2"></script>
-<script src="js/views/caja.js?v=1.2"></script>
-<script src="js/app.js?v=1.2"></script>
-<script src="js/instalar.js?v=1.2"></script>
+<script src="js/sync.js?v=1.3"></script>
+<script src="js/datos-demo.js?v=1.3"></script>
+<script src="js/drive.js?v=1.3"></script>
+<script src="js/db.js?v=1.3"></script>
+<script src="js/ui.js?v=1.3"></script>
+<script src="js/permisos.js?v=1.3"></script>
+<script src="js/tasas.js?v=1.3"></script>
+<script src="js/periodos.js?v=1.3"></script>
+<script src="js/graficos.js?v=1.3"></script>
+<script src="js/qr.js?v=1.3"></script>
+<script src="js/seniat.js?v=1.3"></script>
+<script src="js/views/inicio.js?v=1.3"></script>
+<script src="js/views/movimientos.js?v=1.3"></script>
+<script src="js/views/kardex.js?v=1.3"></script>
+<script src="js/views/productos.js?v=1.3"></script>
+<script src="js/views/producto.js?v=1.3"></script>
+<script src="js/views/graficas.js?v=1.3"></script>
+<script src="js/views/clientes.js?v=1.3"></script>
+<script src="js/views/ventas.js?v=1.3"></script>
+<script src="js/views/comercio.js?v=1.3"></script>
+<script src="js/views/operadores.js?v=1.3"></script>
+<script src="js/views/comercios.js?v=1.3"></script>
+<script src="js/views/caja.js?v=1.3"></script>
+<script src="js/app.js?v=1.3"></script>
+<script src="js/instalar.js?v=1.3"></script>
 </body>
 </html>

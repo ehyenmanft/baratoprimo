@@ -410,6 +410,153 @@
   function iniciar() {
     if (yaIniciado) return;   // registrar dos veces alternaría cada botón dos veces
     yaIniciado = true;
+    /* ============ Tabs de Acceso / Registro ============ */
+    const tabEntrar = $('#tab-entrar');
+    const tabRegistro = $('#tab-registro');
+    const bloqueEntrar = $('#bloque-entrar');
+    const bloqueRegistro = $('#bloque-registro');
+    const errAcceso = $('#acceso-error');
+    const exitoAcceso = $('#acceso-exito');
+
+    function alternarTab(aRegistro) {
+      if (tabEntrar) {
+        tabEntrar.classList.toggle('acceso__tab--activo', !aRegistro);
+        tabEntrar.setAttribute('aria-selected', String(!aRegistro));
+      }
+      if (tabRegistro) {
+        tabRegistro.classList.toggle('acceso__tab--activo', aRegistro);
+        tabRegistro.setAttribute('aria-selected', String(aRegistro));
+      }
+      if (bloqueEntrar) bloqueEntrar.hidden = aRegistro;
+      if (bloqueRegistro) bloqueRegistro.hidden = !aRegistro;
+      if (errAcceso) errAcceso.hidden = true;
+      if (exitoAcceso) exitoAcceso.hidden = true;
+    }
+
+    if (tabEntrar) tabEntrar.addEventListener('click', () => alternarTab(false));
+    if (tabRegistro) tabRegistro.addEventListener('click', () => alternarTab(true));
+
+    /* ============ Olvido de Contraseña ============ */
+    const btnOlvido = $('#btn-olvido-clave');
+    if (btnOlvido) {
+      btnOlvido.addEventListener('click', () => {
+        const correoActual = $('#acceso-email') ? $('#acceso-email').value.trim() : '';
+        INV.ui.abrirModal({
+          titulo: 'Recuperar contraseña',
+          cuerpo: `
+            <p style="margin:0 0 14px; font-size:13.5px; color:var(--tinta-2);">
+              Escribe tu correo registrado y te enviaremos un enlace seguro para restablecer tu contraseña.
+            </p>
+            <div class="campo">
+              <label for="recup-email">Correo electrónico</label>
+              <input id="recup-email" type="email" value="${INV.ui.esc(correoActual)}" placeholder="tu@correo.com">
+            </div>
+            <p id="recup-error" class="error" hidden></p>
+          `,
+          acciones: [
+            { texto: 'Cancelar', alPulsar: INV.ui.cerrarModal },
+            {
+              texto: 'Enviar enlace',
+              estilo: 'btn--primario',
+              alPulsar: async btnModal => {
+                const inputCorreo = $('#recup-email');
+                const errModal = $('#recup-error');
+                const correo = (inputCorreo ? inputCorreo.value : '').trim().toLowerCase();
+                if (!correo || !correo.includes('@')) {
+                  if (errModal) { errModal.textContent = 'Ingresa un correo electrónico válido.'; errModal.hidden = false; }
+                  return;
+                }
+                btnModal.disabled = true;
+                btnModal.textContent = 'Enviando…';
+                try {
+                  await INV.db.sesion.recuperarClave(correo);
+                  INV.ui.cerrarModal();
+                  INV.ui.avisar('Enlace de recuperación enviado. Revisa tu bandeja de entrada.');
+                  if (exitoAcceso) {
+                    exitoAcceso.textContent = 'Enlace de recuperación enviado a ' + correo + '. Sigue las instrucciones recibidas.';
+                    exitoAcceso.hidden = false;
+                  }
+                } catch (e) {
+                  if (errModal) { errModal.textContent = e.message; errModal.hidden = false; }
+                  btnModal.disabled = false;
+                  btnModal.textContent = 'Enviar enlace';
+                }
+              }
+            }
+          ]
+        });
+      });
+    }
+
+    /* ============ Registro de Nueva Cuenta ============ */
+    const btnReg = $('#btn-registrarse');
+    if (btnReg) {
+      btnReg.addEventListener('click', async () => {
+        if (errAcceso) errAcceso.hidden = true;
+        if (exitoAcceso) exitoAcceso.hidden = true;
+
+        const nombre = ($('#reg-nombre') ? $('#reg-nombre').value : '').trim();
+        const correo = ($('#reg-email') ? $('#reg-email').value : '').trim().toLowerCase();
+        const clave = ($('#reg-clave') ? $('#reg-clave').value : '');
+        const rol = $('#reg-rol') ? $('#reg-rol').value : 'operador_facturador';
+
+        if (!nombre) {
+          if (errAcceso) { errAcceso.textContent = 'Escribe tu nombre y apellido.'; errAcceso.hidden = false; }
+          return;
+        }
+        if (!correo || !correo.includes('@')) {
+          if (errAcceso) { errAcceso.textContent = 'Escribe un correo electrónico válido.'; errAcceso.hidden = false; }
+          return;
+        }
+        if (clave.length < 8) {
+          if (errAcceso) { errAcceso.textContent = 'La contraseña debe tener al menos 8 caracteres.'; errAcceso.hidden = false; }
+          return;
+        }
+
+        btnReg.disabled = true;
+        btnReg.textContent = 'Registrando solicitud…';
+        try {
+          await INV.db.operadores.solicitarRegistro({ nombre, correo, clave, rol });
+          
+          // Limpiar formulario de registro
+          if ($('#reg-nombre')) $('#reg-nombre').value = '';
+          if ($('#reg-email')) $('#reg-email').value = '';
+          if ($('#reg-clave')) $('#reg-clave').value = '';
+
+          alternarTab(false);
+          if ($('#acceso-email')) $('#acceso-email').value = correo;
+          if (exitoAcceso) {
+            exitoAcceso.innerHTML = '<b>¡Solicitud enviada con éxito!</b><br>' +
+              'Tu cuenta ha sido creada en estado pendiente. Un Super Administrador revisará tu solicitud para habilitar tu rol y asignarte un comercio.';
+            exitoAcceso.hidden = false;
+          }
+          INV.ui.avisar('Solicitud de cuenta registrada correctamente.');
+        } catch (e) {
+          if (errAcceso) {
+            errAcceso.textContent = e.message;
+            errAcceso.hidden = false;
+          }
+        } finally {
+          btnReg.disabled = false;
+          btnReg.textContent = 'Solicitar cuenta';
+        }
+      });
+    }
+
+    /* Ojo de ver contraseña en registro */
+    const btnOjoReg = $('#ver-clave-reg');
+    if (btnOjoReg) {
+      btnOjoReg.addEventListener('click', () => {
+        const campo = $('#reg-clave');
+        if (!campo) return;
+        const visible = campo.type === 'text';
+        campo.type = visible ? 'password' : 'text';
+        btnOjoReg.setAttribute('aria-pressed', String(!visible));
+        btnOjoReg.setAttribute('aria-label', visible ? 'Mostrar la contraseña' : 'Ocultar la contraseña');
+        campo.focus();
+      });
+    }
+
     $('#btn-entrar').addEventListener('click', async () => {
       const btn = $('#btn-entrar');
       const err = $('#acceso-error');
@@ -417,30 +564,17 @@
       btn.disabled = true;
       btn.textContent = 'Entrando…';
       try {
-        /* Se limpia el correo: un espacio al pegarlo o una mayúscula
-           suelta no deben costar el acceso. La contraseña no se toca,
-           que ahí los espacios pueden ser intencionales. */
         const correo = $('#acceso-email').value.trim().toLowerCase();
         $('#acceso-email').value = correo;
 
         const r = await INV.db.sesion.entrar(correo, $('#acceso-clave').value);
         await mostrarApp(r.session);
       } catch (e) {
-        /* En pantalla, sin pistas sobre si falló el correo o la contraseña:
-           quien no entra debe hablar con quien administra, no adivinar.
-           En la consola sí va el motivo real, porque quien administra
-           necesita distinguir una clave equivocada de un correo sin
-           confirmar, y no tiene por qué adivinarlo. */
         const credenciales = /invalid login|invalid credentials|email not confirmed|user not found|incorrect/i;
         const generico = credenciales.test(e.message);
 
         console.warn('[BaratoPrimo] No se pudo iniciar sesión con "' +
-          $('#acceso-email').value.trim() + '": ' + e.message +
-          (/email not confirmed/i.test(e.message)
-            ? '\n→ La cuenta existe pero no está confirmada. Authentication → Users, o desactiva "Confirm email".'
-            : /invalid login|invalid credentials/i.test(e.message)
-              ? '\n→ El correo no existe o la contraseña no coincide. Revisa que el correo sea idéntico al registrado, sin puntos ni espacios de más.'
-              : ''));
+          $('#acceso-email').value.trim() + '": ' + e.message);
 
         err.textContent = generico
           ? 'No fue posible iniciar sesión. Comuníquese con el administrador.'
@@ -540,7 +674,56 @@
     // Las vistas piden recargarse tras guardar; también refrescamos la banda.
     window.addEventListener('recargar-vista', () => { enrutar(); revisarAlertas(); });
 
-    if (INV.db.sesion.alCambiar) INV.db.sesion.alCambiar(s => { if (!s) mostrarAcceso(); });
+    function mostrarModalNuevaClave() {
+      INV.ui.abrirModal({
+        titulo: 'Establecer nueva contraseña',
+        cuerpo: `
+          <p style="margin:0 0 14px; font-size:13.5px; color:var(--tinta-2);">
+            Ingresa tu nueva contraseña de acceso (mínimo 8 caracteres).
+          </p>
+          <div class="campo">
+            <label for="nueva-clave-input">Nueva contraseña</label>
+            <input id="nueva-clave-input" type="password" placeholder="Mínimo 8 caracteres">
+          </div>
+          <p id="nueva-clave-error" class="error" hidden></p>
+        `,
+        acciones: [
+          {
+            texto: 'Actualizar contraseña',
+            estilo: 'btn--primario',
+            alPulsar: async btn => {
+              const pass = ($('#nueva-clave-input') ? $('#nueva-clave-input').value : '');
+              const err = $('#nueva-clave-error');
+              if (pass.length < 8) {
+                if (err) { err.textContent = 'La contraseña debe tener al menos 8 caracteres.'; err.hidden = false; }
+                return;
+              }
+              btn.disabled = true;
+              btn.textContent = 'Guardando…';
+              try {
+                await INV.db.sesion.actualizarClave(pass);
+                INV.ui.cerrarModal();
+                INV.ui.avisar('Contraseña actualizada con éxito');
+              } catch (e) {
+                if (err) { err.textContent = e.message; err.hidden = false; }
+                btn.disabled = false;
+                btn.textContent = 'Actualizar contraseña';
+              }
+            }
+          }
+        ]
+      });
+    }
+
+    if (INV.db.sesion.alCambiar) {
+      INV.db.sesion.alCambiar((e, s) => {
+        if (e === 'PASSWORD_RECOVERY') {
+          mostrarModalNuevaClave();
+        } else if (!s) {
+          mostrarAcceso();
+        }
+      });
+    }
     arrancar().catch(e => avisar(e.message, 'error'));
   }
 

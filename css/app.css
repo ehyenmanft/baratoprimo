@@ -47,9 +47,9 @@
   --ambar:var(--naranja); --ambar-suave:var(--naranja-piel);
 
   /* Tipografía */
-  --display:'Outfit', system-ui, sans-serif;
-  --texto:  'Plus Jakarta Sans', system-ui, sans-serif;
-  --dato:   'JetBrains Mono', ui-monospace, monospace;
+  --display:'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --texto:  'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --dato:   'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
 
   --r:   14px;
   --r-s: 9px;
@@ -1249,27 +1249,47 @@ html[data-tema="oscuro"] .rail__comercio select option{
 
 /* =====================================================================
    MOSTRAR LA CONTRASEÑA
-   El botón vive dentro del campo. En móvil se hace más ancho: con el
-   dedo hace falta más superficie que con el ratón.
+   El botón vive dentro del campo, perfectamente centrado y con alto contraste.
    ===================================================================== */
 .campo--clave{ position:relative; }
-.campo--clave input{ padding-right:46px; }
+.campo--clave input{ padding-right:48px; }
 
 .ojo{
-  position:absolute; right:6px; bottom:6px;
-  width:36px; height:36px; padding:0;
+  position:absolute; right:7px;
+  top: calc(50% + 11px);
+  transform: translateY(-50%);
+  width:32px; height:32px; padding:0;
   display:grid; place-items:center;
-  background:transparent; border:0; border-radius:var(--r-s);
-  color:var(--tinta-3); cursor:pointer;
-  transition:color .18s var(--curva), background .18s var(--curva);
+  background:var(--superficie-2);
+  border:1px solid var(--linea);
+  border-radius:var(--r-s);
+  color:var(--tinta-2);
+  cursor:pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  transition:color .18s var(--curva), background .18s var(--curva), border-color .18s var(--curva), transform .18s var(--curva);
 }
-.ojo:hover{ color:var(--violeta); background:var(--violeta-piel); }
-.ojo:active{ transform:scale(.92); }
+.ojo:hover{
+  color:var(--violeta);
+  background:var(--violeta-piel);
+  border-color:var(--violeta);
+  transform: translateY(-50%) scale(1.05);
+}
+.ojo:active{
+  transform: translateY(-50%) scale(.94);
+}
 .ojo:focus-visible{ outline:2px solid var(--violeta); outline-offset:2px; }
+
+.ojo svg{
+  width:18px; height:18px;
+}
 
 /* Se muestra un icono u otro según el estado del botón */
 .ojo__cerrado{ display:none; }
-.ojo[aria-pressed="true"]{ color:var(--violeta); }
+.ojo[aria-pressed="true"]{
+  color:var(--violeta);
+  background:var(--violeta-piel);
+  border-color:var(--violeta);
+}
 .ojo[aria-pressed="true"] .ojo__abierto{ display:none; }
 .ojo[aria-pressed="true"] .ojo__cerrado{ display:block; }
 
@@ -1279,8 +1299,56 @@ html[data-tema="oscuro"] .rail__comercio select option{
 
 @media (max-width:820px){
   .campo--clave input{ padding-right:52px; }
-  .ojo{ width:42px; height:42px; right:5px; bottom:5px; }
-  .ojo svg{ width:22px; height:22px; }
+  .ojo{ width:36px; height:36px; right:6px; top:calc(50% + 11px); }
+  .ojo svg{ width:20px; height:20px; }
+}
+
+/* =====================================================================
+   TABS DE ACCESO Y REGISTRO DE OPERADORES
+   ===================================================================== */
+.acceso__tabs{
+  display:flex; background:var(--superficie-2); border:1px solid var(--linea);
+  border-radius:var(--r); padding:4px; margin-bottom:20px; gap:4px;
+}
+.acceso__tab{
+  flex:1; padding:8px 12px; font-size:13px; font-weight:600;
+  border:0; border-radius:10px; background:transparent;
+  color:var(--tinta-2); cursor:pointer;
+  transition:all .18s var(--curva); text-align:center;
+}
+.acceso__tab--activo{
+  background:var(--superficie); color:var(--violeta);
+  box-shadow:var(--sombra);
+}
+.acceso__olvido{
+  background:transparent; border:0; padding:6px 0;
+  color:var(--violeta); font-size:12.5px; font-weight:600;
+  cursor:pointer; display:inline-block; margin-top:8px;
+  text-decoration:none;
+}
+.acceso__olvido:hover{ text-decoration:underline; }
+
+/* Tarjetas de Solicitudes de Registro */
+.solicitudes-seccion{
+  margin-bottom:22px;
+  border:1px solid rgba(245,131,9,0.35);
+  background:rgba(245,131,9,0.04);
+  border-radius:var(--r);
+  padding:16px 18px;
+}
+[data-tema="oscuro"] .solicitudes-seccion{
+  background:rgba(255,152,0,0.08);
+  border-color:rgba(255,152,0,0.3);
+}
+.solicitud-card{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:14px; background:var(--superficie); border:1px solid var(--linea);
+  border-radius:var(--r-s); padding:12px 14px; margin-top:10px;
+  box-shadow:var(--sombra);
+}
+@media (max-width:640px){
+  .solicitud-card{ flex-direction:column; align-items:flex-start; }
+  .solicitud-card__acciones{ width:100%; display:flex; justify-content:flex-end; }
 }
 
 /* =====================================================================
@@ -1291,7 +1359,7 @@ html[data-tema="oscuro"] .rail__comercio select option{
 .sin-conexion{
   position:fixed; left:0; right:0; bottom:0; z-index:45;
   display:flex; align-items:center; justify-content:center; gap:9px;
-  background:var(--rosa); color:#fff;
+  background:var(--naranja, #e65100); color:#fff;
   font-size:12.5px; font-weight:600; text-align:center;
   padding:9px 16px calc(9px + env(safe-area-inset-bottom));
   animation:emerger .25s var(--curva);
@@ -1301,6 +1369,104 @@ html[data-tema="oscuro"] .rail__comercio select option{
   flex-shrink:0; animation:latir 1.6s ease-in-out infinite;
 }
 @keyframes latir{ 0%,100%{ opacity:1; } 50%{ opacity:.35; } }
+
+/* Badge interactivo de sincronización */
+.sync-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform .15s ease, background .2s ease;
+  user-select: none;
+}
+.sync-pill:hover {
+  transform: scale(1.03);
+}
+.sync-pill__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+.sync-pill--online {
+  background: rgba(46, 125, 50, 0.12);
+  color: #2e7d32;
+  border: 1px solid rgba(46, 125, 50, 0.3);
+}
+.sync-pill--online .sync-pill__dot {
+  background: #2e7d32;
+}
+[data-tema="oscuro"] .sync-pill--online {
+  background: rgba(76, 175, 80, 0.15);
+  color: #81c784;
+  border-color: rgba(76, 175, 80, 0.35);
+}
+[data-tema="oscuro"] .sync-pill--online .sync-pill__dot {
+  background: #81c784;
+}
+
+.sync-pill--offline {
+  background: rgba(230, 81, 0, 0.12);
+  color: #e65100;
+  border: 1px solid rgba(230, 81, 0, 0.35);
+}
+.sync-pill--offline .sync-pill__dot {
+  background: #e65100;
+  animation: latir 1.5s infinite;
+}
+[data-tema="oscuro"] .sync-pill--offline {
+  background: rgba(255, 152, 0, 0.15);
+  color: #ffb74d;
+  border-color: rgba(255, 152, 0, 0.35);
+}
+[data-tema="oscuro"] .sync-pill--offline .sync-pill__dot {
+  background: #ffb74d;
+}
+
+.sync-pill--syncing {
+  background: rgba(2, 136, 209, 0.12);
+  color: #0288d1;
+  border: 1px solid rgba(2, 136, 209, 0.35);
+}
+.sync-pill__spinner {
+  width: 9px;
+  height: 9px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: girar 0.8s linear infinite;
+}
+@keyframes girar { to { transform: rotate(360deg); } }
+
+.sync-pill--pending {
+  background: rgba(106, 27, 154, 0.12);
+  color: #6a1b9a;
+  border: 1px solid rgba(106, 27, 154, 0.35);
+}
+.sync-pill--pending .sync-pill__dot {
+  background: #6a1b9a;
+}
+[data-tema="oscuro"] .sync-pill--pending {
+  background: rgba(186, 104, 200, 0.15);
+  color: #ce93d8;
+  border-color: rgba(186, 104, 200, 0.35);
+}
+[data-tema="oscuro"] .sync-pill--pending .sync-pill__dot {
+  background: #ce93d8;
+}
+
+.sync-pill--error {
+  background: rgba(211, 47, 47, 0.12);
+  color: #d32f2f;
+  border: 1px solid rgba(211, 47, 47, 0.35);
+}
+.sync-pill--error .sync-pill__dot {
+  background: #d32f2f;
+  animation: latir 1s infinite;
+}
 
 /* Invitación a instalar */
 .instalar{

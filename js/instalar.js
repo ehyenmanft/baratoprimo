@@ -98,6 +98,24 @@
     });
 
     pintarConexion();
+
+    const btnPill = $('#sync-status-pill');
+    if (btnPill) {
+      btnPill.addEventListener('click', () => {
+        if (INV.sync && INV.sync.mostrarModalSync) INV.sync.mostrarModalSync();
+      });
+    }
+
+    const btnBanner = $('#btn-ver-sync-banner');
+    if (btnBanner) {
+      btnBanner.addEventListener('click', () => {
+        if (INV.sync && INV.sync.mostrarModalSync) INV.sync.mostrarModalSync();
+      });
+    }
+
+    if (INV.sync && INV.sync.suscribir) {
+      INV.sync.suscribir(() => pintarConexion());
+    }
   });
 
   /* ---------------- Conexión ---------------- */
@@ -105,19 +123,17 @@
   function pintarConexion() {
     const banda = $('#sin-conexion');
     if (!banda) return;
-    // En modo demo los datos viven en el navegador: la red da igual
     const dependeDeLaRed = INV.db && INV.db.etiqueta !== 'demo';
-    banda.hidden = navigator.onLine || !dependeDeLaRed;
+    const esOffline = INV.sync ? INV.sync.esOffline() : !navigator.onLine;
+    banda.hidden = !esOffline || !dependeDeLaRed;
   }
 
   window.addEventListener('online', () => {
     pintarConexion();
-    if (INV.ui) INV.ui.avisar('Conexión restablecida');
   });
 
   window.addEventListener('offline', () => {
     pintarConexion();
-    if (INV.ui) INV.ui.avisar('Se perdió la conexión', 'error');
   });
 
   INV.conexion = { pintar: pintarConexion };

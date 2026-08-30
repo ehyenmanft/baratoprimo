@@ -10,7 +10,7 @@
    que los dispositivos ya instalados se enteren de la actualización.
    ===================================================================== */
 
-const VERSION = 'baratoprimo-v1';
+const VERSION = 'baratoprimo-v1.3';
 
 /* El armazón: lo imprescindible para pintar la aplicación sin red. */
 const ARMAZON = [
@@ -23,6 +23,7 @@ const ARMAZON = [
   './img/icono-512.png',
   './img/apple-touch-icon.png',
   './js/config.js',
+  './js/sync.js',
   './js/datos-demo.js',
   './js/drive.js',
   './js/db.js',
@@ -32,6 +33,7 @@ const ARMAZON = [
   './js/periodos.js',
   './js/graficos.js',
   './js/qr.js',
+  './js/seniat.js',
   './js/app.js',
   './js/instalar.js',
   './js/views/inicio.js',

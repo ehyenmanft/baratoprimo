@@ -358,6 +358,14 @@
         } catch (e) {}
       },
       alCambiar: () => {},
+      recuperarClave: async () => {
+        await dormir(300);
+        return true;
+      },
+      actualizarClave: async () => {
+        await dormir(300);
+        return true;
+      },
     },
 
     categorias: {
@@ -847,6 +855,32 @@
           throw new Error('No puedes eliminar a un super administrador');
         bd.operadores = bd.operadores.filter(x => x.id !== Number(id));
         persistir();
+      },
+
+      solicitarRegistro: async datos => {
+        if (bd.operadores.some(o => o.correo.toLowerCase() === String(datos.correo).toLowerCase()))
+          throw new Error('Ya existe una solicitud o cuenta con ese correo');
+        const o = {
+          id: siguienteId(bd.operadores),
+          nombre: datos.nombre,
+          correo: datos.correo.toLowerCase(),
+          rol: datos.rol || 'operador_facturador',
+          activo: false,
+          comercio_id: null,
+        };
+        bd.operadores.push(o);
+        persistir();
+        return o;
+      },
+
+      aprobar: async (id, { rol, comercio_id }) => {
+        const o = bd.operadores.find(x => x.id === Number(id));
+        if (!o) throw new Error('Operador no encontrado');
+        o.rol = rol || o.rol;
+        o.comercio_id = Number(comercio_id);
+        o.activo = true;
+        persistir();
+        return o;
       },
 
       /* Al entrar: qué operador es y en qué comercio trabaja. */

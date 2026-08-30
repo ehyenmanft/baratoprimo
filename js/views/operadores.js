@@ -27,31 +27,74 @@
         INV.db.comercios.listar().catch(() => []),
       ]);
       const yo = ($('#usuario-correo').textContent || '').toLowerCase();
+      const esSuperAdmin = INV.permisos.rol() === 'super_admin';
+
+      // Separar solicitudes pendientes (inactivos o sin comercio asignado que no son super_admin)
+      const solicitudes = operadores.filter(o => !o.activo);
+      const activos = operadores.filter(o => o.activo);
 
       contenedor.innerHTML = `
+        ${(esSuperAdmin && solicitudes.length > 0) ? `
+          <div class="ficha anim solicitudes-seccion" style="--i:0">
+            <div class="ficha__cabecera">
+              <div>
+                <h3 class="ficha__titulo" style="color:var(--naranja, #f58309); display:flex; align-items:center; gap:8px;">
+                  <span>🔔 Solicitudes de Registro Pendientes</span>
+                  <span class="badge" style="background:var(--naranja, #f58309); color:#fff; font-size:11px; padding:2px 8px; border-radius:999px;">${solicitudes.length}</span>
+                </h3>
+                <p class="ficha__nota">Nuevos operadores esperando que un Super Administrador habilite su rol y asigne su comercio.</p>
+              </div>
+            </div>
+            <div class="solicitudes__lista">
+              ${solicitudes.map(s => {
+                const d = P.definicion(s.rol);
+                return `
+                  <div class="solicitud-card" data-solicitud="${s.id}">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                      <span class="miniatura miniatura--vacia" style="background:var(--naranja-piel, #fff0dc); color:var(--naranja, #f58309); font-weight:700;">${esc(iniciales(s.nombre))}</span>
+                      <div>
+                        <b style="font-size:14.5px;">${esc(s.nombre)}</b>
+                        <div class="lista__sub">${esc(s.correo)} · Rol solicitado: <b style="color:var(--tinta);">${esc(d.etiqueta)}</b></div>
+                      </div>
+                    </div>
+                    <div class="solicitud-card__acciones" style="display:flex; gap:8px;">
+                      <button type="button" class="btn btn--primario btn--chico btn-aprobar-solicitud" data-id="${s.id}">
+                        Habilitar y asignar
+                      </button>
+                      <button type="button" class="btn btn--fantasma btn--chico btn-rechazar-solicitud" data-id="${s.id}" style="color:var(--rosa);">
+                        Rechazar
+                      </button>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        ` : ''}
+
         <div class="ficha anim" style="--i:0; margin-bottom:14px">
           <div class="ficha__cabecera">
             <div>
-              <h3 class="ficha__titulo">Operadores registrados</h3>
-              <p class="ficha__nota">${operadores.length} en total · pulsa uno para cambiar su rol</p>
+              <h3 class="ficha__titulo">Operadores activos</h3>
+              <p class="ficha__nota">${activos.length} habilitados · pulsa uno para cambiar su rol o comercio</p>
             </div>
           </div>
-          ${operadores.length ? `
+          ${activos.length ? `
             <div class="lista lista--ope">
-              ${operadores.map((o, i) => {
+              ${activos.map((o, i) => {
                 const d = P.definicion(o.rol);
                 return `
-                <div class="lista__item ${o.activo ? '' : 'apagado'}" style="--i:${i}"
+                <div class="lista__item" style="--i:${i}"
                      data-operador="${o.id}" role="button" tabindex="0">
                   <span class="miniatura miniatura--vacia">${esc(iniciales(o.nombre))}</span>
                   <span class="lista__nombre">${esc(o.nombre)}${o.correo.toLowerCase() === yo ? ' <span class="pastilla pastilla--entrada">tú</span>' : ''}
                     <span class="lista__sub">${esc(o.correo)}${o.comercio ? ' · ' + esc(o.comercio)
-                      : (o.rol === 'super_admin' ? ' · supervisa todos' : ' · sin comercio')}${o.activo ? '' : ' · inactivo'}${(o.tiene_clave || o.usuario_id) ? ' · con acceso' : ''}</span></span>
+                      : (o.rol === 'super_admin' ? ' · supervisa todos' : ' · sin comercio')}${(o.tiene_clave || o.usuario_id) ? ' · con acceso' : ''}</span></span>
                   <span class="rol-marca rol-marca--${esc(o.rol)}">${esc(d.etiqueta)}</span>
                 </div>`;
               }).join('')}
             </div>`
-          : '<div class="vacio"><h4>Sin operadores</h4><p>Registra el primero para asignar permisos.</p></div>'}
+          : '<div class="vacio"><h4>Sin operadores activos</h4><p>Registra o aprueba el primero para asignar permisos.</p></div>'}
         </div>
 
         <div class="ficha anim" style="--i:1">
@@ -96,6 +139,31 @@
           </div>
         </div>`;
 
+      // Enlazar botones de aprobación y rechazo
+      $$('.btn-aprobar-solicitud').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          const s = operadores.find(x => x.id === Number(btn.dataset.id));
+          if (s) modalAprobarSolicitud(s, comercios);
+        });
+      });
+
+      $$('.btn-rechazar-solicitud').forEach(btn => {
+        btn.addEventListener('click', async e => {
+          e.stopPropagation();
+          const s = operadores.find(x => x.id === Number(btn.dataset.id));
+          if (!s) return;
+          if (!confirm(`¿Rechazar y eliminar la solicitud de "${s.nombre}" (${s.correo})?`)) return;
+          try {
+            await INV.db.operadores.eliminar(s.id);
+            avisar('Solicitud rechazada');
+            window.dispatchEvent(new CustomEvent('recargar-vista'));
+          } catch (err) {
+            avisar(err.message, 'error');
+          }
+        });
+      });
+
       if (P.puede('operadores.gestionar')) {
         $$('[data-operador]').forEach(el => {
           const abrir = () => {
@@ -112,6 +180,76 @@
       }
     },
   };
+
+  function modalAprobarSolicitud(s, comercios) {
+    const asignables = INV.permisos.rolesAsignables();
+    const rolInicial = s.rol || 'operador_facturador';
+
+    abrirModal({
+      titulo: 'Habilitar operador y asignar comercio',
+      cuerpo: `
+        <div style="background:var(--superficie-2); padding:12px 14px; border-radius:var(--r-s); margin-bottom:16px; border:1px solid var(--linea);">
+          <b style="font-size:14px; display:block;">${esc(s.nombre)}</b>
+          <span class="lista__sub" style="font-size:12.5px;">${esc(s.correo)}</span>
+        </div>
+
+        <div class="campo">
+          <label>Rol asignado</label>
+          <div class="roles">
+            ${asignables.map(r => `
+              <label class="rol-opcion">
+                <input type="radio" name="aprob-rol" value="${r.id}" ${rolInicial === r.id ? 'checked' : ''}>
+                <span>
+                  <b>${esc(r.etiqueta)}</b>
+                  <span class="lista__sub">${esc(r.descripcion)}</span>
+                </span>
+              </label>`).join('')}
+          </div>
+        </div>
+
+        <div class="campo">
+          <label for="aprob-comercio">Comercio donde operará</label>
+          <select id="aprob-comercio">
+            <option value="">Selecciona un comercio…</option>
+            ${comercios.map(c => `<option value="${c.id}">${esc(c.nombre)}</option>`).join('')}
+          </select>
+          <span class="subida__nota" style="margin-top:5px; display:block;">Obligatorio: el operador solo podrá acceder a los datos del comercio asignado.</span>
+        </div>
+        <p id="aprob-error" class="error" hidden></p>
+      `,
+      acciones: [
+        { texto: 'Cancelar', alPulsar: cerrarModal },
+        {
+          texto: 'Habilitar operador',
+          estilo: 'btn--primario',
+          alPulsar: async btnModal => {
+            const marcado = $$('input[name="aprob-rol"]').find(r => r.checked);
+            const rol = marcado ? marcado.value : 'operador_facturador';
+            const comercioId = $('#aprob-comercio') ? $('#aprob-comercio').value : '';
+            const errModal = $('#aprob-error');
+
+            if (!comercioId && rol !== 'super_admin') {
+              if (errModal) { errModal.textContent = 'Debes seleccionar un comercio para este operador.'; errModal.hidden = false; }
+              return;
+            }
+
+            btnModal.disabled = true;
+            btnModal.textContent = 'Habilitando…';
+            try {
+              await INV.db.operadores.aprobar(s.id, { rol, comercio_id: comercioId });
+              cerrarModal();
+              avisar(`Operador "${s.nombre}" habilitado con éxito.`);
+              window.dispatchEvent(new CustomEvent('recargar-vista'));
+            } catch (e) {
+              if (errModal) { errModal.textContent = e.message; errModal.hidden = false; }
+              btnModal.disabled = false;
+              btnModal.textContent = 'Habilitar operador';
+            }
+          }
+        }
+      ]
+    });
+  }
 
   function formulario(o = null, comercios = []) {
     const asignables = INV.permisos.rolesAsignables();
