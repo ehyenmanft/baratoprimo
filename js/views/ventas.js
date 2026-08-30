@@ -460,7 +460,7 @@
               <span class="subida__nota" id="vn-encontrados" style="margin-top:4px; display:block"></span></label>
             <label class="filtro"><span>Cantidad</span>
               <input type="number" id="vn-cantidad" min="1" step="1" value="1"></label>
-            <button class="btn btn--primario" id="vn-agregar">Agregar</button>
+            <button type="button" class="btn btn--primario" id="vn-agregar">Agregar</button>
           </div>
         </div>
         <div id="vn-renglones"></div>
@@ -511,7 +511,7 @@
             <label class="filtro" id="pg-caja-monto"><span>Monto</span>
               <input type="number" id="pg-monto" min="0.01" step="0.01" placeholder="0,00" style="max-width:140px">
               <span class="equivalente" id="pg-monto-eq"></span></label>
-            <button class="btn btn--primario" id="pg-agregar">Agregar pago</button>
+            <button type="button" class="btn btn--primario" id="pg-agregar">Agregar pago</button>
           </div>
           <p id="pg-error" class="error" hidden></p>
 
@@ -651,7 +651,7 @@
       }
     });
 
-    $('#vn-agregar').addEventListener('click', agregarRenglon);
+    $('#vn-agregar').addEventListener('click', e => { e.preventDefault(); agregarRenglon(); });
     $('#vn-iva').addEventListener('input', pintarRenglones);
     $('#vn-incluido').addEventListener('change', pintarRenglones);
     $('#vn-emitir').addEventListener('click', confirmarEmision);
@@ -1291,9 +1291,11 @@
           <div class="lista__item" style="--i:${i}">
             <span class="lista__nombre">${esc(it.descripcion)}
               ${it.exento ? '<span class="pastilla pastilla--exento">exento</span>' : ''}
-              <span class="lista__sub">${esc(it.sku)} · ${cantidad(it.cantidad)} ${esc(it.unidad)} × ${numero(it.precio_unitario)}${
-                INV.tasas.catalogoEnDolares() && it.precio_catalogo
-                  ? ` <span style="color:var(--cian)">(${numero(it.precio_catalogo)} $)</span>` : ''}</span></span>
+              <span class="lista__sub">${esc(it.sku)}${INV.tasas.catalogoEnDolares() && it.precio_catalogo ? ` · <span style="color:var(--cian)">${numero(it.precio_catalogo)} $</span>` : ''}</span></span>
+            <span class="lista__dato">
+              <b style="font-size:1.1em; color:var(--violeta-claro)">${cantidad(it.cantidad)}</b>
+              <small>${esc(it.unidad)}</small>
+            </span>
             <span class="lista__dato">
               <input type="number" min="0.01" step="0.01" value="${it.precio_unitario}"
                      data-precio="${i}" style="width:104px; text-align:right; padding:6px 8px">
