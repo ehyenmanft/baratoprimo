@@ -1275,9 +1275,9 @@
             <span class="lista__nombre">${esc(it.descripcion)}
               ${it.exento ? '<span class="pastilla pastilla--exento">exento</span>' : ''}
               <span class="lista__sub">
-                <b style="color:var(--violeta-claro); font-weight:700">${cantidad(it.cantidad)} ${esc(it.unidad)}</b>
-                &nbsp;·&nbsp;${esc(it.sku)}${INV.tasas.catalogoEnDolares() && it.precio_catalogo ? ` · <span style="color:var(--cian)">${numero(it.precio_catalogo)} $/u</span>` : ''}
+                ${esc(it.sku)}${INV.tasas.catalogoEnDolares() && it.precio_catalogo ? ` · <span style="color:var(--cian)">${numero(it.precio_catalogo)} $/u</span>` : ''}
               </span></span>
+            <span class="lista__dato"><b style="color:var(--violeta-claro)">${cantidad(it.cantidad)}</b><small>${esc(it.unidad)}</small></span>
             <span class="lista__dato">
               <input type="number" min="0.01" step="0.01" value="${it.precio_unitario}"
                      data-precio="${i}" style="width:104px; text-align:right; padding:6px 8px">

@@ -732,7 +732,7 @@ html[data-tema="oscuro"] body{ background:var(--fondo); }
    ===================================================================== */
 .lista--cli .lista__item{ grid-template-columns:42px minmax(0,1fr) 96px 116px; }
 .lista--ven .lista__item{ grid-template-columns:96px minmax(0,1fr) 108px 116px; }
-.lista--ren .lista__item{ grid-template-columns:minmax(0,1fr) 120px 96px 96px 104px 34px; }
+.lista--ren .lista__item{ grid-template-columns:minmax(0,1fr) 72px 120px 96px 96px 104px 34px; }
 .lista--cli .lista__item, .lista--ven .lista__item{ cursor:pointer; }
 
 /* Totales: la escalera de subtotal, impuesto y total */
