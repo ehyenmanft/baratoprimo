@@ -199,11 +199,44 @@
   async function guardar(c, btn, alGuardar = null) {
     const err = $('#cl-error');
     const esAgente = $('#cl-agente') ? $('#cl-agente').checked : false;
+    let nombres = $('#cl-nombres').value.trim();
+    let apellidos = $('#cl-apellidos').value.trim();
+    const tipo_documento = $('#cl-prefijo').value;
+    const documento = $('#cl-documento').value.trim().replace(/[^0-9A-Za-z]/g, '');
+
+    // Si el nombre está vacío pero se indicó el documento, intentar auto-recuperar antes de bloquear
+    if (!nombres && documento && window.INV && INV.seniat) {
+      btn.textContent = 'Buscando datos…';
+      btn.disabled = true;
+      try {
+        const res = await INV.seniat.consultar(tipo_documento, documento);
+        if (res && res.nombre) {
+          if (['J', 'G', 'C'].includes(tipo_documento)) {
+            $('#cl-nombres').value = res.nombre;
+            nombres = res.nombre;
+          } else {
+            const partes = res.nombre.split(/\s+/);
+            if (partes.length >= 2) {
+              $('#cl-nombres').value = partes.slice(0, Math.ceil(partes.length / 2)).join(' ');
+              $('#cl-apellidos').value = partes.slice(Math.ceil(partes.length / 2)).join(' ');
+              nombres = $('#cl-nombres').value;
+              apellidos = $('#cl-apellidos').value;
+            } else {
+              $('#cl-nombres').value = res.nombre;
+              nombres = res.nombre;
+            }
+          }
+        }
+      } catch (_e) {}
+      btn.textContent = 'Guardar';
+      btn.disabled = false;
+    }
+
     const datos = {
-      nombres:                  $('#cl-nombres').value.trim(),
-      apellidos:                $('#cl-apellidos').value.trim(),
-      tipo_documento:           $('#cl-prefijo').value,
-      documento:                $('#cl-documento').value.trim().replace(/[^0-9A-Za-z]/g, ''),
+      nombres,
+      apellidos,
+      tipo_documento,
+      documento,
       telefono:                 $('#cl-telefono').value.trim() || null,
       direccion:                $('#cl-direccion').value.trim() || null,
       es_agente_retencion:      esAgente,
@@ -211,10 +244,24 @@
       retencion_islr_porcentaje:esAgente && $('#cl-ret-islr') ? Number($('#cl-ret-islr').value || 0) : 0,
     };
 
-    if (!datos.nombres)   { err.textContent = 'El nombre es obligatorio.'; err.hidden = false; return; }
-    if (!datos.documento) { err.textContent = 'El documento es obligatorio.'; err.hidden = false; return; }
+    if (!datos.documento) {
+      const inpD = $('#cl-documento');
+      if (inpD) { inpD.style.borderColor = 'var(--peligro, #ef4444)'; inpD.focus(); }
+      if (err) { err.textContent = 'El número de documento es obligatorio.'; err.hidden = false; }
+      avisar('El número de documento es obligatorio.');
+      return;
+    }
+
+    if (!datos.nombres) {
+      const inpN = $('#cl-nombres');
+      if (inpN) { inpN.style.borderColor = 'var(--peligro, #ef4444)'; inpN.focus(); }
+      if (err) { err.textContent = 'Por favor escribe el Nombre o Razón Social del cliente.'; err.hidden = false; }
+      avisar('Por favor escribe el Nombre o Razón Social del cliente.');
+      return;
+    }
 
     btn.disabled = true;
+    btn.textContent = 'Guardando…';
     try {
       const guardado = c ? await INV.db.clientes.actualizar(c.id, datos) : await INV.db.clientes.crear(datos);
 
@@ -235,15 +282,19 @@
       }
 
       cerrarModal();
-      avisar(c ? 'Cliente actualizado' : 'Cliente registrado');
+      avisar(c ? 'Cliente actualizado con éxito' : 'Cliente registrado con éxito');
       if (alGuardar) alGuardar(guardado || datos);
       window.dispatchEvent(new Event('recargar-vista'));
     } catch (e) {
-      err.textContent = e.message.includes('duplicate')
-        ? 'Ya hay un cliente registrado con ese documento.'
-        : e.message;
-      err.hidden = false;
+      if (err) {
+        err.textContent = e.message.includes('duplicate')
+          ? 'Ya hay un cliente registrado con ese documento.'
+          : e.message;
+        err.hidden = false;
+      }
+      avisar(e.message);
       btn.disabled = false;
+      btn.textContent = 'Guardar';
     }
   }
 
