@@ -593,44 +593,6 @@
       ajustarPasoCantidad();
     }
 
-    function esUnidadDecimal(unidad) {
-      if (!unidad) return false;
-      const u = String(unidad).trim().toLowerCase();
-      return /^(kg|kilo|kilos|kilogramo|kilogramos|g|gr|grs|gramo|gramos|mg|miligramo|miligramos|m|mt|mts|metro|metros|cm|centimetro|centimetros|centímetro|centímetros|mm|milimetro|milimetros|l|lt|lts|litro|litros|ml|mililitro|mililitros|cc|decimal|fraccionable|granel)$/i.test(u)
-        || /(kg|kilo|gram|metro|centim|milim|litro|granel|peso)/i.test(u);
-    }
-
-    function ajustarPasoCantidad() {
-      const elProd = $('#vn-producto');
-      const elCant = $('#vn-cantidad');
-      const nota = $('#vn-encontrados');
-      if (!elProd || !elCant) return;
-      const rawId = elProd.value;
-      const p = catalogo.find(x => String(x.producto_id || x.id) === String(rawId));
-      const esDecimal = p && esUnidadDecimal(p.unidad);
-
-      if (esDecimal) {
-        elCant.step = '0.001';
-        elCant.min = '0.001';
-      } else {
-        elCant.step = '1';
-        elCant.min = '1';
-        const val = Number(elCant.value);
-        if (!Number.isInteger(val) || val < 1) {
-          elCant.value = Math.max(1, Math.round(val || 1));
-        }
-      }
-
-      if (p && nota && !$('#vn-buscar-prod').value.trim()) {
-        const s = Number(p.stock || 0);
-        if (s <= 0) {
-          nota.innerHTML = `<span style="color:var(--naranja)">⚠️ Sin existencias en inventario (Stock: 0 ${esc(p.unidad)}). <a href="#/movimientos" style="color:var(--cian); text-decoration:underline;">Registrar entrada</a></span>`;
-        } else {
-          nota.innerHTML = `<span style="color:var(--esmeralda)">Disponibles en inventario: <b>${cantidad(s)} ${esc(p.unidad)}</b></span>`;
-        }
-      }
-    }
-
     buscador.addEventListener('input', filtrarProductos);
     selector.addEventListener('change', ajustarPasoCantidad);
 
@@ -725,6 +687,45 @@
     ajustarCamposPago();
     ajustarPasoCantidad();
     pintarRenglones();
+  }
+
+  function esUnidadDecimal(unidad) {
+    if (!unidad) return false;
+    const u = String(unidad).trim().toLowerCase();
+    return /^(kg|kilo|kilos|kilogramo|kilogramos|g|gr|grs|gramo|gramos|mg|miligramo|miligramos|m|mt|mts|metro|metros|cm|centimetro|centimetros|centímetro|centímetros|mm|milimetro|milimetros|l|lt|lts|litro|litros|ml|mililitro|mililitros|cc|decimal|fraccionable|granel)$/i.test(u)
+      || /(kg|kilo|gram|metro|centim|milim|litro|granel|peso)/i.test(u);
+  }
+
+  function ajustarPasoCantidad() {
+    const elProd = $('#vn-producto');
+    const elCant = $('#vn-cantidad');
+    const nota = $('#vn-encontrados');
+    if (!elProd || !elCant) return;
+    const rawId = elProd.value;
+    const p = catalogo.find(x => String(x.producto_id || x.id) === String(rawId));
+    const esDecimal = p && esUnidadDecimal(p.unidad);
+
+    if (esDecimal) {
+      elCant.step = '0.001';
+      elCant.min = '0.001';
+    } else {
+      elCant.step = '1';
+      elCant.min = '1';
+      const val = Number(elCant.value);
+      if (!Number.isInteger(val) || val < 1) {
+        elCant.value = Math.max(1, Math.round(val || 1));
+      }
+    }
+
+    const buscarProd = $('#vn-buscar-prod');
+    if (p && nota && (!buscarProd || !buscarProd.value.trim())) {
+      const s = Number(p.stock || 0);
+      if (s <= 0) {
+        nota.innerHTML = `<span style="color:var(--naranja)">⚠️ Sin existencias en inventario (Stock: 0 ${esc(p.unidad)}). <a href="#/movimientos" style="color:var(--cian); text-decoration:underline;">Registrar entrada</a></span>`;
+      } else {
+        nota.innerHTML = `<span style="color:var(--esmeralda)">Disponibles en inventario: <b>${cantidad(s)} ${esc(p.unidad)}</b></span>`;
+      }
+    }
   }
 
   function sugerirMontoPago() {
@@ -1275,7 +1276,7 @@
             <span class="lista__nombre">${esc(it.descripcion)}
               ${it.exento ? '<span class="pastilla pastilla--exento">exento</span>' : ''}
               <span class="lista__sub">
-                ${esc(it.sku)}${INV.tasas.catalogoEnDolares() && it.precio_catalogo ? ` · <span style="color:var(--cian)">${numero(it.precio_catalogo)} $/u</span>` : ''}
+                ${esc(it.sku)}${INV.tasas && typeof INV.tasas.catalogoEnDolares === 'function' && INV.tasas.catalogoEnDolares() && it.precio_catalogo ? ` · <span style="color:var(--cian)">${numero(it.precio_catalogo)} $/u</span>` : ''}
               </span></span>
             <span class="lista__dato"><b style="color:var(--violeta-claro)">${cantidad(it.cantidad)}</b><small>${esc(it.unidad)}</small></span>
             <span class="lista__dato">
