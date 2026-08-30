@@ -20,7 +20,7 @@
 
   /* ---------------- Formulario ---------------- */
 
-  function abrirFormulario(c = null) {
+  function abrirFormulario(c = null, alGuardar = null) {
     abrirModal({
       titulo: c ? 'Editar cliente' : 'Nuevo cliente',
       cuerpo: `
@@ -80,7 +80,7 @@
           </div>
         </div>
 
-        <p id="cl-error" class="error" hidden></p>`,
+        <p id="cl-error" class="error" hidden style="margin-top:12px; padding:8px 12px; background:rgba(239,68,68,0.15); border:1px solid var(--peligro); border-radius:6px; font-size:13px; color:#fca5a5"></p>`,
       acciones: [
         ...(c ? [{ texto: 'Desactivar', alPulsar: () => desactivar(c.id) }] : []),
         { texto: 'Cancelar', alPulsar: cerrarModal },
