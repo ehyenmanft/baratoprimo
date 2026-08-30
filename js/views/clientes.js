@@ -43,8 +43,8 @@
             </select>
             <input id="cl-documento" type="text" inputmode="numeric"
                    value="${esc(c ? c.documento : '')}" placeholder="403118225">
-            <button type="button" class="btn btn--secundario btn--chico" id="cl-btn-seniat" title="Consultar RIF en SENIAT" style="white-space:nowrap; padding:0 12px; font-size:12px">
-              🔍 SENIAT
+            <button type="button" class="btn btn--secundario btn--chico" id="cl-btn-seniat" title="Buscar cliente" style="white-space:nowrap; padding:0 12px; font-size:12px">
+              🔍 BUSCAR
             </button>
           </div>
           <span class="subida__nota" id="cl-prefijo-nota" style="margin-top:6px; display:block"></span>
@@ -182,7 +182,7 @@
           avisar(e.message || 'Ingresa el nombre del cliente para continuar.');
         } finally {
           btnSeniat.disabled = false;
-          btnSeniat.textContent = '🔍 SENIAT';
+          btnSeniat.textContent = '🔍 BUSCAR';
         }
       };
 
