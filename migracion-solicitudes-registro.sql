@@ -17,20 +17,20 @@ begin
     select 1 from pg_policies 
     where tablename = 'operadores' and policyname = 'solicitar operador publico'
   ) then
-    create policy "solicitar operador publico" on operadores
+    create policy "solicitar operador publico" on public.operadores
       for insert to anon, authenticated
-      with check (activo = false and comercio_id is null and rol <> 'super_admin');
+      with check (activo = false and comercio_id is null and rol <> 'super_admin'::rol_operador);
   end if;
 end $$;
 
 -- 2. Función con seguridad definer para registrar solicitudes
-create or replace function solicitar_registro(p jsonb)
+create or replace function public.solicitar_registro(p jsonb)
 returns bigint language plpgsql security definer as $BLOQUE$
 declare
   v_id         bigint;
   v_nombre     text;
   v_correo     text;
-  v_rol        rol_usuario;
+  v_rol        rol_operador;
   v_usuario_id uuid;
 begin
   v_nombre := trim(coalesce(p->>'nombre', ''));
@@ -46,9 +46,9 @@ begin
 
   -- Impedir solicitar super_admin desde la interfaz pública
   if (p->>'rol') = 'super_admin' or p->>'rol' is null then
-    v_rol := 'operador_facturador'::rol_usuario;
+    v_rol := 'operador_facturador'::rol_operador;
   else
-    v_rol := (p->>'rol')::rol_usuario;
+    v_rol := (p->>'rol')::rol_operador;
   end if;
 
   if (p->>'usuario_id') is not null and (p->>'usuario_id') <> '' then
@@ -58,10 +58,10 @@ begin
   end if;
 
   -- Si ya existe un operador con ese correo
-  select id into v_id from operadores where lower(correo) = v_correo;
+  select id into v_id from public.operadores where lower(correo) = v_correo;
   if v_id is not null then
     -- Si ya existe y está inactivo, actualizamos los datos de la solicitud
-    update operadores
+    update public.operadores
        set nombre = v_nombre,
            rol = v_rol,
            usuario_id = coalesce(v_usuario_id, usuario_id)
@@ -70,7 +70,7 @@ begin
   end if;
 
   -- Inserción como operador pendiente (activo = false, sin comercio)
-  insert into operadores (nombre, correo, rol, activo, comercio_id, usuario_id)
+  insert into public.operadores (nombre, correo, rol, activo, comercio_id, usuario_id)
   values (v_nombre, v_correo, v_rol, false, null, v_usuario_id)
   returning id into v_id;
 
@@ -82,10 +82,10 @@ $BLOQUE$;
 do $$
 begin
   if exists (select 1 from pg_roles where rolname = 'anon') then
-    grant execute on function solicitar_registro(jsonb) to anon;
+    grant execute on function public.solicitar_registro(jsonb) to anon;
   end if;
   if exists (select 1 from pg_roles where rolname = 'authenticated') then
-    grant execute on function solicitar_registro(jsonb) to authenticated;
+    grant execute on function public.solicitar_registro(jsonb) to authenticated;
   end if;
 end $$;
 
@@ -95,15 +95,19 @@ returns trigger language plpgsql security definer as $BLOQUE$
 declare
   v_nombre text;
   v_rol_solicitado text;
-  v_rol rol_usuario;
+  v_rol rol_operador;
 begin
   v_nombre := coalesce(new.raw_user_meta_data->>'nombre', split_part(new.email, '@', 1));
   v_rol_solicitado := coalesce(new.raw_user_meta_data->>'rol_solicitado', 'operador_facturador');
   
   if v_rol_solicitado = 'super_admin' then
-    v_rol := 'operador_facturador'::rol_usuario;
+    v_rol := 'operador_facturador'::rol_operador;
   else
-    v_rol := v_rol_solicitado::rol_usuario;
+    begin
+      v_rol := v_rol_solicitado::rol_operador;
+    exception when others then
+      v_rol := 'operador_facturador'::rol_operador;
+    end;
   end if;
 
   if not exists (select 1 from public.operadores where lower(correo) = lower(new.email)) then
