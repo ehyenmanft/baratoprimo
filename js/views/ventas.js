@@ -1266,7 +1266,14 @@
   function pintarRenglones() {
     const contRenglones = $('#vn-renglones');
     const contTotales = $('#vn-totales');
-    if (!contRenglones || !contTotales) return;
+
+    console.log('[ventas] pintarRenglones → renglones=', renglones.length,
+      'contRenglones=', !!contRenglones, 'contTotales=', !!contTotales);
+
+    if (!contRenglones || !contTotales) {
+      console.warn('[ventas] pintarRenglones: contenedor no encontrado, abortando');
+      return;
+    }
 
     const tasa = Number(($('#vn-iva') || {}).value || 0);
     const incluido = ($('#vn-incluido') || {}).value === 'si';
@@ -1275,6 +1282,8 @@
     const retIvaPct = (c && c.es_agente_retencion) ? Number(c.retencion_iva_porcentaje || 75) : 0;
     const retIslrPct = (c && c.es_agente_retencion) ? Number(c.retencion_islr_porcentaje || 0) : 0;
     const r = calcular(renglones, tasa, incluido, retIvaPct, retIslrPct);
+
+    console.log('[ventas] pintarRenglones → tasa=', tasa, 'r.total=', r.total, 'r.items=', r.items.length);
 
     contRenglones.innerHTML = renglones.length ? `
       <div class="lista lista--ren">
