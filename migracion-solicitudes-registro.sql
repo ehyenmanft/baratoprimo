@@ -1,36 +1,54 @@
 -- =====================================================================
--- BARATOPRIMO — migración: Solicitudes de Registro y Auto-Alta de Operadores
+-- BARATOPRIMO — Migración: Solicitudes de Registro y Logo de Comercio
 -- ---------------------------------------------------------------------
--- Permite que los usuarios creen cuenta desde la pantalla de acceso
--- eligiendo su rol solicitado (excepto super_admin).
--- La cuenta queda registrada en Supabase Auth y en la tabla operadores
--- con estado pendiente (activo = false) hasta que un super administrador
--- la apruebe y le asigne un comercio.
---
--- Se puede ejecutar varias veces sin romper nada.
+-- Ejecuta este script completo en el SQL Editor de Supabase.
+-- Corrige el error "Database error saving new user" eliminando triggers
+-- conflictivos sobre auth.users y habilitando la función RPC y políticas RLS.
 -- =====================================================================
 
--- 1. Política RLS para permitir inserción de solicitudes pendientes
+-- 1. ELIMINAR CUALQUIER TRIGGER CONFLICTIVO SOBRE auth.users
+-- (Esto resuelve inmediatamente el error "Database error saving new user")
+drop trigger if exists tr_nuevo_usuario_auth on auth.users;
+drop function if exists public.manejar_nuevo_usuario_auth();
+
+-- 2. ASEGURAR COLUMNAS EN TABLA COMERCIOS
+alter table public.comercios add column if not exists logo_url text default null;
+
+-- 3. RECREAR LA VISTA mi_comercio
+drop view if exists public.mi_comercio;
+create view public.mi_comercio as
+select * from public.comercios where id = public.comercio_actual();
+
 do $$
 begin
-  if not exists (
-    select 1 from pg_policies 
-    where tablename = 'operadores' and policyname = 'solicitar operador publico'
-  ) then
-    create policy "solicitar operador publico" on public.operadores
-      for insert to anon, authenticated
-      with check (activo = false and comercio_id is null and rol <> 'super_admin'::rol_operador);
+  if exists (select 1 from pg_roles where rolname = 'authenticated') then
+    grant select on public.mi_comercio to authenticated;
+  end if;
+  if current_setting('server_version_num')::int >= 150000 then
+    execute 'alter view public.mi_comercio set (security_invoker = true)';
   end if;
 end $$;
 
--- 2. Función con seguridad definer para registrar solicitudes
+-- 4. POLÍTICA RLS PARA PERMITIR INSERCIÓN DE SOLICITUDES PENDIENTES
+do $$
+begin
+  -- Eliminar versiones anteriores si existían
+  drop policy if exists "solicitar operador publico" on public.operadores;
+  
+  create policy "solicitar operador publico" on public.operadores
+    for insert to anon, authenticated
+    with check (activo = false and comercio_id is null and rol <> 'super_admin'::public.rol_operador);
+end $$;
+
+-- 5. FUNCIÓN RPC SEGURA PARA REGISTRAR SOLICITUDES (SECURITY DEFINER)
 create or replace function public.solicitar_registro(p jsonb)
-returns bigint language plpgsql security definer as $BLOQUE$
+returns bigint language plpgsql security definer
+set search_path = public, pg_temp as $BLOQUE$
 declare
   v_id         bigint;
   v_nombre     text;
   v_correo     text;
-  v_rol        rol_operador;
+  v_rol        public.rol_operador;
   v_usuario_id uuid;
 begin
   v_nombre := trim(coalesce(p->>'nombre', ''));
@@ -46,13 +64,21 @@ begin
 
   -- Impedir solicitar super_admin desde la interfaz pública
   if (p->>'rol') = 'super_admin' or p->>'rol' is null then
-    v_rol := 'operador_facturador'::rol_operador;
+    v_rol := 'operador_facturador'::public.rol_operador;
   else
-    v_rol := (p->>'rol')::rol_operador;
+    begin
+      v_rol := (p->>'rol')::public.rol_operador;
+    exception when others then
+      v_rol := 'operador_facturador'::public.rol_operador;
+    end;
   end if;
 
   if (p->>'usuario_id') is not null and (p->>'usuario_id') <> '' then
-    v_usuario_id := (p->>'usuario_id')::uuid;
+    begin
+      v_usuario_id := (p->>'usuario_id')::uuid;
+    exception when others then
+      v_usuario_id := null;
+    end;
   else
     v_usuario_id := null;
   end if;
@@ -60,7 +86,6 @@ begin
   -- Si ya existe un operador con ese correo
   select id into v_id from public.operadores where lower(correo) = v_correo;
   if v_id is not null then
-    -- Si ya existe y está inactivo, actualizamos los datos de la solicitud
     update public.operadores
        set nombre = v_nombre,
            rol = v_rol,
@@ -78,7 +103,7 @@ begin
 end;
 $BLOQUE$;
 
--- 3. Conceder permisos de ejecución
+-- 6. CONCEDER PERMISOS DE EJECUCIÓN A LA FUNCIÓN RPC
 do $$
 begin
   if exists (select 1 from pg_roles where rolname = 'anon') then
@@ -89,43 +114,4 @@ begin
   end if;
 end $$;
 
--- 4. Trigger opcional para auto-sincronizar usuarios de auth.users si se registran directamente
-create or replace function public.manejar_nuevo_usuario_auth()
-returns trigger language plpgsql security definer as $BLOQUE$
-declare
-  v_nombre text;
-  v_rol_solicitado text;
-  v_rol rol_operador;
-begin
-  v_nombre := coalesce(new.raw_user_meta_data->>'nombre', split_part(new.email, '@', 1));
-  v_rol_solicitado := coalesce(new.raw_user_meta_data->>'rol_solicitado', 'operador_facturador');
-  
-  if v_rol_solicitado = 'super_admin' then
-    v_rol := 'operador_facturador'::rol_operador;
-  else
-    begin
-      v_rol := v_rol_solicitado::rol_operador;
-    exception when others then
-      v_rol := 'operador_facturador'::rol_operador;
-    end;
-  end if;
-
-  if not exists (select 1 from public.operadores where lower(correo) = lower(new.email)) then
-    insert into public.operadores (nombre, correo, rol, activo, comercio_id, usuario_id)
-    values (v_nombre, lower(new.email), v_rol, false, null, new.id);
-  else
-    update public.operadores
-       set usuario_id = new.id
-     where lower(correo) = lower(new.email) and usuario_id is null;
-  end if;
-
-  return new;
-end;
-$BLOQUE$;
-
-drop trigger if exists tr_nuevo_usuario_auth on auth.users;
-create trigger tr_nuevo_usuario_auth
-  after insert on auth.users
-  for each row execute function public.manejar_nuevo_usuario_auth();
-
-select 'migración de solicitudes de registro' as pieza, 'completada con éxito' as estado;
+select 'configuración de supabase' as pieza, 'completada con éxito' as estado;
