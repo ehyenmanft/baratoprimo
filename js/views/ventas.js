@@ -451,8 +451,10 @@
             <label class="filtro" style="flex:2; min-width:220px"><span>Producto</span>
               <select id="vn-producto">
                 ${catalogo.map(p => {
+                  const stockNum = Number(p.stock || 0);
+                  const stockTxt = stockNum > 0 ? `Stock: ${cantidad(stockNum)} ${esc(p.unidad)}` : `⚠️ SIN STOCK (0 ${esc(p.unidad)})`;
                   const precioD = INV.tasas ? INV.tasas.dual(Number(p.precio_venta)).principal : `${numero(p.precio_venta)} Bs`;
-                  return `<option value="${p.producto_id || p.id}" data-sku="${esc(p.sku)}">${esc(p.sku)} — ${esc(p.nombre)} (${cantidad(p.stock)} ${esc(p.unidad)}) · ${precioD}</option>`;
+                  return `<option value="${p.producto_id || p.id}" data-sku="${esc(p.sku)}">${esc(p.sku)} — ${esc(p.nombre)} · ${stockTxt} · ${precioD}</option>`;
                 }).join('')}
               </select>
               <span class="subida__nota" id="vn-encontrados" style="margin-top:4px; display:block"></span></label>
@@ -601,9 +603,10 @@
     function ajustarPasoCantidad() {
       const elProd = $('#vn-producto');
       const elCant = $('#vn-cantidad');
+      const nota = $('#vn-encontrados');
       if (!elProd || !elCant) return;
-      const id = Number(elProd.value);
-      const p = catalogo.find(x => x.producto_id === id);
+      const rawId = elProd.value;
+      const p = catalogo.find(x => String(x.producto_id || x.id) === String(rawId));
       const esDecimal = p && esUnidadDecimal(p.unidad);
 
       if (esDecimal) {
@@ -615,6 +618,15 @@
         const val = Number(elCant.value);
         if (!Number.isInteger(val) || val < 1) {
           elCant.value = Math.max(1, Math.round(val || 1));
+        }
+      }
+
+      if (p && nota && !$('#vn-buscar-prod').value.trim()) {
+        const s = Number(p.stock || 0);
+        if (s <= 0) {
+          nota.innerHTML = `<span style="color:var(--naranja)">⚠️ Sin existencias en inventario (Stock: 0 ${esc(p.unidad)}). <a href="#/movimientos" style="color:var(--cian); text-decoration:underline;">Registrar entrada</a></span>`;
+        } else {
+          nota.innerHTML = `<span style="color:var(--esmeralda)">Disponibles en inventario: <b>${cantidad(s)} ${esc(p.unidad)}</b></span>`;
         }
       }
     }
@@ -788,8 +800,15 @@
     const pid = p.producto_id || p.id;
     const yaPuesto = renglones.filter(r => String(r.producto_id) === String(pid))
       .reduce((s, r) => s + Number(r.cantidad), 0);
-    if (yaPuesto + cant > Number(p.stock))
-      return avisar(`Solo hay ${cantidad(Number(p.stock) - yaPuesto)} ${p.unidad} disponibles de ${p.nombre}`, 'error');
+    const stockActual = Number(p.stock || 0);
+    const disponible = stockActual - yaPuesto;
+
+    if (disponible <= 0) {
+      return avisar(`⚠️ "${p.nombre}" no tiene existencias en inventario (Stock: 0 ${p.unidad}). Registra una entrada en Movimientos antes de venderlo.`, 'error');
+    }
+    if (cant > disponible) {
+      return avisar(`Solo hay ${cantidad(disponible)} ${p.unidad} disponibles de "${p.nombre}".`, 'error');
+    }
 
     const existente = renglones.find(r => String(r.producto_id) === String(pid));
     if (existente) existente.cantidad = Number(existente.cantidad) + cant;
@@ -802,7 +821,7 @@
       precio_catalogo: Number(p.precio_venta),
       precio_unitario: INV.tasas.aFactura(Number(p.precio_venta)) ?? Number(p.precio_venta),
       exento: !!p.exento_iva,
-      stock: Number(p.stock),
+      stock: stockActual,
     });
 
     elCant.value = 1;
