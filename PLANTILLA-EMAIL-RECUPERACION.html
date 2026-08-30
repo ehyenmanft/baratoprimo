@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Restablecer contraseña — BaratoPrimo</title>
+  <style>
+    /* Estilos base */
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #0d0e15;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      color: #e2e4ed;
+      -webkit-font-smoothing: antialiased;
+    }
+    table {
+      border-spacing: 0;
+      border-collapse: collapse;
+    }
+    td {
+      padding: 0;
+    }
+    img {
+      border: 0;
+    }
+    .wrapper {
+      width: 100%;
+      table-layout: fixed;
+      background-color: #0d0e15;
+      padding-bottom: 40px;
+      padding-top: 40px;
+    }
+    .main-card {
+      background-color: #171822;
+      border: 1px solid #282a3c;
+      border-radius: 16px;
+      margin: 0 auto;
+      width: 100%;
+      max-width: 520px;
+      overflow: hidden;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+    }
+    .content-body {
+      padding: 36px 32px 32px 32px;
+    }
+    .logo-container {
+      margin-bottom: 24px;
+      text-align: center;
+    }
+    .logo-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, #6C3BF4 0%, #2CC3E0 100%);
+      padding: 12px 20px;
+      border-radius: 12px;
+      color: #ffffff;
+      font-weight: 800;
+      font-size: 20px;
+      letter-spacing: -0.5px;
+      text-decoration: none;
+    }
+    h1 {
+      color: #ffffff;
+      font-size: 22px;
+      font-weight: 700;
+      margin: 0 0 12px 0;
+      text-align: center;
+      letter-spacing: -0.3px;
+    }
+    p {
+      color: #a5a9c0;
+      font-size: 15px;
+      line-height: 1.6;
+      margin: 0 0 20px 0;
+    }
+    .btn-container {
+      text-align: center;
+      margin: 30px 0;
+    }
+    .btn-primary {
+      display: inline-block;
+      background: linear-gradient(135deg, #6C3BF4 0%, #8B63FF 100%);
+      color: #ffffff !important;
+      text-decoration: none;
+      font-size: 15px;
+      font-weight: 600;
+      padding: 14px 34px;
+      border-radius: 10px;
+      box-shadow: 0 6px 20px rgba(108, 59, 244, 0.4);
+    }
+    .notice-box {
+      background-color: #1f202f;
+      border-left: 4px solid #6C3BF4;
+      border-radius: 6px;
+      padding: 14px 16px;
+      margin: 24px 0 10px 0;
+    }
+    .notice-box p {
+      font-size: 13px;
+      color: #8c90a8;
+      margin: 0;
+      line-height: 1.5;
+    }
+    .url-fallback {
+      font-size: 12px;
+      color: #6d718b;
+      word-break: break-all;
+      margin-top: 16px;
+    }
+    .url-fallback a {
+      color: #2CC3E0;
+      text-decoration: underline;
+    }
+    .footer {
+      text-align: center;
+      padding: 24px 20px 0 20px;
+      font-size: 12px;
+      color: #5d617a;
+    }
+    @media only screen and (max-width: 540px) {
+      .content-body {
+        padding: 28px 20px 24px 20px;
+      }
+      .main-card {
+        border-radius: 12px;
+        margin: 0 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <center class="wrapper">
+    <table class="main-card" role="presentation">
+      <tr>
+        <td class="content-body">
+          <!-- Logo de BaratoPrimo -->
+          <div class="logo-container">
+            <span class="logo-badge">⚡ BaratoPrimo</span>
+          </div>
+
+          <!-- Título -->
+          <h1>Recuperación de contraseña</h1>
+
+          <!-- Mensaje -->
+          <p style="text-align: center;">
+            Hemos recibido una solicitud para restablecer la contraseña de tu cuenta en <strong>BaratoPrimo</strong>.
+          </p>
+
+          <p style="text-align: center;">
+            Haz clic en el siguiente botón para elegir tu nueva contraseña:
+          </p>
+
+          <!-- Botón de Acción -->
+          <div class="btn-container">
+            <a href="{{ .ConfirmationURL }}" class="btn-primary" target="_blank">
+              Restablecer mi contraseña
+            </a>
+          </div>
+
+          <!-- Cuadro de Seguridad -->
+          <div class="notice-box">
+            <p>
+              🔒 <strong>Aviso de seguridad:</strong> Este enlace expirará pronto y solo puede usarse una vez. Si tú no solicitaste este cambio, puedes ignorar este mensaje; tu contraseña actual continuará protegida.
+            </p>
+          </div>
+
+          <!-- Enlace alternativo si el botón no funciona -->
+          <div class="url-fallback">
+            ¿El botón no responde? Copia y pega este enlace en tu navegador:<br>
+            <a href="{{ .ConfirmationURL }}">{{ .ConfirmationURL }}</a>
+          </div>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Pie de página -->
+    <div class="footer">
+      BaratoPrimo · Sistema de Gestión de Inventario, Ventas y Facturación.<br>
+      Este es un correo automático, por favor no respondas a este mensaje.
+    </div>
+  </center>
+</body>
+</html>
