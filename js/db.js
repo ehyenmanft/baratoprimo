@@ -108,7 +108,7 @@
       actual:  () => sb.auth.getSession().then(r => r.data.session).catch(() => null),
       entrar:  (email, password) => sb.auth.signInWithPassword({ email, password }).then(ok),
       salir:   () => sb.auth.signOut(),
-      alCambiar: cb => sb.auth.onAuthStateChange((_e, s) => cb(s)),
+      alCambiar: cb => sb.auth.onAuthStateChange((event, session) => cb(event, session)),
       recuperarClave: async email => {
         const redirect = window.location.origin + window.location.pathname;
         const { error } = await sb.auth.resetPasswordForEmail(email.trim().toLowerCase(), { redirectTo: redirect });
@@ -116,9 +116,9 @@
         return true;
       },
       actualizarClave: async nuevaClave => {
-        const { error } = await sb.auth.updateUser({ password: nuevaClave });
+        const { data, error } = await sb.auth.updateUser({ password: nuevaClave });
         if (error) throw new Error(error.message);
-        return true;
+        return data;
       },
     },
 

@@ -704,6 +704,12 @@
                 await INV.db.sesion.actualizarClave(pass);
                 INV.ui.cerrarModal();
                 INV.ui.avisar('Contraseña actualizada con éxito');
+                const sesion = await INV.db.sesion.actual();
+                if (sesion) {
+                  await mostrarApp(sesion);
+                } else {
+                  setTimeout(() => location.reload(), 1000);
+                }
               } catch (e) {
                 if (err) { err.textContent = e.message; err.hidden = false; }
                 btn.disabled = false;
