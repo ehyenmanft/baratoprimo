@@ -315,9 +315,114 @@
     }
   }
 
+  /* ---------------- Decodificación desde Imagen / Archivo ---------------- */
+  async function leerDesdeImagen(archivo) {
+    if (!archivo) throw new Error('No se ha proporcionado ninguna imagen.');
+    if (archivo instanceof Blob && !archivo.type.startsWith('image/')) {
+      throw new Error('El archivo seleccionado no es una imagen válida.');
+    }
+
+    const detector = await obtenerDetector();
+    if (!detector) {
+      // Si el navegador no soporta BarcodeDetector nativo
+      throw new Error('Tu navegador no admite decodificación automática de imágenes. Puedes seleccionar la venta del menú desplegable o escanear con la cámara.');
+    }
+
+    // Función auxiliar para detectar en distintas escalas si la imagen es muy grande
+    async function detectarEnImagen(imgSource) {
+      try {
+        const resultados = await detector.detect(imgSource);
+        if (resultados && resultados.length > 0 && resultados[0].rawValue) {
+          return resultados[0].rawValue;
+        }
+      } catch (e) {}
+      return null;
+    }
+
+    // 1. Intentar directamente con ImageBitmap (más rápido y nativo)
+    try {
+      if (typeof createImageBitmap === 'function' && archivo instanceof Blob) {
+        const bitmap = await createImageBitmap(archivo);
+        const res = await detectarEnImagen(bitmap);
+        if (res) {
+          emitirBeep();
+          return res;
+        }
+      }
+    } catch (e) {}
+
+    // 2. Intentar cargando como HTMLImageElement y dibujando en Canvas para normalizar
+    return new Promise((resolve, reject) => {
+      const lector = new FileReader();
+      lector.onerror = () => reject(new Error('No se pudo leer el archivo de imagen.'));
+      lector.onload = () => {
+        const img = new Image();
+        img.onerror = () => reject(new Error('No se pudo procesar la imagen cargada.'));
+        img.onload = async () => {
+          // Intentar directo sobre el elemento img
+          let res = await detectarEnImagen(img);
+          if (res) {
+            emitirBeep();
+            return resolve(res);
+          }
+
+          // Intentar reescalando a un canvas intermedio (resolución óptima ~800-1200px)
+          try {
+            const canvas = document.createElement('canvas');
+            const maxDim = 1200;
+            let ancho = img.naturalWidth || img.width;
+            let alto = img.naturalHeight || img.height;
+            if (ancho > maxDim || alto > maxDim) {
+              if (ancho > alto) {
+                alto = Math.round((alto * maxDim) / ancho);
+                ancho = maxDim;
+              } else {
+                ancho = Math.round((ancho * maxDim) / alto);
+                alto = maxDim;
+              }
+            }
+            canvas.width = ancho;
+            canvas.height = alto;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, ancho, alto);
+
+            res = await detectarEnImagen(canvas);
+            if (res) {
+              emitirBeep();
+              return resolve(res);
+            }
+          } catch (err) {}
+
+          reject(new Error('No se detectó ningún código QR en la imagen. Asegúrate de que el código esté nítido y bien iluminado.'));
+        };
+        img.src = lector.result;
+      };
+      lector.readAsDataURL(archivo);
+    });
+  }
+
+  /* ---------------- Extracción de Identificador de Venta ---------------- */
+  function extraerCodigoVenta(textoCrudo) {
+    if (!textoCrudo) return '';
+    const str = String(textoCrudo).trim();
+    if (!str) return '';
+
+    // Caso 1: URL con hash #/venta/ID (ej: http://.../#/venta/123)
+    const matchUrl = str.match(/#\/venta\/([a-zA-Z0-9_\-\.]+)/i);
+    if (matchUrl && matchUrl[1]) return decodeURIComponent(matchUrl[1].trim());
+
+    // Caso 2: Resumen legible "VENTA FAC-0001 | Cliente | ..."
+    const matchResumen = str.match(/^VENTA\s+([^\|\n\r]+)/i);
+    if (matchResumen && matchResumen[1]) return matchResumen[1].trim();
+
+    return str;
+  }
+
   INV.escaner = {
     abrirModalEscaneo,
     emitirBeep,
-    detenerCamara
+    detenerCamara,
+    leerDesdeImagen,
+    extraerCodigoVenta
   };
 })();

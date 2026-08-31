@@ -2117,3 +2117,20 @@ html[data-tema="oscuro"] .bienvenida__caja::before{
   font-size:11.5px; font-weight:600; color:var(--tinta-3); text-transform:uppercase; letter-spacing:0.04em;
 }
 
+/* =====================================================================
+   Modal de Anulación Directa
+   ===================================================================== */
+.anulacion-directa{
+  display:flex; flex-direction:column; gap:6px;
+}
+.anulacion-herramientas{
+  display:flex; gap:8px; flex-wrap:wrap; align-items:center;
+}
+.anulacion-herramientas .btn{
+  font-weight:600;
+}
+.anulacion-panel{
+  animation:aparecer .25s var(--curva);
+}
+
+

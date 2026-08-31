@@ -175,6 +175,7 @@
       { texto: 'Cancelar', estilo: 'btn--secundario', alPulsar: () => { location.hash = '#/ventas'; } },
     ] : [
       { texto: 'Nueva venta', estilo: 'btn--primario', alPulsar: () => { location.hash = '#/ventas/nueva'; } },
+      { texto: 'Anular', estilo: 'btn--secundario', permiso: 'ventas.anular', alPulsar: pedirAnulacionDirecta },
       { texto: 'Exportar', estilo: 'btn--secundario', alPulsar: exportar },
     ],
 
@@ -2083,18 +2084,138 @@
     });
   }
 
-  function pedirAnulacion() {
-    const v = ventaActual;
-    if (!v) return;
-    if (v.anulada) return avisar('Este comprobante ya está anulado', 'error');
+  /* ================= ANULACIÓN DE VENTAS ================= */
+
+  async function pedirAnulacionDirecta(ventaInicial = null) {
+    if (INV.permisos && !INV.permisos.puede('ventas.anular')) {
+      return avisar('Solo un administrador puede anular comprobantes', 'error');
+    }
+
+    let ventas = [];
+    try {
+      ventas = await INV.db.ventas.listar({ limite: 300 });
+    } catch (e) {
+      ventas = ventasEnPantalla || [];
+    }
+
+    if (!ventas.length) {
+      return avisar('No hay comprobantes de venta registrados en este comercio.', 'error');
+    }
+
+    let ventaSeleccionada = ventaInicial;
 
     abrirModal({
-      titulo: 'Anular ' + v.numero,
+      titulo: 'Anular comprobante de venta',
       cuerpo: `
-        <p style="margin:0 0 16px; font-size:14px; color:var(--tinta-2)">
+        <div class="anulacion-directa">
+          <p style="margin:0 0 14px; font-size:13.5px; color:var(--tinta-2); line-height:1.45;">
+            Selecciona el comprobante a anular del comercio, escanea su código QR con la cámara o carga una foto/imagen que contenga el QR.
+          </p>
+
+          <div class="campo" style="margin-bottom:10px;">
+            <label for="an-sel-venta" style="font-weight:600;">Ventas del comercio actual</label>
+            <select id="an-sel-venta">
+              <option value="">-- Seleccionar comprobante (${ventas.length} emitidos) --</option>
+              ${ventas.map(v => `
+                <option value="${v.id}" ${ventaSeleccionada && String(ventaSeleccionada.id) === String(v.id) ? 'selected' : ''}>
+                  ${esc(v.numero)} — ${esc(v.cliente || 'Consumidor final')} — ${numero(v.total)} Bs (${new Date(v.fecha).toLocaleDateString('es')})${v.anulada ? ' · [ANULADA]' : ''}
+                </option>
+              `).join('')}
+            </select>
+          </div>
+
+          <div class="anulacion-herramientas" style="display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;">
+            <button type="button" class="btn btn--secundario btn--chico" id="an-btn-qr-camara" style="display:inline-flex; align-items:center; gap:6px;">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              <span>Escanear QR</span>
+            </button>
+            <button type="button" class="btn btn--secundario btn--chico" id="an-btn-qr-imagen" style="display:inline-flex; align-items:center; gap:6px;">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              <span>Cargar imagen QR</span>
+            </button>
+            <input type="file" id="an-input-qr-archivo" accept="image/*" style="display:none">
+          </div>
+
+          <div id="an-panel-venta" class="anulacion-panel"></div>
+          <p id="an-error" class="error" hidden></p>
+        </div>`,
+      acciones: [
+        { texto: 'Cancelar', alPulsar: cerrarModal },
+        { texto: 'Anular comprobante', estilo: 'btn--primario', alPulsar: btn => procesarAnulacion(btn) },
+      ],
+    });
+
+    const sel = $('#an-sel-venta');
+    const panel = $('#an-panel-venta');
+    const btnConfirmar = $$('#modal-pie button').find(b => b.textContent.includes('Anular'));
+
+    async function cargarDetalleVenta(v) {
+      if (!v) {
+        ventaSeleccionada = null;
+        if (btnConfirmar) btnConfirmar.disabled = true;
+        panel.innerHTML = `
+          <div class="vacio" style="padding:22px 14px; background:var(--superficie-2); border-radius:var(--r-s); border:1px dashed var(--linea);">
+            <p style="margin:0; font-size:13px; color:var(--tinta-2);">
+              Selecciona una venta de la lista, escanea su QR con la cámara o sube una imagen para ver los datos y proceder con la anulación.
+            </p>
+          </div>`;
+        return;
+      }
+
+      // Obtener versión completa con items si es necesario
+      let completa = v;
+      if (!completa.items || !completa.items.length) {
+        try {
+          const fetched = await INV.db.ventas.obtener(v.id);
+          if (fetched) completa = fetched;
+        } catch (e) {}
+      }
+      ventaSeleccionada = completa;
+      if (sel) sel.value = String(completa.id);
+
+      const err = $('#an-error');
+      if (err) err.hidden = true;
+
+      if (completa.anulada) {
+        if (btnConfirmar) btnConfirmar.disabled = true;
+        panel.innerHTML = `
+          <div class="anulada-aviso" style="margin:0 0 12px;">
+            <div>
+              <b>Comprobante ya anulado</b>
+              <p>${esc(nombreMotivo(completa.motivo_anulacion))}${completa.detalle_anulacion ? ' — ' + esc(completa.detalle_anulacion) : ''}</p>
+              <p class="lista__sub">${fecha(completa.anulada_en)}${completa.anulada_por_correo ? ' · ' + esc(completa.anulada_por_correo) : ''}</p>
+            </div>
+          </div>
+          <div class="ficha" style="padding:14px; background:var(--superficie-2); border-radius:var(--r-s);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+              <b>${esc(completa.numero)}</b>
+              <b>${numero(completa.total)} Bs</b>
+            </div>
+            <p class="lista__sub" style="margin:0;">${esc(completa.cliente || 'Consumidor final')} · ${fecha(completa.fecha)}</p>
+          </div>`;
+        return;
+      }
+
+      if (btnConfirmar) btnConfirmar.disabled = false;
+      const cantItems = (completa.items || []).length || completa.renglones || 1;
+
+      panel.innerHTML = `
+        <div class="ficha" style="padding:14px; margin-bottom:14px; background:var(--superficie-2); border-radius:var(--r-s); border:1px solid var(--linea);">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:6px;">
+            <div>
+              <span class="pastilla pastilla--entrada" style="font-size:12.5px; font-weight:700;">${esc(completa.numero)}</span>
+              <b style="margin-left:8px; font-size:14px;">${esc(completa.cliente || 'Consumidor final')}</b>
+            </div>
+            <b style="font-size:15px; color:var(--tinta);">${numero(completa.total)} Bs</b>
+          </div>
+          <div class="lista__sub" style="font-size:12px;">
+            ${fecha(completa.fecha)}${completa.documento_completo ? ' · ' + esc(completa.documento_completo) : ''} · ${cantItems} renglón${cantItems > 1 ? 'es' : ''}
+          </div>
+        </div>
+
+        <p style="margin:0 0 14px; font-size:13px; color:var(--tinta-2); line-height:1.4;">
           El comprobante no se borra: queda archivado y marcado como anulado.
-          Los ${v.items.length} renglones vuelven al inventario como entradas,
-          por un total de <b>${numero(v.total)}</b>.
+          Los ${cantItems} renglón${cantItems > 1 ? 'es' : ''} volverán al inventario como entradas por un total de <b>${numero(completa.total)} Bs</b>.
         </p>
 
         <div class="campo">
@@ -2113,51 +2234,164 @@
 
         <div class="campo">
           <label for="an-detalle">Explicación</label>
-          <textarea id="an-detalle" rows="3"
+          <textarea id="an-detalle" rows="2"
             placeholder="Qué pasó exactamente. Queda archivado con la anulación."></textarea>
         </div>
 
         <div class="campo" style="margin:0">
-          <label for="an-confirmar">Escribe <b>${esc(v.numero)}</b> para confirmar</label>
-          <input id="an-confirmar" type="text" placeholder="${esc(v.numero)}" autocomplete="off">
-        </div>
+          <label for="an-confirmar">Escribe <b>${esc(completa.numero)}</b> para confirmar</label>
+          <input id="an-confirmar" type="text" placeholder="${esc(completa.numero)}" autocomplete="off">
+        </div>`;
+    }
 
-        <p id="an-error" class="error" hidden></p>`,
-      acciones: [
-        { texto: 'Cancelar', alPulsar: cerrarModal },
-        { texto: 'Anular comprobante', estilo: 'btn--primario', alPulsar: btn => anular(btn) },
-      ],
-    });
+    // Helper para buscar una venta por identificador
+    async function buscarYSeleccionar(codigoCrudo) {
+      const err = $('#an-error');
+      if (err) err.hidden = true;
+      if (!codigoCrudo) return;
+
+      const idOrNum = INV.escaner ? INV.escaner.extraerCodigoVenta(codigoCrudo) : String(codigoCrudo).trim();
+      const limpio = idOrNum.toLowerCase();
+
+      let hallada = ventas.find(v =>
+        String(v.id).toLowerCase() === limpio ||
+        String(v.numero).toLowerCase() === limpio
+      );
+
+      if (!hallada && INV.db && INV.db.ventas) {
+        try { hallada = await INV.db.ventas.obtener(idOrNum); } catch (e) {}
+      }
+
+      if (!hallada) {
+        hallada = ventas.find(v =>
+          String(codigoCrudo).includes(v.numero) ||
+          (v.documento_completo && String(codigoCrudo).includes(v.documento_completo))
+        );
+      }
+
+      if (!hallada) {
+        if (err) {
+          err.textContent = `No se encontró la venta "${idOrNum}" en este comercio.`;
+          err.hidden = false;
+        }
+        return false;
+      }
+
+      await cargarDetalleVenta(hallada);
+      return hallada;
+    }
+
+    if (sel) {
+      sel.addEventListener('change', e => {
+        const id = e.target.value;
+        if (!id) return cargarDetalleVenta(null);
+        const v = ventas.find(x => String(x.id) === String(id));
+        cargarDetalleVenta(v || null);
+      });
+    }
+
+    // Escaneo de QR con cámara
+    const btnCamara = $('#an-btn-qr-camara');
+    if (btnCamara) {
+      btnCamara.addEventListener('click', () => {
+        if (!INV.escaner) return avisar('Módulo de escáner no disponible', 'error');
+        INV.escaner.abrirModalEscaneo({
+          titulo: 'Escanear QR de la venta',
+          descripcion: 'Apunta la cámara hacia el código QR del comprobante.',
+          modoContinuo: false,
+          onScan: async (codigo, { cerrar, mostrarMensaje }) => {
+            const encontrada = await buscarYSeleccionar(codigo);
+            if (encontrada) {
+              mostrarMensaje(`✓ Comprobante ${encontrada.numero} detectado`);
+              avisar(`Comprobante ${encontrada.numero} detectado`);
+              setTimeout(cerrar, 300);
+            } else {
+              mostrarMensaje(`⚠️ Comprobante no encontrado en este comercio`, true);
+            }
+          }
+        });
+      });
+    }
+
+    // Carga de imagen con código QR
+    const btnImagen = $('#an-btn-qr-imagen');
+    const inputArchivo = $('#an-input-qr-archivo');
+    if (btnImagen && inputArchivo) {
+      btnImagen.addEventListener('click', () => inputArchivo.click());
+      inputArchivo.addEventListener('change', async e => {
+        const archivo = e.target.files && e.target.files[0];
+        inputArchivo.value = '';
+        if (!archivo) return;
+
+        const err = $('#an-error');
+        if (err) err.hidden = true;
+
+        try {
+          avisar('Procesando imagen con código QR…');
+          if (!INV.escaner || !INV.escaner.leerDesdeImagen) {
+            throw new Error('La función de lectura de imágenes no está disponible');
+          }
+          const textoLeido = await INV.escaner.leerDesdeImagen(archivo);
+          const encontrada = await buscarYSeleccionar(textoLeido);
+          if (encontrada) {
+            avisar(`Comprobante ${encontrada.numero} detectado desde la imagen`);
+          }
+        } catch (error) {
+          if (err) {
+            err.textContent = error.message || 'No se pudo leer el código QR de la imagen.';
+            err.hidden = false;
+          }
+          avisar(error.message || 'Error al leer imagen', 'error');
+        }
+      });
+    }
+
+    async function procesarAnulacion(btn) {
+      const v = ventaSeleccionada;
+      const err = $('#an-error');
+      const fallar = t => { if (err) { err.textContent = t; err.hidden = false; } };
+
+      if (!v) return fallar('Por favor selecciona o escanea un comprobante para anular.');
+      if (v.anulada) return fallar('Este comprobante ya se encuentra anulado.');
+
+      const marcado = $$('input[name="an-motivo"]').find(r => r.checked);
+      const motivo = marcado ? marcado.value : 'otro';
+      const detalle = ($('#an-detalle') ? $('#an-detalle').value : '').trim();
+      const confirmacion = ($('#an-confirmar') ? $('#an-confirmar').value : '').trim().toUpperCase();
+
+      if (motivo === 'otro' && !detalle) {
+        return fallar('Al elegir "Otro motivo" es obligatorio escribir la explicación.');
+      }
+      if (confirmacion !== v.numero.toUpperCase()) {
+        return fallar(`Escribe exactamente ${v.numero} para confirmar la anulación.`);
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Anulando…';
+      try {
+        const correo = ($('#usuario-correo') ? $('#usuario-correo').textContent : '').trim() || null;
+        await INV.db.ventas.anular(v.id, motivo, detalle, correo);
+        cerrarModal();
+        avisar(`Comprobante ${v.numero} anulado con éxito`);
+        window.dispatchEvent(new Event('recargar-vista'));
+      } catch (e) {
+        fallar(e.message || 'Error al anular el comprobante');
+        btn.disabled = false;
+        btn.textContent = 'Anular comprobante';
+      }
+    }
+
+    // Si ya teníamos una venta inicial (por ejemplo al venir de la vista de comprobante)
+    if (ventaInicial) {
+      await cargarDetalleVenta(ventaInicial);
+    } else {
+      await cargarDetalleVenta(null);
+    }
   }
 
-  async function anular(btn) {
-    const v = ventaActual;
-    const err = $('#an-error');
-    const marcado = $$('input[name="an-motivo"]').find(r => r.checked);
-    const motivo = marcado ? marcado.value : 'otro';
-    const detalle = $('#an-detalle').value.trim();
-
-    const fallar = t => { err.textContent = t; err.hidden = false; };
-
-    if (motivo === 'otro' && !detalle)
-      return fallar('Al elegir "Otro motivo" hay que escribir la explicación.');
-    // Teclear el número evita anular el comprobante equivocado por inercia.
-    if ($('#an-confirmar').value.trim().toUpperCase() !== v.numero.toUpperCase())
-      return fallar('Escribe ' + v.numero + ' para confirmar la anulación.');
-
-    btn.disabled = true;
-    btn.textContent = 'Anulando…';
-    try {
-      const correo = ($('#usuario-correo').textContent || '').trim() || null;
-      await INV.db.ventas.anular(v.id, motivo, detalle, correo);
-      cerrarModal();
-      avisar('Comprobante ' + v.numero + ' anulado');
-      window.dispatchEvent(new Event('recargar-vista'));
-    } catch (e) {
-      fallar(e.message);
-      btn.disabled = false;
-      btn.textContent = 'Anular comprobante';
-    }
+  function pedirAnulacion() {
+    if (!ventaActual) return;
+    pedirAnulacionDirecta(ventaActual);
   }
 
   function mostrarQR() {
