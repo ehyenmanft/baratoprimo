@@ -277,7 +277,8 @@
       },
 
       crear: async datos => {
-        if (!INV.sync || !INV.sync.esOffline()) {
+        const tieneTemp = esIdTemporal(datos.categoria_id);
+        if (!tieneTemp && (!INV.sync || !INV.sync.esOffline())) {
           try {
             const res = await sb.from('productos').insert(datos).select().single().then(ok);
             if (INV.sync) {
@@ -325,7 +326,8 @@
       },
 
       actualizar: async (id, datos) => {
-        if (!esIdTemporal(id) && (!INV.sync || !INV.sync.esOffline())) {
+        const tieneTemp = esIdTemporal(id) || esIdTemporal(datos.categoria_id);
+        if (!tieneTemp && (!INV.sync || !INV.sync.esOffline())) {
           try {
             const res = await sb.from('productos').update(datos).eq('id', id).select().single().then(ok);
             if (INV.sync) {
