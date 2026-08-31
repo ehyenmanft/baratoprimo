@@ -555,7 +555,18 @@
       }
 
       case 'productos.crear': {
-        const resp = await sb.from('productos').insert(datos).select().single();
+        let payload = { ...datos };
+        if (payload.imagen_path && payload.imagen_path.startsWith('data:')) {
+          try {
+            const respuesta = await fetch(payload.imagen_path);
+            const blob = await respuesta.blob();
+            const ruta = `productos/${payload.sku || 'prod'}-${Date.now()}.jpg`;
+            const { error: errImg } = await sb.storage.from('inventario')
+              .upload(ruta, blob, { upsert: true, contentType: 'image/jpeg' });
+            if (!errImg) payload.imagen_path = ruta;
+          } catch (e) {}
+        }
+        const resp = await sb.from('productos').insert(payload).select().single();
         if (resp.error) throw new Error(resp.error.message);
         return resp.data;
       }
@@ -563,7 +574,18 @@
       case 'productos.actualizar': {
         const idReal = resolverId(datos.id);
         const { id, ...campos } = datos;
-        const resp = await sb.from('productos').update(campos).eq('id', idReal).select().single();
+        let payload = { ...campos };
+        if (payload.imagen_path && payload.imagen_path.startsWith('data:')) {
+          try {
+            const respuesta = await fetch(payload.imagen_path);
+            const blob = await respuesta.blob();
+            const ruta = `productos/${datos.sku || idReal}-${Date.now()}.jpg`;
+            const { error: errImg } = await sb.storage.from('inventario')
+              .upload(ruta, blob, { upsert: true, contentType: 'image/jpeg' });
+            if (!errImg) payload.imagen_path = ruta;
+          } catch (e) {}
+        }
+        const resp = await sb.from('productos').update(payload).eq('id', idReal).select().single();
         if (resp.error) throw new Error(resp.error.message);
         return resp.data;
       }
@@ -579,6 +601,21 @@
         const resp = await sb.from('categorias').insert(datos).select().single();
         if (resp.error) throw new Error(resp.error.message);
         return resp.data;
+      }
+
+      case 'categorias.actualizar': {
+        const idReal = resolverId(datos.id);
+        const { id, ...campos } = datos;
+        const resp = await sb.from('categorias').update(campos).eq('id', idReal).select().single();
+        if (resp.error) throw new Error(resp.error.message);
+        return resp.data;
+      }
+
+      case 'categorias.eliminar': {
+        const idReal = resolverId(datos.id);
+        const resp = await sb.from('categorias').delete().eq('id', idReal);
+        if (resp.error) throw new Error(resp.error.message);
+        return { id: idReal, eliminado: true };
       }
 
       case 'cuotas.pagar': {
@@ -922,6 +959,8 @@
     verificarConexionReal,
     mostrarModalSync,
     uuid,
+    fijarOffline: () => fijarEstadoRed(false),
+    fijarEstadoRed,
     esOffline: () => !enLinea,
     estaSincronizando: () => sincronizando,
   };

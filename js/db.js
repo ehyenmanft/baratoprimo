@@ -47,12 +47,27 @@
   function esErrorDeRed(err) {
     if (!err) return false;
     const msg = (err.message || err.toString() || '').toLowerCase();
-    return msg.includes('failed to fetch') ||
-           msg.includes('network') ||
-           msg.includes('offline') ||
-           msg.includes('timeout') ||
-           msg.includes('abort') ||
-           (window.INV && INV.sync && INV.sync.esOffline());
+    const esRed = msg.includes('failed to fetch') ||
+                  msg.includes('network') ||
+                  msg.includes('offline') ||
+                  msg.includes('timeout') ||
+                  msg.includes('abort') ||
+                  msg.includes('connection refused') ||
+                  msg.includes('load failed') ||
+                  msg.includes('err_connection') ||
+                  msg.includes('err_internet_disconnected') ||
+                  msg.includes('fetch failed') ||
+                  (window.INV && INV.sync && INV.sync.esOffline());
+    if (esRed && window.INV && INV.sync && INV.sync.fijarOffline) {
+      try { INV.sync.fijarOffline(); } catch (e) {}
+    }
+    return esRed;
+  }
+
+  function esIdTemporal(id) {
+    if (id === null || id === undefined) return false;
+    const str = String(id);
+    return str.startsWith('_temp_') || str.startsWith('_offline_') || str.startsWith('F-OFF-') || isNaN(Number(id));
   }
 
   /* Llama a la función de administración con la sesión del administrador */
@@ -168,8 +183,67 @@
         return categoriaOffline;
       },
 
-      actualizar: (id, datos) => sb.from('categorias').update(datos).eq('id', id).select().single().then(ok),
-      eliminar: id => sb.from('categorias').delete().eq('id', id).then(ok),
+      actualizar: async (id, datos) => {
+        if (!esIdTemporal(id) && (!INV.sync || !INV.sync.esOffline())) {
+          try {
+            const res = await sb.from('categorias').update(datos).eq('id', id).select().single().then(ok);
+            if (INV.sync) {
+              const cats = await INV.sync.obtenerCache('categorias', []);
+              const idx = cats.findIndex(c => String(c.id) === String(id));
+              if (idx !== -1) cats[idx] = { ...cats[idx], ...res };
+              await INV.sync.guardarCache('categorias', cats);
+            }
+            return res;
+          } catch (e) {
+            if (!esErrorDeRed(e)) throw e;
+          }
+        }
+
+        // Modo Offline
+        if (INV.sync) {
+          const cats = await INV.sync.obtenerCache('categorias', []);
+          const idx = cats.findIndex(c => String(c.id) === String(id));
+          if (idx !== -1) {
+            cats[idx] = { ...cats[idx], ...datos, _offline: true };
+            await INV.sync.guardarCache('categorias', cats);
+          }
+          INV.sync.encolarMutacion({
+            tipo: 'categorias.actualizar',
+            datos: { id, ...datos },
+            descripcion: `Actualizar categoría "${datos.nombre || id}"`
+          });
+        }
+        return { id, ...datos };
+      },
+
+      eliminar: async id => {
+        if (!esIdTemporal(id) && (!INV.sync || !INV.sync.esOffline())) {
+          try {
+            const res = await sb.from('categorias').delete().eq('id', id).then(ok);
+            if (INV.sync) {
+              const cats = await INV.sync.obtenerCache('categorias', []);
+              const filtradas = cats.filter(c => String(c.id) !== String(id));
+              await INV.sync.guardarCache('categorias', filtradas);
+            }
+            return res;
+          } catch (e) {
+            if (!esErrorDeRed(e)) throw e;
+          }
+        }
+
+        // Modo Offline
+        if (INV.sync) {
+          const cats = await INV.sync.obtenerCache('categorias', []);
+          const filtradas = cats.filter(c => String(c.id) !== String(id));
+          await INV.sync.guardarCache('categorias', filtradas);
+          INV.sync.encolarMutacion({
+            tipo: 'categorias.eliminar',
+            datos: { id },
+            descripcion: `Eliminar categoría #${id}`
+          });
+        }
+        return { id, eliminado: true };
+      },
     },
 
     productos: {
@@ -228,6 +302,7 @@
           const stocks = await INV.sync.obtenerCache('stock_actual', []);
           stocks.push({
             id: tempId,
+            producto_id: tempId,
             sku: datos.sku,
             nombre: datos.nombre,
             unidad: datos.unidad || 'unidad',
@@ -250,7 +325,7 @@
       },
 
       actualizar: async (id, datos) => {
-        if (!INV.sync || !INV.sync.esOffline()) {
+        if (!esIdTemporal(id) && (!INV.sync || !INV.sync.esOffline())) {
           try {
             const res = await sb.from('productos').update(datos).eq('id', id).select().single().then(ok);
             if (INV.sync) {
@@ -266,24 +341,33 @@
         }
 
         // Modo Offline
+        const prodActualizado = { id, ...datos, _offline: true };
         if (INV.sync) {
           const prods = await INV.sync.obtenerCache('productos', []);
           const idx = prods.findIndex(p => String(p.id) === String(id));
           if (idx !== -1) {
-            prods[idx] = { ...prods[idx], ...datos, _offline: true };
+            prods[idx] = { ...prods[idx], ...prodActualizado };
             await INV.sync.guardarCache('productos', prods);
           }
+
+          const stocks = await INV.sync.obtenerCache('stock_actual', []);
+          const sIdx = stocks.findIndex(s => String(s.producto_id || s.id) === String(id));
+          if (sIdx !== -1) {
+            stocks[sIdx] = { ...stocks[sIdx], ...datos };
+            await INV.sync.guardarCache('stock_actual', stocks);
+          }
+
           INV.sync.encolarMutacion({
             tipo: 'productos.actualizar',
             datos: { id, ...datos },
-            descripcion: `Actualizar producto #${id}`
+            descripcion: `Actualizar producto "${datos.nombre || id}"`
           });
         }
-        return { id, ...datos };
+        return prodActualizado;
       },
 
       desactivar: async id => {
-        if (!INV.sync || !INV.sync.esOffline()) {
+        if (!esIdTemporal(id) && (!INV.sync || !INV.sync.esOffline())) {
           try {
             const res = await sb.from('productos').update({ activo: false }).eq('id', id).then(ok);
             if (INV.sync) {
@@ -372,7 +456,7 @@
       registrar: async datos => {
         const claveIdem = datos.clave_idem || (INV.sync ? INV.sync.uuid('mov') : null);
 
-        if (!INV.sync || !INV.sync.esOffline()) {
+        if (!esIdTemporal(datos.producto_id) && (!INV.sync || !INV.sync.esOffline())) {
           try {
             const { data, error } = await sb.rpc('registrar_movimiento', { p: { ...datos, clave_idem: claveIdem } });
 
@@ -401,7 +485,7 @@
         if (INV.sync) {
           // Actualizar stock localmente
           const stocks = await INV.sync.obtenerCache('stock_actual', []);
-          const prodIdx = stocks.findIndex(s => String(s.id) === String(datos.producto_id));
+          const prodIdx = stocks.findIndex(s => String(s.producto_id || s.id) === String(datos.producto_id));
           if (prodIdx !== -1) {
             const cant = Number(datos.cantidad || 0);
             if (datos.tipo === 'entrada') stocks[prodIdx].stock = Number(stocks[prodIdx].stock || 0) + cant;
@@ -512,7 +596,7 @@
       },
 
       actualizar: async (id, datos) => {
-        if (!INV.sync || !INV.sync.esOffline()) {
+        if (!esIdTemporal(id) && (!INV.sync || !INV.sync.esOffline())) {
           try {
             let res;
             try {
@@ -556,7 +640,7 @@
       },
 
       desactivar: async id => {
-        if (!INV.sync || !INV.sync.esOffline()) {
+        if (!esIdTemporal(id) && (!INV.sync || !INV.sync.esOffline())) {
           try {
             const res = await sb.from('clientes').update({ activo: false }).eq('id', id).then(ok);
             if (INV.sync) {
@@ -677,8 +761,9 @@
 
       crear: async datos => {
         const claveIdem = INV.sync ? INV.sync.uuid('vta') : null;
+        const tieneIdTemporal = esIdTemporal(datos.cliente_id) || (datos.items || []).some(it => esIdTemporal(it.producto_id));
 
-        if (!INV.sync || !INV.sync.esOffline()) {
+        if (!tieneIdTemporal && (!INV.sync || !INV.sync.esOffline())) {
           try {
             const { data, error } = await sb.rpc('registrar_venta', { p: { ...datos, clave_idem: claveIdem } });
             if (error) throw new Error(error.message);
@@ -1090,8 +1175,65 @@
         }
         return (INV.sync ? await INV.sync.obtenerCache('cajas', [{ id: 1, nombre: 'Caja 1', bloque: 1, activa: true }]) : []);
       },
-      crear: datos => sb.from('cajas').insert(datos).select().single().then(ok),
-      actualizar: (id, datos) => sb.from('cajas').update(datos).eq('id', id).select().single().then(ok),
+      crear: async datos => {
+        if (!INV.sync || !INV.sync.esOffline()) {
+          try {
+            const res = await sb.from('cajas').insert(datos).select().single().then(ok);
+            if (INV.sync) {
+              const cajas = await INV.sync.obtenerCache('cajas', []);
+              cajas.push(res);
+              await INV.sync.guardarCache('cajas', cajas);
+            }
+            return res;
+          } catch (e) {
+            if (!esErrorDeRed(e)) throw e;
+          }
+        }
+        const tempId = '_temp_caja_' + Date.now();
+        const cajaOffline = { id: tempId, ...datos, activa: true, _offline: true };
+        if (INV.sync) {
+          const cajas = await INV.sync.obtenerCache('cajas', []);
+          cajas.push(cajaOffline);
+          await INV.sync.guardarCache('cajas', cajas);
+          INV.sync.encolarMutacion({
+            tipo: 'cajas.crear',
+            datos,
+            temporalId: tempId,
+            descripcion: `Crear caja "${datos.nombre}"`
+          });
+        }
+        return cajaOffline;
+      },
+      actualizar: async (id, datos) => {
+        if (!esIdTemporal(id) && (!INV.sync || !INV.sync.esOffline())) {
+          try {
+            const res = await sb.from('cajas').update(datos).eq('id', id).select().single().then(ok);
+            if (INV.sync) {
+              const cajas = await INV.sync.obtenerCache('cajas', []);
+              const idx = cajas.findIndex(c => String(c.id) === String(id));
+              if (idx !== -1) cajas[idx] = { ...cajas[idx], ...res };
+              await INV.sync.guardarCache('cajas', cajas);
+            }
+            return res;
+          } catch (e) {
+            if (!esErrorDeRed(e)) throw e;
+          }
+        }
+        if (INV.sync) {
+          const cajas = await INV.sync.obtenerCache('cajas', []);
+          const idx = cajas.findIndex(c => String(c.id) === String(id));
+          if (idx !== -1) {
+            cajas[idx] = { ...cajas[idx], ...datos };
+            await INV.sync.guardarCache('cajas', cajas);
+          }
+          INV.sync.encolarMutacion({
+            tipo: 'cajas.actualizar',
+            datos: { id, ...datos },
+            descripcion: `Actualizar caja #${id}`
+          });
+        }
+        return { id, ...datos };
+      },
     },
 
     conflictos: {
@@ -1144,18 +1286,33 @@
 
     archivos: {
       subir: async (dataUrl, sku) => {
-        const respuesta = await fetch(dataUrl);
-        const blob = await respuesta.blob();
-        const ruta = `productos/${sku}-${Date.now()}.jpg`;
-        const { error } = await sb.storage.from('inventario')
-          .upload(ruta, blob, { upsert: true, contentType: 'image/jpeg' });
-        if (error) throw new Error(error.message);
-        return ruta;
+        if (!dataUrl) return null;
+        if (dataUrl.startsWith('http') || !dataUrl.startsWith('data:')) return dataUrl;
+
+        if (!INV.sync || !INV.sync.esOffline()) {
+          try {
+            const respuesta = await fetch(dataUrl);
+            const blob = await respuesta.blob();
+            const ruta = `productos/${sku}-${Date.now()}.jpg`;
+            const { error } = await sb.storage.from('inventario')
+              .upload(ruta, blob, { upsert: true, contentType: 'image/jpeg' });
+            if (!error) return ruta;
+            if (!esErrorDeRed(error)) throw new Error(error.message);
+          } catch (e) {
+            if (!esErrorDeRed(e)) throw e;
+          }
+        }
+        // Modo offline: devolver el dataUrl para que la vista y la caché lo usen de inmediato
+        return dataUrl;
       },
       url: ruta => {
         if (!ruta) return null;
         if (ruta.startsWith('data:') || ruta.startsWith('http')) return ruta;
-        return sb.storage.from('inventario').getPublicUrl(ruta).data.publicUrl;
+        try {
+          return sb.storage.from('inventario').getPublicUrl(ruta).data.publicUrl;
+        } catch (e) {
+          return null;
+        }
       },
     },
   };

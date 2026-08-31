@@ -149,8 +149,10 @@
     }
     btn.disabled = true;
     try {
+      const prodVal = $('#mv-producto').value;
+      const prodId = (!prodVal || isNaN(Number(prodVal))) ? prodVal : Number(prodVal);
       await INV.db.movimientos.registrar({
-        producto_id:    Number($('#mv-producto').value),
+        producto_id:    prodId,
         tipo,
         cantidad:       cant,
         es_negativo:    tipo === 'ajuste' && $('#mv-sentido').value === 'menos',

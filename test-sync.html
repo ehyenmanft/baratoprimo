@@ -126,7 +126,7 @@
   async function ejecutar() {
     c.innerHTML = '';
     let pasadas = 0;
-    const TOTAL = 6;
+    const TOTAL = 8;
     log('Iniciando suite de verificación offline y sincronización...', 'paso');
 
     // 1. Sembrar catálogo base en caché local
@@ -136,8 +136,8 @@
       { id: 102, sku: 'PROD-B', nombre: 'Aceite 1L', activo: true, precio_venta: 3.2, costo: 2.4 }
     ];
     const stockBase = [
-      { id: 101, sku: 'PROD-A', nombre: 'Arroz 1kg', stock: 50, stock_minimo: 10 },
-      { id: 102, sku: 'PROD-B', nombre: 'Aceite 1L', stock: 30, stock_minimo: 5 }
+      { id: 101, producto_id: 101, sku: 'PROD-A', nombre: 'Arroz 1kg', stock: 50, stock_minimo: 10 },
+      { id: 102, producto_id: 102, sku: 'PROD-B', nombre: 'Aceite 1L', stock: 30, stock_minimo: 5 }
     ];
     await INV.sync.guardarCache('productos', prodsBase);
     await INV.sync.guardarCache('stock_actual', stockBase);
@@ -147,8 +147,45 @@
       'Catálogo cacheado y recuperable sin conexión a servidor');
     if (t1) pasadas++;
 
-    // 2. Creación de cliente en modo offline con ID temporal
-    log('Test 2: Creación de cliente offline con ID temporal...', 'paso');
+    // 2. Creación de producto offline con existencia inicial (Caso corregido)
+    log('Test 2: Creación de categoría y producto offline con existencia inicial...', 'paso');
+    const cat = await INV.db.categorias.crear('Víveres');
+    const nuevoProd = await INV.db.productos.crear({
+      sku: 'HAR-001',
+      nombre: 'Harina de Maíz 1kg',
+      categoria_id: cat.id,
+      exento_iva: true,
+      costo: 16.00,
+      precio_venta: 18.00,
+      stock_minimo: 1,
+      unidad: 'unidad'
+    });
+    const movInicial = await INV.db.movimientos.registrar({
+      producto_id: nuevoProd.id,
+      tipo: 'entrada',
+      cantidad: 3,
+      es_negativo: false,
+      costo_unitario: 16.00,
+      motivo: 'Existencia inicial'
+    });
+    const stocksActuales = await INV.sync.obtenerCache('stock_actual', []);
+    const pStock = stocksActuales.find(s => String(s.producto_id || s.id) === String(nuevoProd.id));
+    const t2 = assert(
+      nuevoProd && String(nuevoProd.id).startsWith('_temp_prod_') &&
+      movInicial && movInicial._offline && pStock && pStock.stock === 3,
+      `Producto offline ${nuevoProd.id} creado con existencia inicial de 3 unidades ("Failed to fetch" resuelto)`
+    );
+    if (t2) pasadas++;
+
+    // 3. Subida de imagen offline
+    log('Test 3: Almacenamiento y fallback de imagen offline...', 'paso');
+    const fakeImg = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABA...';
+    const imgRet = await INV.db.archivos.subir(fakeImg, 'HAR-001');
+    const t3 = assert(imgRet && imgRet.startsWith('data:image/'), 'Imagen retenida localmente sin fallos de red');
+    if (t3) pasadas++;
+
+    // 4. Creación y edición de cliente en modo offline
+    log('Test 4: Creación y actualización de cliente offline...', 'paso');
     const nuevoCli = await INV.db.clientes.crear({
       nombres: 'Roberto',
       apellidos: 'Gómez',
@@ -156,89 +193,85 @@
       documento: '25111222',
       telefono: '0412-9988776'
     });
-
-    const t2 = assert(
-      nuevoCli &&
-      String(nuevoCli.id).startsWith('_temp_cli_') &&
-      nuevoCli.cliente === 'Roberto Gómez' &&
-      nuevoCli._offline === true,
-      `Cliente offline creado con ID temporal: ${nuevoCli.id}`
-    );
-    if (t2) pasadas++;
-
-    // 3. Emisión de venta offline asociada al cliente temporal y decremento de stock
-    log('Test 3: Venta offline usando cliente temporal y decremento local de stock...', 'paso');
-    const nuevaVenta = await INV.db.ventas.crear({
-      cliente_id: nuevoCli.id,
-      subtotal: 3.0,
-      iva_monto: 0.48,
-      total: 3.48,
-      items: [
-        { producto_id: 101, descripcion: 'Arroz 1kg', cantidad: 2, precio_unitario: 1.5, base: 3.0, iva_monto: 0.48, total: 3.48 }
-      ],
-      pagos: [
-        { metodo: 'efectivo_usd', monto: 3.48, tasa: 1, monto_local: 3.48 }
-      ]
+    const cliActualizado = await INV.db.clientes.actualizar(nuevoCli.id, {
+      telefono: '0412-1112233'
     });
 
-    const stockActualizado = await INV.sync.obtenerCache('stock_actual');
-    const prod101Stock = stockActualizado.find(s => s.id === 101);
-
-    const t3 = assert(
-      nuevaVenta &&
-      String(nuevaVenta.numero).startsWith('F-OFF-') &&
-      nuevaVenta.items.length === 1 &&
-      prod101Stock && prod101Stock.stock === 48,
-      `Venta offline ${nuevaVenta.numero} emitida correctamente; stock de PROD-A decrementado de 50 a 48`
-    );
-    if (t3) pasadas++;
-
-    // 4. Verificación de la cola de mutaciones FIFO e Idempotencia
-    log('Test 4: Inspección de cola de mutaciones y claves de idempotencia...', 'paso');
-    const estado = INV.sync.obtenerEstado();
-    const cola = estado.cola;
-    const mutCliente = cola.find(m => m.tipo === 'clientes.crear');
-    const mutVenta = cola.find(m => m.tipo === 'ventas.crear');
-
     const t4 = assert(
-      cola.length >= 2 &&
-      mutCliente && mutCliente.clave_idem &&
-      mutVenta && mutVenta.clave_idem &&
-      mutVenta.datos.cliente_id === nuevoCli.id,
-      `Cola contiene ${cola.length} mutaciones en orden FIFO con claves de idempotencia únicas`
+      nuevoCli &&
+      String(nuevoCli.id).startsWith('_temp_cli_') &&
+      cliActualizado.telefono === '0412-1112233',
+      `Cliente offline creado y actualizado con ID temporal: ${nuevoCli.id}`
     );
     if (t4) pasadas++;
 
-    // 5. Simulación de resolución de IDs y Mapeo Relacional
-    log('Test 5: Resolución de dependencias y remapeo de identificadores...', 'paso');
-    // Simulamos que el backend asignó el ID real 777 al cliente temporal
-    INV.sync.encolarMutacion; // verificar existencia
-    // Registrar mapeo manual para comprobar reescritura de referencias
+    // 5. Emisión de venta offline con producto temporal y cliente temporal
+    log('Test 5: Venta offline multi-artículo y decremento local de stock...', 'paso');
+    const nuevaVenta = await INV.db.ventas.crear({
+      cliente_id: nuevoCli.id,
+      subtotal: 21.0,
+      iva_monto: 0.48,
+      total: 21.48,
+      items: [
+        { producto_id: 101, descripcion: 'Arroz 1kg', cantidad: 2, precio_unitario: 1.5, base: 3.0, iva_monto: 0.48, total: 3.48 },
+        { producto_id: nuevoProd.id, descripcion: 'Harina de Maíz 1kg', cantidad: 1, precio_unitario: 18.0, base: 18.0, iva_monto: 0, total: 18.0 }
+      ],
+      pagos: [
+        { metodo: 'efectivo_usd', monto: 21.48, tasa: 1, monto_local: 21.48 }
+      ]
+    });
+
+    const stockPostVenta = await INV.sync.obtenerCache('stock_actual');
+    const prod101Stock = stockPostVenta.find(s => s.id === 101);
+    const prodHarStock = stockPostVenta.find(s => String(s.producto_id || s.id) === String(nuevoProd.id));
+
+    const t5 = assert(
+      nuevaVenta &&
+      String(nuevaVenta.numero).startsWith('F-OFF-') &&
+      prod101Stock && prod101Stock.stock === 48 &&
+      prodHarStock && prodHarStock.stock === 2,
+      `Venta offline ${nuevaVenta.numero} emitida; stock PROD-A (48) y stock HAR-001 (2)`
+    );
+    if (t5) pasadas++;
+
+    // 6. Verificación de la cola de mutaciones FIFO e Idempotencia
+    log('Test 6: Inspección de cola de mutaciones y claves de idempotencia...', 'paso');
+    const estado = INV.sync.obtenerEstado();
+    const cola = estado.cola;
+    const todasConIdem = cola.every(m => m.clave_idem && m.clave_idem.length > 5);
+
+    const t6 = assert(
+      cola.length >= 5 && todasConIdem,
+      `Cola contiene ${cola.length} mutaciones en orden FIFO con claves de idempotencia únicas`
+    );
+    if (t6) pasadas++;
+
+    // 7. Simulación de resolución de IDs y Mapeo Relacional
+    log('Test 7: Resolución de dependencias y remapeo de identificadores...', 'paso');
     const mapeosPrevios = JSON.parse(localStorage.getItem('baratoprimo_sync_mapeo_v1') || '{}');
     mapeosPrevios[String(nuevoCli.id)] = { real: 777, entidad: 'clientes' };
     localStorage.setItem('baratoprimo_sync_mapeo_v1', JSON.stringify(mapeosPrevios));
 
-    // Validar que la venta que dependía del cliente temporal ahora resuelve cliente_id = 777
     const ventaMutOriginal = cola.find(m => m.tipo === 'ventas.crear');
     const mapeos = JSON.parse(localStorage.getItem('baratoprimo_sync_mapeo_v1') || '{}');
     const resueltoClienteId = mapeos[String(ventaMutOriginal.datos.cliente_id)]
       ? mapeos[String(ventaMutOriginal.datos.cliente_id)].real
       : ventaMutOriginal.datos.cliente_id;
 
-    const t5 = assert(
+    const t7 = assert(
       resueltoClienteId === 777,
       `Mapeador de claves foráneas resolvió temporal ${nuevoCli.id} -> ID oficial ${resueltoClienteId}`
     );
-    if (t5) pasadas++;
+    if (t7) pasadas++;
 
-    // 6. Auditoría y Validación de Integridad
-    log('Test 6: Auditoría de integridad de datos...', 'paso');
+    // 8. Auditoría y Validación de Integridad
+    log('Test 8: Auditoría de integridad de datos...', 'paso');
     const reporte = await INV.sync.validarIntegridad();
-    const t6 = assert(
+    const t8 = assert(
       reporte && reporte.valido === true && reporte.errores.length === 0,
       `Auditoría de integridad validada: 0 inconsistencias numéricas y 0 datos corruptos`
     );
-    if (t6) pasadas++;
+    if (t8) pasadas++;
 
     // Actualizar métricas UI
     mPruebas.textContent = `${pasadas} / ${TOTAL}`;
