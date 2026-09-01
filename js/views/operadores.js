@@ -223,17 +223,32 @@
         </div>
 
         <div class="campo" id="aprob-caja-comercio">
-          <label for="aprob-comercio">Comercio asignado</label>
-          <div style="display:grid; grid-template-columns:1fr auto; gap:8px">
+          <label>Comercio asignado</label>
+          
+          <div style="display:flex; background:var(--superficie-2); border:1px solid var(--linea); border-radius:var(--r-s); padding:3px; gap:4px; margin-bottom:10px;">
+            <button type="button" class="btn btn--chico" id="aprob-tab-existente" style="flex:1; border:0; background:var(--superficie); color:var(--violeta); box-shadow:var(--sombra); border-radius:6px; font-size:12.5px; font-weight:600; padding:6px 8px; cursor:pointer;">
+              🏬 Seleccionar existente
+            </button>
+            <button type="button" class="btn btn--chico" id="aprob-tab-nuevo" style="flex:1; border:0; background:transparent; color:var(--tinta-2); border-radius:6px; font-size:12.5px; font-weight:600; padding:6px 8px; cursor:pointer;">
+              ➕ Crear nuevo comercio
+            </button>
+          </div>
+
+          <div id="aprob-bloque-existente">
             <select id="aprob-comercio">
               <option value="">Selecciona un comercio…</option>
               ${comercios.map(c => `<option value="${c.id}" ${idComercioInicial === c.id ? 'selected' : ''}>${esc(c.nombre)}</option>`).join('')}
             </select>
-            ${INV.permisos.puede('comercios.gestionar')
-              ? `<button type="button" class="btn btn--secundario btn--chico" id="aprob-nuevo-comercio">Crear uno</button>`
-              : ''}
           </div>
-          <span class="subida__nota" id="aprob-comercio-nota" style="margin-top:5px; display:block;">
+
+          <div id="aprob-bloque-nuevo" hidden>
+            <input id="aprob-nuevo-nombre" type="text" placeholder="Escribe el nombre del nuevo comercio..." value="${esc(comSol)}">
+            <span class="subida__nota" style="margin-top:4px; display:block; font-size:11.5px;">
+              Este comercio se creará automáticamente y se asignará al operador.
+            </span>
+          </div>
+
+          <span class="subida__nota" id="aprob-comercio-nota" style="margin-top:6px; display:block;">
             Obligatorio: el operador solo podrá acceder a los datos del comercio asignado.
           </span>
         </div>
@@ -247,17 +262,32 @@
           alPulsar: async btnModal => {
             const marcado = $$('input[name="aprob-rol"]').find(r => r.checked);
             const rol = marcado ? marcado.value : 'operador_facturador';
-            const comercioId = $('#aprob-comercio') ? $('#aprob-comercio').value : '';
+            const esNuevo = !$('#aprob-bloque-nuevo').hidden;
+            let comercioId = $('#aprob-comercio') ? $('#aprob-comercio').value : '';
+            const nuevoNombre = ($('#aprob-nuevo-nombre') ? $('#aprob-nuevo-nombre').value : '').trim();
             const errModal = $('#aprob-error');
+            const esSuper = rol === 'super_admin';
 
-            if (!comercioId && rol !== 'super_admin') {
-              if (errModal) { errModal.textContent = 'Debes seleccionar o crear un comercio para este operador.'; errModal.hidden = false; }
-              return;
+            if (esNuevo) {
+              if (!nuevoNombre && !esSuper) {
+                if (errModal) { errModal.textContent = 'Escribe el nombre del nuevo comercio que deseas crear.'; errModal.hidden = false; }
+                return;
+              }
+            } else {
+              if (!comercioId && !esSuper) {
+                if (errModal) { errModal.textContent = 'Selecciona un comercio existente o pulsa "Crear nuevo comercio".'; errModal.hidden = false; }
+                return;
+              }
             }
 
             btnModal.disabled = true;
             btnModal.textContent = 'Habilitando…';
             try {
+              if (esNuevo && nuevoNombre) {
+                const c = await INV.db.comercios.crear({ nombre: nuevoNombre });
+                comercioId = c.id;
+              }
+
               await INV.db.operadores.aprobar(s.id, { rol, comercio_id: comercioId });
               cerrarModal();
               avisar(`Operador "${s.nombre}" habilitado con éxito.`);
@@ -272,6 +302,35 @@
       ]
     });
 
+    const tabExistente = $('#aprob-tab-existente');
+    const tabNuevo = $('#aprob-tab-nuevo');
+    const blqExistente = $('#aprob-bloque-existente');
+    const blqNuevo = $('#aprob-bloque-nuevo');
+
+    const activarTab = esNuevo => {
+      blqExistente.hidden = esNuevo;
+      blqNuevo.hidden = !esNuevo;
+      if (tabExistente) {
+        tabExistente.style.background = esNuevo ? 'transparent' : 'var(--superficie)';
+        tabExistente.style.color = esNuevo ? 'var(--tinta-2)' : 'var(--violeta)';
+        tabExistente.style.boxShadow = esNuevo ? 'none' : 'var(--sombra)';
+      }
+      if (tabNuevo) {
+        tabNuevo.style.background = esNuevo ? 'var(--superficie)' : 'transparent';
+        tabNuevo.style.color = esNuevo ? 'var(--violeta)' : 'var(--tinta-2)';
+        tabNuevo.style.boxShadow = esNuevo ? 'var(--sombra)' : 'none';
+      }
+      if (esNuevo && $('#aprob-nuevo-nombre')) $('#aprob-nuevo-nombre').focus();
+    };
+
+    if (tabExistente) tabExistente.addEventListener('click', () => activarTab(false));
+    if (tabNuevo) tabNuevo.addEventListener('click', () => activarTab(true));
+
+    // Si el usuario indicó un comercio y no existe en la lista, activar por defecto la pestaña de crear nuevo
+    if (comSol && !matchCom) {
+      activarTab(true);
+    }
+
     const actualizarNotaAprob = () => {
       const marcado = $$('input[name="aprob-rol"]').find(r => r.checked);
       const esSuper = marcado && marcado.value === 'super_admin';
@@ -284,30 +343,6 @@
     };
     $$('input[name="aprob-rol"]').forEach(r => r.addEventListener('change', actualizarNotaAprob));
     actualizarNotaAprob();
-
-    const btnNuevoComercio = $('#aprob-nuevo-comercio');
-    if (btnNuevoComercio) {
-      btnNuevoComercio.addEventListener('click', async () => {
-        const nombrePorDefecto = comSol || '';
-        const nombre = prompt('Nombre del nuevo comercio a crear:', nombrePorDefecto);
-        if (!nombre || !nombre.trim()) return;
-        try {
-          const c = await INV.db.comercios.crear({ nombre: nombre.trim() });
-          comercios.push(c);
-          const sel = $('#aprob-comercio');
-          if (sel) {
-            const op = document.createElement('option');
-            op.value = c.id;
-            op.textContent = c.nombre;
-            op.selected = true;
-            sel.append(op);
-          }
-          avisar(`Comercio "${c.nombre}" creado y seleccionado.`);
-        } catch (e) {
-          avisar(e.message, 'error');
-        }
-      });
-    }
   }
 
   function formulario(o = null, comercios = []) {
@@ -345,16 +380,31 @@
         </div>
 
         <div class="campo" id="op-caja-comercio">
-          <label for="op-comercio">Comercio asignado</label>
-          <div style="display:grid; grid-template-columns:1fr auto; gap:8px">
+          <label>Comercio asignado</label>
+          
+          <div style="display:flex; background:var(--superficie-2); border:1px solid var(--linea); border-radius:var(--r-s); padding:3px; gap:4px; margin-bottom:10px;">
+            <button type="button" class="btn btn--chico" id="op-tab-existente" style="flex:1; border:0; background:var(--superficie); color:var(--violeta); box-shadow:var(--sombra); border-radius:6px; font-size:12.5px; font-weight:600; padding:6px 8px; cursor:pointer;">
+              🏬 Seleccionar existente
+            </button>
+            <button type="button" class="btn btn--chico" id="op-tab-nuevo" style="flex:1; border:0; background:transparent; color:var(--tinta-2); border-radius:6px; font-size:12.5px; font-weight:600; padding:6px 8px; cursor:pointer;">
+              ➕ Crear nuevo comercio
+            </button>
+          </div>
+
+          <div id="op-bloque-existente">
             <select id="op-comercio">
               <option value="">Ninguno · solo supervisión</option>
               ${comercios.map(c => `<option value="${c.id}" ${o && o.comercio_id === c.id ? 'selected' : ''}>${esc(c.nombre)}</option>`).join('')}
             </select>
-            ${INV.permisos.puede('comercios.gestionar')
-              ? '<button type="button" class="btn btn--secundario btn--chico" id="op-nuevo-comercio">Crear uno</button>'
-              : ''}
           </div>
+
+          <div id="op-bloque-nuevo" hidden>
+            <input id="op-nuevo-nombre" type="text" placeholder="Escribe el nombre del nuevo comercio...">
+            <span class="subida__nota" style="margin-top:4px; display:block; font-size:11.5px;">
+              Este comercio se creará automáticamente en la base de datos al guardar.
+            </span>
+          </div>
+
           <span class="subida__nota" id="op-comercio-nota" style="margin-top:6px; display:block"></span>
         </div>
         <div class="campo" id="op-caja-clave">
@@ -399,6 +449,30 @@
         { texto: 'Guardar', estilo: 'btn--primario', alPulsar: btn => guardar(o, btn) },
       ],
     });
+
+    const tabOpExistente = $('#op-tab-existente');
+    const tabOpNuevo = $('#op-tab-nuevo');
+    const blqOpExistente = $('#op-bloque-existente');
+    const blqOpNuevo = $('#op-bloque-nuevo');
+
+    const activarOpTab = esNuevo => {
+      blqOpExistente.hidden = esNuevo;
+      blqOpNuevo.hidden = !esNuevo;
+      if (tabOpExistente) {
+        tabOpExistente.style.background = esNuevo ? 'transparent' : 'var(--superficie)';
+        tabOpExistente.style.color = esNuevo ? 'var(--tinta-2)' : 'var(--violeta)';
+        tabOpExistente.style.boxShadow = esNuevo ? 'none' : 'var(--sombra)';
+      }
+      if (tabOpNuevo) {
+        tabOpNuevo.style.background = esNuevo ? 'var(--superficie)' : 'transparent';
+        tabOpNuevo.style.color = esNuevo ? 'var(--violeta)' : 'var(--tinta-2)';
+        tabOpNuevo.style.boxShadow = esNuevo ? 'var(--sombra)' : 'none';
+      }
+      if (esNuevo && $('#op-nuevo-nombre')) $('#op-nuevo-nombre').focus();
+    };
+
+    if (tabOpExistente) tabOpExistente.addEventListener('click', () => activarOpTab(false));
+    if (tabOpNuevo) tabOpNuevo.addEventListener('click', () => activarOpTab(true));
 
     /* El super administrador trabaja sobre un comercio concreto, así que
        al nombrar uno hay que decir cuál —o crearlo en el momento. */
@@ -472,43 +546,37 @@
     });
 
     formulario.revisarClave = revisarClave;
-
-    const btnNuevo = $('#op-nuevo-comercio');
-    if (btnNuevo) btnNuevo.addEventListener('click', async () => {
-      const nombre = prompt('Nombre del comercio nuevo');
-      if (!nombre || !nombre.trim()) return;
-      try {
-        const c = await INV.db.comercios.crear({ nombre: nombre.trim() });
-        const sel = $('#op-comercio');
-        const op = document.createElement('option');
-        op.value = c.id; op.textContent = c.nombre; op.selected = true;
-        sel.append(op);
-        avisar('Comercio creado');
-      } catch (e) {
-        avisar(e.message, 'error');
-      }
-    });
   }
 
   async function guardar(o, btn) {
     const err = $('#op-error');
     const marcado = $$('input[name="op-rol"]').find(r => r.checked);
-    const datos = {
-      nombre: $('#op-nombre').value.trim(),
-      correo: $('#op-correo').value.trim().toLowerCase(),
-      rol: marcado ? marcado.value : 'operador_facturador',
-      comercio_id: $('#op-comercio').value ? Number($('#op-comercio').value) : null,
-    };
-    if (o) datos.activo = $('#op-activo').value === 'si';
+    const esNuevo = !$('#op-bloque-nuevo').hidden;
+    let comercioId = $('#op-comercio').value ? Number($('#op-comercio').value) : null;
+    const nuevoNombre = ($('#op-nuevo-nombre') ? $('#op-nuevo-nombre').value : '').trim();
+    const esSuper = marcado && marcado.value === 'super_admin';
 
-    if (!datos.nombre) { err.textContent = 'El nombre es obligatorio.'; err.hidden = false; return; }
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(datos.correo)) {
+    const nombre = $('#op-nombre').value.trim();
+    const correo = $('#op-correo').value.trim().toLowerCase();
+    const rol = marcado ? marcado.value : 'operador_facturador';
+
+    if (!nombre) { err.textContent = 'El nombre es obligatorio.'; err.hidden = false; return; }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(correo)) {
       err.textContent = 'Escribe un correo válido.'; err.hidden = false; return;
     }
-    // Solo el super administrador puede quedarse sin comercio
-    if (!datos.comercio_id && datos.rol !== 'super_admin') {
-      err.textContent = 'Selecciona el comercio al que pertenece.';
-      err.hidden = false; return;
+
+    if (esNuevo) {
+      if (!nuevoNombre && !esSuper) {
+        err.textContent = 'Escribe el nombre del nuevo comercio a crear.';
+        err.hidden = false;
+        return;
+      }
+    } else {
+      if (!comercioId && !esSuper) {
+        err.textContent = 'Selecciona el comercio al que pertenece o pulsa "Crear nuevo comercio".';
+        err.hidden = false;
+        return;
+      }
     }
 
     // La contraseña se valida antes de tocar nada
@@ -527,6 +595,19 @@
 
     btn.disabled = true;
     try {
+      if (esNuevo && nuevoNombre) {
+        const c = await INV.db.comercios.crear({ nombre: nuevoNombre });
+        comercioId = c.id;
+      }
+
+      const datos = {
+        nombre,
+        correo,
+        rol,
+        comercio_id: comercioId,
+      };
+      if (o) datos.activo = $('#op-activo').value === 'si';
+
       /* Primero el operador y después la cuenta: al revés, un fallo al
          registrar el operador dejaría un usuario de acceso huérfano, que
          podría entrar sin permisos y sin figurar en ninguna lista. */

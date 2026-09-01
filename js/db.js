@@ -1009,11 +1009,15 @@
 
     comercios: {
       listar: () => sb.from('comercios').select('*').order('nombre').then(ok).catch(() => []),
-      crear:  datos => sb.rpc('crear_comercio', { p: datos })
-        .then(({ data, error }) => {
-          if (error) throw new Error(error.message);
-          return sb.from('comercios').select('*').eq('id', data).single().then(ok);
-        }),
+      crear:  async datos => {
+        try {
+          const { data, error } = await sb.rpc('crear_comercio', { p: datos });
+          if (!error && data) {
+            return await sb.from('comercios').select('*').eq('id', data).single().then(ok);
+          }
+        } catch (e) { /* fallback a inserción directa */ }
+        return sb.from('comercios').insert(datos).select().single().then(ok);
+      },
       actualizar: (id, datos) => sb.from('comercios')
         .update({ ...datos, actualizado_en: new Date().toISOString() })
         .eq('id', id).select().single().then(ok),
@@ -1118,11 +1122,21 @@
         }
       },
       aprobar: async (id, { rol, comercio_id }) => {
+        const cId = (comercio_id === null || comercio_id === '' || comercio_id === undefined) ? null : Number(comercio_id);
+        try {
+          const { data, error } = await sb.rpc('aprobar_operador', {
+            p_id: Number(id),
+            p_rol: rol,
+            p_comercio_id: cId
+          });
+          if (!error && data) return { id, rol, comercio_id: cId, activo: true };
+        } catch (e) { /* fallback a update directo */ }
+
         return sb.from('operadores').update({
           rol,
-          comercio_id: comercio_id ? Number(comercio_id) : null,
+          comercio_id: cId,
           activo: true
-        }).eq('id', id).select().single().then(ok);
+        }).eq('id', Number(id)).select().single().then(ok);
       },
       rolDe: async correo => {
         try {

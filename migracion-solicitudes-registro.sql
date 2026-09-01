@@ -107,7 +107,34 @@ begin
 end;
 $BLOQUE$;
 
--- 6. CONCEDER PERMISOS DE EJECUCIÓN A LA FUNCIÓN RPC
+-- 6. FUNCIÓN RPC PARA APROBAR Y ASIGNAR COMERCIO A OPERADORES (SECURITY DEFINER)
+create or replace function public.aprobar_operador(p_id bigint, p_rol text, p_comercio_id bigint)
+returns jsonb language plpgsql security definer
+set search_path = public, pg_temp as $BLOQUE_APROB$
+declare
+  v_rol public.rol_operador;
+begin
+  if not public.es_super_admin() then
+    raise exception 'Solo un super administrador puede habilitar operadores y asignar comercios';
+  end if;
+
+  begin
+    v_rol := p_rol::public.rol_operador;
+  exception when others then
+    v_rol := 'operador_facturador'::public.rol_operador;
+  end;
+
+  update public.operadores
+     set rol = v_rol,
+         comercio_id = p_comercio_id,
+         activo = true
+   where id = p_id;
+
+  return jsonb_build_object('ok', true, 'id', p_id);
+end;
+$BLOQUE_APROB$;
+
+-- 7. CONCEDER PERMISOS DE EJECUCIÓN A LAS FUNCIONES RPC
 do $$
 begin
   if exists (select 1 from pg_roles where rolname = 'anon') then
@@ -115,6 +142,7 @@ begin
   end if;
   if exists (select 1 from pg_roles where rolname = 'authenticated') then
     grant execute on function public.solicitar_registro(jsonb) to authenticated;
+    grant execute on function public.aprobar_operador(bigint, text, bigint) to authenticated;
   end if;
 end $$;
 
