@@ -499,9 +499,22 @@
       }
 
       case 'movimientos.registrar': {
-        const payload = { ...datos, clave_idem };
+        let payload = { ...datos, clave_idem };
+        if (typeof payload.producto_id === 'string' && payload.producto_id.startsWith('_temp_')) {
+          const idResuelto = resolverId(payload.producto_id);
+          if (idResuelto && !String(idResuelto).startsWith('_temp_')) {
+            payload.producto_id = Number(idResuelto);
+          } else if (payload.sku) {
+            const { data: pExist } = await sb.from('productos').select('id').eq('sku', payload.sku).maybeSingle();
+            if (pExist && pExist.id) {
+              payload.producto_id = Number(pExist.id);
+              registrarMapeoId(datos.producto_id, pExist.id, 'productos');
+            }
+          }
+        }
+
         const { data, error } = await sb.rpc('registrar_movimiento', { p: payload });
-        if (!error) return { id: data, ...datos };
+        if (!error) return { id: data, ...payload };
 
         const sinFuncion = /could not find the function|does not exist|schema cache/i.test(error.message || '');
         if (!sinFuncion) throw new Error(error.message);
@@ -516,10 +529,21 @@
       case 'clientes.crear': {
         try {
           const resp = await sb.from('clientes').insert(datos).select().single();
-          if (resp.error) throw new Error(resp.error.message);
+          if (resp.error) {
+            if (/duplicate|unique|already exists|clientes_.*_key/i.test(resp.error.message)) {
+              let q = sb.from('clientes').select('*');
+              if (datos.documento) q = q.eq('documento', datos.documento);
+              const { data: existente } = await q.maybeSingle();
+              if (existente && existente.id) {
+                const { data: actualizado } = await sb.from('clientes').update(datos).eq('id', existente.id).select().single();
+                return actualizado || existente;
+              }
+            }
+            throw new Error(resp.error.message);
+          }
           return resp.data;
         } catch (err) {
-          if (/column.*does not exist/i.test(err.message || '')) {
+          if (/column.*does not exist/i.test((err).message || '')) {
             const { es_agente_retencion, retencion_iva_porcentaje, retencion_islr_porcentaje, ...datosBase } = datos;
             const resp2 = await sb.from('clientes').insert(datosBase).select().single();
             if (resp2.error) throw new Error(resp2.error.message);
@@ -567,7 +591,24 @@
           } catch (e) {}
         }
         const resp = await sb.from('productos').insert(payload).select().single();
-        if (resp.error) throw new Error(resp.error.message);
+        if (resp.error) {
+          // Si el SKU ya existía previamente en la base de datos (conflicto de SKU duplicado):
+          if (/duplicate|unique|already exists|productos_.*_key/i.test(resp.error.message)) {
+            const { data: existente } = await sb.from('productos')
+              .select('*')
+              .eq('sku', payload.sku)
+              .maybeSingle();
+            if (existente && existente.id) {
+              const { data: actualizado } = await sb.from('productos')
+                .update(payload)
+                .eq('id', existente.id)
+                .select()
+                .single();
+              return actualizado || existente;
+            }
+          }
+          throw new Error(resp.error.message);
+        }
         return resp.data;
       }
 
@@ -599,7 +640,16 @@
 
       case 'categorias.crear': {
         const resp = await sb.from('categorias').insert(datos).select().single();
-        if (resp.error) throw new Error(resp.error.message);
+        if (resp.error) {
+          if (/duplicate|unique|already exists|categorias_.*_key/i.test(resp.error.message)) {
+            const { data: existente } = await sb.from('categorias')
+              .select('*')
+              .eq('nombre', datos.nombre)
+              .maybeSingle();
+            if (existente && existente.id) return existente;
+          }
+          throw new Error(resp.error.message);
+        }
         return resp.data;
       }
 
@@ -869,13 +919,18 @@
         </h4>
         ${filasCola}
 
-        <div style="margin-top:16px; display:flex; gap:8px; flex-wrap:wrap;">
+        <div style="margin-top:16px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
           <button id="btn-sync-forzar" class="btn btn--primario btn--chico" ${estado.sincronizando ? 'disabled' : ''}>
             ${estado.sincronizando ? 'Sincronizando…' : 'Sincronizar ahora'}
           </button>
           <button id="btn-sync-validar" class="btn btn--secundario btn--chico">
             Verificar integridad
           </button>
+          ${estado.cola.length > 0 ? `
+            <button id="btn-sync-descartar" class="btn btn--fantasma btn--chico" style="color:var(--rojo); margin-left:auto;">
+              Descartar cola (${estado.cola.length})
+            </button>
+          ` : ''}
         </div>
 
         <div id="sync-resultado-validacion" style="margin-top:12px;" hidden></div>
@@ -885,9 +940,7 @@
     INV.ui.abrirModal({
       titulo: 'Estado de Sincronización y Modo Offline',
       cuerpo: htmlCuerpo,
-      acciones: [
-        { texto: 'Cerrar', alPulsar: INV.ui.cerrarModal }
-      ]
+      ancho: '560px'
     });
 
     const btnForzar = document.getElementById('btn-sync-forzar');
@@ -896,14 +949,27 @@
         btnForzar.disabled = true;
         btnForzar.textContent = 'Sincronizando…';
         const res = await sincronizar();
-        if (res.ok) {
-          INV.ui.cerrarModal();
+        if (res && res.ok) {
+          if (INV.ui && INV.ui.cerrarModal) INV.ui.cerrarModal();
+          if (INV.ui && INV.ui.avisar) INV.ui.avisar('Sincronización completada con éxito');
         } else {
           btnForzar.disabled = false;
           btnForzar.textContent = 'Sincronizar ahora';
-          if (res.motivo === 'sin_conexion') {
-            INV.ui.avisar('No hay conexión a Internet para sincronizar', 'alerta');
+          if (res && res.motivo === 'sin_conexion') {
+            if (INV.ui && INV.ui.avisar) INV.ui.avisar('No hay conexión a Internet para sincronizar', 'alerta');
           }
+          mostrarModalSync();
+        }
+      });
+    }
+
+    const btnDescartar = document.getElementById('btn-sync-descartar');
+    if (btnDescartar) {
+      btnDescartar.addEventListener('click', () => {
+        if (confirm('¿Deseas descartar los cambios locales pendientes de sincronizar?')) {
+          guardarColaLocal([]);
+          mostrarModalSync();
+          if (INV.ui && INV.ui.avisar) INV.ui.avisar('Cola de sincronización vaciada');
         }
       });
     }

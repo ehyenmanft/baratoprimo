@@ -293,10 +293,35 @@
         }
 
         // Modo Offline
+        const prods = INV.sync ? await INV.sync.obtenerCache('productos', []) : [];
+        const prodExistente = prods.find(p => p.sku && (datos.sku || '').trim() && p.sku.toLowerCase() === datos.sku.trim().toLowerCase());
+
+        if (prodExistente) {
+          const actualizado = { ...prodExistente, ...datos, activo: true };
+          if (INV.sync) {
+            const idx = prods.findIndex(p => String(p.id) === String(prodExistente.id));
+            if (idx !== -1) prods[idx] = actualizado;
+            await INV.sync.guardarCache('productos', prods);
+
+            const stocks = await INV.sync.obtenerCache('stock_actual', []);
+            const sIdx = stocks.findIndex(s => String(s.producto_id || s.id) === String(prodExistente.id));
+            if (sIdx !== -1) {
+              stocks[sIdx] = { ...stocks[sIdx], ...datos };
+              await INV.sync.guardarCache('stock_actual', stocks);
+            }
+
+            INV.sync.encolarMutacion({
+              tipo: 'productos.actualizar',
+              datos: { id: prodExistente.id, ...datos },
+              descripcion: `Actualizar producto "${datos.nombre}" (${datos.sku})`
+            });
+          }
+          return actualizado;
+        }
+
         const tempId = '_temp_prod_' + Date.now();
         const prodOffline = { ...datos, id: tempId, activo: true, _offline: true };
         if (INV.sync) {
-          const prods = await INV.sync.obtenerCache('productos', []);
           prods.push(prodOffline);
           await INV.sync.guardarCache('productos', prods);
 
