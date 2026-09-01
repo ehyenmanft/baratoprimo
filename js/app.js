@@ -517,6 +517,7 @@
         const nombre = ($('#reg-nombre') ? $('#reg-nombre').value : '').trim();
         const correo = ($('#reg-email') ? $('#reg-email').value : '').trim().toLowerCase();
         const clave = ($('#reg-clave') ? $('#reg-clave').value : '');
+        const comercioSolicitado = ($('#reg-comercio') ? $('#reg-comercio').value : '').trim();
         const rol = $('#reg-rol') ? $('#reg-rol').value : 'operador_facturador';
 
         if (!nombre) {
@@ -535,18 +536,25 @@
         btnReg.disabled = true;
         btnReg.textContent = 'Registrando solicitud…';
         try {
-          await INV.db.operadores.solicitarRegistro({ nombre, correo, clave, rol });
+          await INV.db.operadores.solicitarRegistro({
+            nombre,
+            correo,
+            clave,
+            rol,
+            comercio_solicitado: comercioSolicitado
+          });
           
           // Limpiar formulario de registro
           if ($('#reg-nombre')) $('#reg-nombre').value = '';
           if ($('#reg-email')) $('#reg-email').value = '';
           if ($('#reg-clave')) $('#reg-clave').value = '';
+          if ($('#reg-comercio')) $('#reg-comercio').value = '';
 
           alternarTab(false);
           if ($('#acceso-email')) $('#acceso-email').value = correo;
           if (exitoAcceso) {
             exitoAcceso.innerHTML = '<b>¡Solicitud enviada con éxito!</b><br>' +
-              'Tu cuenta ha sido creada en estado pendiente. Un Super Administrador revisará tu solicitud para habilitar tu rol y asignarte un comercio.';
+              'Tu cuenta ha sido creada en estado pendiente. Un Super Administrador revisará tu solicitud para habilitar tu rol y asignarte el comercio.';
             exitoAcceso.hidden = false;
           }
           INV.ui.avisar('Solicitud de cuenta registrada correctamente.');

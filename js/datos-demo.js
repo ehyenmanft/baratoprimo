@@ -865,6 +865,7 @@
           nombre: datos.nombre,
           correo: datos.correo.toLowerCase(),
           rol: datos.rol || 'operador_facturador',
+          comercio_solicitado: datos.comercio_solicitado ? String(datos.comercio_solicitado).trim() : null,
           activo: false,
           comercio_id: null,
         };
@@ -877,7 +878,7 @@
         const o = bd.operadores.find(x => x.id === Number(id));
         if (!o) throw new Error('Operador no encontrado');
         o.rol = rol || o.rol;
-        o.comercio_id = Number(comercio_id);
+        o.comercio_id = comercio_id ? Number(comercio_id) : null;
         o.activo = true;
         persistir();
         return o;

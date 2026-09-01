@@ -48,13 +48,15 @@
             <div class="solicitudes__lista">
               ${solicitudes.map(s => {
                 const d = P.definicion(s.rol);
+                const comSol = (s.comercio_solicitado || '').trim();
                 return `
                   <div class="solicitud-card" data-solicitud="${s.id}">
                     <div style="display:flex; align-items:center; gap:12px;">
                       <span class="miniatura miniatura--vacia" style="background:var(--naranja-piel, #fff0dc); color:var(--naranja, #f58309); font-weight:700;">${esc(iniciales(s.nombre))}</span>
                       <div>
                         <b style="font-size:14.5px;">${esc(s.nombre)}</b>
-                        <div class="lista__sub">${esc(s.correo)} · Rol solicitado: <b style="color:var(--tinta);">${esc(d.etiqueta)}</b></div>
+                        <div class="lista__sub">${esc(s.correo)} · Rol: <b style="color:var(--tinta);">${esc(d.etiqueta)}</b></div>
+                        ${comSol ? `<div class="lista__sub" style="margin-top:2px;">Comercio indicado: <b style="color:var(--violeta);">${esc(comSol)}</b></div>` : ''}
                       </div>
                     </div>
                     <div class="solicitud-card__acciones" style="display:flex; gap:8px;">
@@ -184,6 +186,13 @@
   function modalAprobarSolicitud(s, comercios) {
     const asignables = INV.permisos.rolesAsignables();
     const rolInicial = s.rol || 'operador_facturador';
+    const comSol = (s.comercio_solicitado || '').trim();
+
+    // Intentar auto-seleccionar si coincide con un comercio existente
+    const matchCom = comSol
+      ? comercios.find(c => c.nombre.trim().toLowerCase() === comSol.toLowerCase())
+      : null;
+    const idComercioInicial = matchCom ? matchCom.id : '';
 
     abrirModal({
       titulo: 'Habilitar operador y asignar comercio',
@@ -191,6 +200,12 @@
         <div style="background:var(--superficie-2); padding:12px 14px; border-radius:var(--r-s); margin-bottom:16px; border:1px solid var(--linea);">
           <b style="font-size:14px; display:block;">${esc(s.nombre)}</b>
           <span class="lista__sub" style="font-size:12.5px;">${esc(s.correo)}</span>
+          ${comSol ? `
+            <div style="margin-top:8px; padding-top:8px; border-top:1px dashed var(--linea); font-size:12.5px; display:flex; align-items:center; gap:6px;">
+              <span>Comercio indicado por el usuario:</span>
+              <b style="color:var(--violeta);">${esc(comSol)}</b>
+            </div>
+          ` : ''}
         </div>
 
         <div class="campo">
@@ -207,13 +222,20 @@
           </div>
         </div>
 
-        <div class="campo">
-          <label for="aprob-comercio">Comercio donde operará</label>
-          <select id="aprob-comercio">
-            <option value="">Selecciona un comercio…</option>
-            ${comercios.map(c => `<option value="${c.id}">${esc(c.nombre)}</option>`).join('')}
-          </select>
-          <span class="subida__nota" style="margin-top:5px; display:block;">Obligatorio: el operador solo podrá acceder a los datos del comercio asignado.</span>
+        <div class="campo" id="aprob-caja-comercio">
+          <label for="aprob-comercio">Comercio asignado</label>
+          <div style="display:grid; grid-template-columns:1fr auto; gap:8px">
+            <select id="aprob-comercio">
+              <option value="">Selecciona un comercio…</option>
+              ${comercios.map(c => `<option value="${c.id}" ${idComercioInicial === c.id ? 'selected' : ''}>${esc(c.nombre)}</option>`).join('')}
+            </select>
+            ${INV.permisos.puede('comercios.gestionar')
+              ? `<button type="button" class="btn btn--secundario btn--chico" id="aprob-nuevo-comercio">Crear uno</button>`
+              : ''}
+          </div>
+          <span class="subida__nota" id="aprob-comercio-nota" style="margin-top:5px; display:block;">
+            Obligatorio: el operador solo podrá acceder a los datos del comercio asignado.
+          </span>
         </div>
         <p id="aprob-error" class="error" hidden></p>
       `,
@@ -229,7 +251,7 @@
             const errModal = $('#aprob-error');
 
             if (!comercioId && rol !== 'super_admin') {
-              if (errModal) { errModal.textContent = 'Debes seleccionar un comercio para este operador.'; errModal.hidden = false; }
+              if (errModal) { errModal.textContent = 'Debes seleccionar o crear un comercio para este operador.'; errModal.hidden = false; }
               return;
             }
 
@@ -249,6 +271,43 @@
         }
       ]
     });
+
+    const actualizarNotaAprob = () => {
+      const marcado = $$('input[name="aprob-rol"]').find(r => r.checked);
+      const esSuper = marcado && marcado.value === 'super_admin';
+      const notaEl = $('#aprob-comercio-nota');
+      if (notaEl) {
+        notaEl.textContent = esSuper
+          ? 'Opcional: el super administrador no pertenece a ningún comercio, los supervisa todos.'
+          : 'Obligatorio: el operador solo podrá acceder a los datos del comercio asignado.';
+      }
+    };
+    $$('input[name="aprob-rol"]').forEach(r => r.addEventListener('change', actualizarNotaAprob));
+    actualizarNotaAprob();
+
+    const btnNuevoComercio = $('#aprob-nuevo-comercio');
+    if (btnNuevoComercio) {
+      btnNuevoComercio.addEventListener('click', async () => {
+        const nombrePorDefecto = comSol || '';
+        const nombre = prompt('Nombre del nuevo comercio a crear:', nombrePorDefecto);
+        if (!nombre || !nombre.trim()) return;
+        try {
+          const c = await INV.db.comercios.crear({ nombre: nombre.trim() });
+          comercios.push(c);
+          const sel = $('#aprob-comercio');
+          if (sel) {
+            const op = document.createElement('option');
+            op.value = c.id;
+            op.textContent = c.nombre;
+            op.selected = true;
+            sel.append(op);
+          }
+          avisar(`Comercio "${c.nombre}" creado y seleccionado.`);
+        } catch (e) {
+          avisar(e.message, 'error');
+        }
+      });
+    }
   }
 
   function formulario(o = null, comercios = []) {
@@ -258,6 +317,11 @@
     abrirModal({
       titulo: o ? 'Editar operador' : 'Nuevo operador',
       cuerpo: `
+        ${(o && o.comercio_solicitado) ? `
+          <div style="background:var(--superficie-2); border:1px solid var(--linea); border-radius:var(--r-s); padding:8px 12px; margin-bottom:14px; font-size:12.5px;">
+            <span>Comercio indicado en solicitud:</span> <b style="color:var(--violeta);">${esc(o.comercio_solicitado)}</b>
+          </div>
+        ` : ''}
         <div class="campo">
           <label for="op-nombre">Nombre</label>
           <input id="op-nombre" type="text" value="${esc(o ? o.nombre : '')}" placeholder="Nombre y apellido">

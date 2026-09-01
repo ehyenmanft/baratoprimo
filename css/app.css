@@ -90,15 +90,60 @@ body{
 /* =========================== ACCESO =========================== */
 .acceso{
   min-height:100dvh; display:grid; place-items:center; padding:24px;
+  position:relative;
+  background:
+    radial-gradient(90% 70% at 15% 0%, rgba(108,59,244,0.16) 0%, transparent 55%),
+    radial-gradient(80% 70% at 95% 100%, rgba(0,168,126,0.14) 0%, transparent 50%),
+    #F3F2F9;
+  transition:background .3s var(--curva);
+}
+html[data-tema="oscuro"] .acceso{
   background:
     radial-gradient(90% 70% at 15% 0%, #6E5CF0 0%, transparent 55%),
     radial-gradient(80% 70% at 95% 100%, #2BB3A3 0%, transparent 50%),
-    #241F33;
+    #181424;
+}
+.acceso__tema{
+  position:absolute; top:20px; right:20px; z-index:10;
+  width:96px;
+}
+.acceso__tema .tema{
+  background:var(--superficie);
+  border:1px solid var(--linea);
+  box-shadow:var(--sombra);
+  backdrop-filter:blur(8px);
+}
+.acceso__tema .tema button{
+  color:var(--tinta-2);
+}
+.acceso__tema .tema button:hover{
+  color:var(--violeta);
+  background:var(--violeta-piel);
+}
+.acceso__tema .tema button.activo{
+  background:var(--violeta);
+  color:#fff;
+}
+html[data-tema="oscuro"] .acceso__tema .tema{
+  background:rgba(37,32,54,0.85);
+  border:1px solid rgba(255,255,255,0.14);
+}
+html[data-tema="oscuro"] .acceso__tema .tema button{
+  color:rgba(255,255,255,0.65);
+}
+html[data-tema="oscuro"] .acceso__tema .tema button:hover{
+  color:#fff;
+  background:rgba(255,255,255,0.12);
+}
+html[data-tema="oscuro"] .acceso__tema .tema button.activo{
+  background:var(--violeta);
+  color:#fff;
 }
 .acceso__caja{
   width:min(392px,100%); background:var(--superficie);
   border-radius:20px; padding:38px 34px; box-shadow:var(--sombra-3);
   animation:emerger .5s var(--curva);
+  border:1px solid var(--linea);
 }
 .acceso__titulo{
   font-family:var(--display); font-size:38px; font-weight:600;

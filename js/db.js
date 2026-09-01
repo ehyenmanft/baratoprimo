@@ -1047,6 +1047,7 @@
         const correoLimpio = datos.correo.trim().toLowerCase();
         const nombreLimpio = datos.nombre.trim();
         const rolSolicitado = datos.rol || 'operador_facturador';
+        const comercioSolicitado = (datos.comercio_solicitado || '').trim();
 
         // 1. Crear el usuario en Supabase Auth con cliente independiente (sin requerir sesión previa)
         if (datos.clave) {
@@ -1063,6 +1064,7 @@
                 data: {
                   nombre: nombreLimpio,
                   rol_solicitado: rolSolicitado,
+                  comercio_solicitado: comercioSolicitado,
                 }
               }
             });
@@ -1089,6 +1091,7 @@
           correo: correoLimpio,
           rol: rolSolicitado,
           usuario_id: usuarioId,
+          comercio_solicitado: comercioSolicitado || null,
         };
 
         try {
@@ -1101,16 +1104,23 @@
           nombre: nombreLimpio,
           correo: correoLimpio,
           rol: rolSolicitado,
+          comercio_solicitado: comercioSolicitado || null,
           activo: false,
           comercio_id: null,
           usuario_id: usuarioId,
         };
-        return sb.from('operadores').insert(op).select().single().then(ok).catch(() => op);
+        try {
+          return await sb.from('operadores').insert(op).select().single().then(ok);
+        } catch (errIns) {
+          // Si la columna comercio_solicitado no existe aún en la base de datos, reintentar sin ella
+          delete op.comercio_solicitado;
+          return sb.from('operadores').insert(op).select().single().then(ok).catch(() => op);
+        }
       },
       aprobar: async (id, { rol, comercio_id }) => {
         return sb.from('operadores').update({
           rol,
-          comercio_id: Number(comercio_id),
+          comercio_id: comercio_id ? Number(comercio_id) : null,
           activo: true
         }).eq('id', id).select().single().then(ok);
       },

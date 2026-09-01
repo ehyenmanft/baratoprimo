@@ -79,16 +79,17 @@ create table comercios (
 );
 
 create table operadores (
-  id          bigint generated always as identity primary key,
-  usuario_id  uuid unique references auth.users(id) on delete cascade,
-  correo      text not null unique,
-  nombre      text not null,
-  rol         rol_operador not null default 'operador_facturador',
+  id                  bigint generated always as identity primary key,
+  usuario_id          uuid unique references auth.users(id) on delete cascade,
+  correo              text not null unique,
+  nombre              text not null,
+  rol                 rol_operador not null default 'operador_facturador',
   -- Comercio en el que trabaja. Para el super_admin es el que tiene
   -- seleccionado ahora mismo, y puede cambiarlo cuando quiera.
-  comercio_id bigint references comercios(id) on delete restrict,
-  activo      boolean not null default true,
-  creado_en   timestamptz not null default now()
+  comercio_id         bigint references comercios(id) on delete restrict,
+  comercio_solicitado text default null,
+  activo              boolean not null default true,
+  creado_en           timestamptz not null default now()
 );
 
 create index operadores_correo_idx   on operadores (lower(correo));
