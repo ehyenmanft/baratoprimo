@@ -8,6 +8,18 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <script>
+    /* Antes del primer pintado: sincroniza con el tema de BaratoPrimo */
+    (function () {
+      var t;
+      try { t = localStorage.getItem('inventario-tema'); } catch (e) {}
+      if (!t) {
+        try { t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro'; }
+        catch (e) { t = 'claro'; }
+      }
+      document.documentElement.dataset.tema = t;
+    })();
+  </script>
   <style>
     /* =====================================================================
        MANUAL DE USUARIO OFICIAL — BARATOPRIMO
@@ -238,19 +250,90 @@
     }
 
     .sidebar__pie {
-      padding: 16px 20px;
+      padding: 14px 16px;
       border-top: 1px solid var(--linea-2);
       display: flex;
-      align-items: center;
-      justify-content: space-between;
+      flex-direction: column;
       gap: 10px;
+      background: var(--superficie);
     }
 
-    .btn-tema {
+    /* Interruptor de tema idéntico a BaratoPrimo */
+    .tema {
       display: flex;
       align-items: center;
+      gap: 4px;
+      background: var(--superficie-2);
+      border: 1px solid var(--linea);
+      border-radius: var(--r-p);
+      padding: 3px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .tema button {
+      flex: 1;
+      background: transparent;
+      border: 0;
+      border-radius: var(--r-p);
+      color: var(--tinta-2);
+      padding: 6px 0;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      transition: all 0.22s var(--trans);
+      position: relative;
+    }
+
+    .tema button svg {
+      display: block;
+      transition: transform 0.2s var(--trans);
+    }
+
+    .tema button:hover {
+      color: var(--violeta);
+      background: var(--violeta-piel);
+    }
+
+    .tema button:hover svg {
+      transform: rotate(12deg) scale(1.1);
+    }
+
+    .tema button.activo {
+      background: #FFFFFF;
+      color: var(--violeta);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+      transform: scale(1.02);
+    }
+
+    html[data-tema="oscuro"] .tema {
+      background: var(--superficie-2);
+      border: 1px solid var(--linea);
+    }
+
+    html[data-tema="oscuro"] .tema button {
+      color: var(--tinta-3);
+    }
+
+    html[data-tema="oscuro"] .tema button:hover {
+      color: #FFFFFF;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    html[data-tema="oscuro"] .tema button.activo {
+      background: var(--violeta);
+      color: #FFFFFF;
+      box-shadow: 0 2px 10px rgba(108, 59, 244, 0.45);
+    }
+
+    /* Botón de impresión en la barra lateral */
+    .btn-imprimir-sidebar {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       gap: 8px;
-      padding: 8px 14px;
+      padding: 8px 12px;
       background: var(--superficie-2);
       border: 1px solid var(--linea);
       border-radius: var(--r-s);
@@ -259,25 +342,13 @@
       color: var(--tinta);
       cursor: pointer;
       transition: var(--trans);
+      font-family: inherit;
     }
 
-    .btn-tema:hover {
-      border-color: var(--violeta);
-      color: var(--violeta);
-    }
-
-    .btn-imprimir {
-      padding: 8px 12px;
-      background: var(--superficie-2);
-      border: 1px solid var(--linea);
-      border-radius: var(--r-s);
-      cursor: pointer;
-      color: var(--tinta-2);
-      transition: var(--trans);
-    }
-    .btn-imprimir:hover {
+    .btn-imprimir-sidebar:hover {
       color: var(--violeta);
       border-color: var(--violeta);
+      background: var(--violeta-piel);
     }
 
     /* ==================== CONTENIDO PRINCIPAL ==================== */
@@ -1374,9 +1445,26 @@
       <img src="img/logo.svg" alt="" width="26" height="26">
       <span>BaratoPrimo</span>
     </div>
-    <button type="button" class="btn-tema-movil" id="btn-tema-movil" title="Cambiar tema">
-      🌙
-    </button>
+    <div class="tema" role="group" aria-label="Tema de la interfaz" style="width:78px;">
+      <button data-tema="claro" type="button" aria-label="Modo claro" title="Modo claro">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="5"></circle>
+          <line x1="12" y1="1" x2="12" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="23"></line>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+          <line x1="1" y1="12" x2="3" y2="12"></line>
+          <line x1="21" y1="12" x2="23" y2="12"></line>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+      </button>
+      <button data-tema="oscuro" type="button" aria-label="Modo oscuro" title="Modo oscuro">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+      </button>
+    </div>
   </header>
 
   <!-- Velo de fondo oscuro para móvil -->
@@ -1468,12 +1556,33 @@
     </nav>
 
     <div class="sidebar__pie">
-      <button type="button" class="btn-tema" id="btn-toggle-tema">
-        <span id="icono-tema">🌙</span>
-        <span id="texto-tema">Modo Oscuro</span>
-      </button>
-      <button type="button" class="btn-imprimir" id="btn-imprimir-doc" title="Imprimir o guardar PDF">
-        🖨️
+      <div class="tema" role="group" aria-label="Tema de la interfaz">
+        <button data-tema="claro" type="button" aria-label="Modo claro" title="Modo claro">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+        </button>
+        <button data-tema="oscuro" type="button" aria-label="Modo oscuro" title="Modo oscuro">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </button>
+      </div>
+      <button type="button" class="btn-imprimir-sidebar" id="btn-imprimir-doc" title="Imprimir / Guardar PDF (Brochure)">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 6 2 18 2 18 9"></polyline>
+          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+          <rect x="6" y="14" width="12" height="8"></rect>
+        </svg>
+        <span>Imprimir / PDF</span>
       </button>
     </div>
   </aside>
@@ -2630,60 +2739,62 @@
 
   <script>
     // =====================================================================
-    // INTERACTIVIDAD LIGERA DEL MANUAL
+    // INTERACTIVIDAD Y SINCRONIZACIÓN DE TEMA — BARATOPRIMO
     // =====================================================================
     (function () {
-      // 1. Selector de Tema Claro / Oscuro
-      const btnTema = document.getElementById('btn-toggle-tema');
-      const iconoTema = document.getElementById('icono-tema');
-      const textoTema = document.getElementById('texto-tema');
+      const CLAVE_TEMA = 'inventario-tema';
       const html = document.documentElement;
 
+      // 1. Selector de Tema Claro / Oscuro (mismo de la app BaratoPrimo)
       function aplicarTema(tema) {
+        html.dataset.tema = tema;
         html.setAttribute('data-tema', tema);
-        localStorage.setItem('bp_manual_tema', tema);
-        if (tema === 'oscuro') {
-          iconoTema.textContent = '☀️';
-          textoTema.textContent = 'Modo Claro';
-        } else {
-          iconoTema.textContent = '🌙';
-          textoTema.textContent = 'Modo Oscuro';
-        }
-      // Sincronizar botón de tema móvil
-      const btnTemaMovil = document.getElementById('btn-tema-movil');
+        try {
+          localStorage.setItem(CLAVE_TEMA, tema);
+        } catch (e) {}
 
-      function aplicarTema(tema) {
-        html.setAttribute('data-tema', tema);
-        localStorage.setItem('bp_manual_tema', tema);
-        if (tema === 'oscuro') {
-          iconoTema.textContent = '☀️';
-          textoTema.textContent = 'Modo Claro';
-          if (btnTemaMovil) btnTemaMovil.textContent = '☀️';
-        } else {
-          iconoTema.textContent = '🌙';
-          textoTema.textContent = 'Modo Oscuro';
-          if (btnTemaMovil) btnTemaMovil.textContent = '🌙';
+        // Sincronizar estado visual de todos los botones de tema (sidebar y barra móvil)
+        document.querySelectorAll('.tema button').forEach(btn => {
+          btn.classList.toggle('activo', btn.dataset.tema === tema);
+        });
+      }
+
+      function temaActual() {
+        try {
+          const t = localStorage.getItem(CLAVE_TEMA);
+          if (t) return t;
+        } catch (e) {}
+        try {
+          return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro';
+        } catch (e) {
+          return 'claro';
         }
       }
 
-      const temaGuardado = localStorage.getItem('bp_manual_tema') ||
-        (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro');
-      aplicarTema(temaGuardado);
+      // Enlazar clics en los interruptores de sol / luna
+      document.querySelectorAll('.tema button').forEach(btn => {
+        btn.addEventListener('click', () => {
+          aplicarTema(btn.dataset.tema);
+        });
+      });
 
-      const alternarTema = () => {
-        const actual = html.getAttribute('data-tema');
-        aplicarTema(actual === 'oscuro' ? 'claro' : 'oscuro');
-      };
-
-      btnTema.addEventListener('click', alternarTema);
-      if (btnTemaMovil) btnTemaMovil.addEventListener('click', alternarTema);
+      // Aplicar tema inicial inmediatamente
+      aplicarTema(temaActual());
 
       // 2. Impresión / Exportación a Brochure PDF
-      const dispararImpresion = () => window.print();
-      const btnImprimir = document.getElementById('btn-imprimir-doc');
+      function dispararImpresion() {
+        window.print();
+      }
+
+      const btnImprimirSidebar = document.getElementById('btn-imprimir-doc');
+      if (btnImprimirSidebar) {
+        btnImprimirSidebar.addEventListener('click', dispararImpresion);
+      }
+
       const btnHeroPrint = document.getElementById('btn-hero-print');
-      if (btnImprimir) btnImprimir.addEventListener('click', dispararImpresion);
-      if (btnHeroPrint) btnHeroPrint.addEventListener('click', dispararImpresion);
+      if (btnHeroPrint) {
+        btnHeroPrint.addEventListener('click', dispararImpresion);
+      }
 
       // 3. Botón flotante volver arriba
       const btnArriba = document.getElementById('btn-arriba');
@@ -2694,35 +2805,36 @@
           btnArriba.classList.remove('visible');
         }
       });
-      btnArriba.addEventListener('click', () => {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      });
+      if (btnArriba) {
+        btnArriba.addEventListener('click', () => {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+      }
 
       // 4. Menú móvil interactivo (Sidebar + Velo + Botones)
       const sidebar = document.getElementById('sidebar');
       const velo = document.getElementById('velo-manual');
       const btnAbrirSidebar = document.getElementById('btn-abrir-sidebar');
       const btnCerrarSidebar = document.getElementById('btn-cerrar-sidebar');
+      const btnMenuMovil = document.getElementById('btn-menu-movil');
 
-      const abrirMenu = () => {
-        sidebar.classList.add('abierta');
+      function abrirMenu() {
+        if (sidebar) sidebar.classList.add('abierta');
         if (velo) velo.classList.add('activo');
         document.body.style.overflow = 'hidden';
-      };
+      }
 
-      const cerrarMenu = () => {
-        sidebar.classList.remove('abierta');
+      function cerrarMenu() {
+        if (sidebar) sidebar.classList.remove('abierta');
         if (velo) velo.classList.remove('activo');
         document.body.style.overflow = '';
-      };
+      }
 
-      const btnMenuMovil = document.getElementById('btn-menu-movil');
       if (btnAbrirSidebar) btnAbrirSidebar.addEventListener('click', abrirMenu);
       if (btnMenuMovil) btnMenuMovil.addEventListener('click', abrirMenu);
       if (btnCerrarSidebar) btnCerrarSidebar.addEventListener('click', cerrarMenu);
       if (velo) velo.addEventListener('click', cerrarMenu);
 
-      // Cerrar menú móvil al hacer clic en cualquier enlace
       document.querySelectorAll('.nav-item').forEach(link => {
         link.addEventListener('click', cerrarMenu);
       });
@@ -2732,40 +2844,44 @@
       const secciones = document.querySelectorAll('.seccion');
       const navLinks = document.querySelectorAll('.nav-item');
 
-      buscador.addEventListener('input', e => {
-        const q = e.target.value.toLowerCase().trim();
-        if (!q) {
-          secciones.forEach(s => s.style.display = 'block');
-          return;
-        }
-
-        secciones.forEach(s => {
-          const texto = s.textContent.toLowerCase();
-          if (texto.includes(q)) {
-            s.style.display = 'block';
-          } else {
-            s.style.display = 'none';
+      if (buscador) {
+        buscador.addEventListener('input', e => {
+          const q = e.target.value.toLowerCase().trim();
+          if (!q) {
+            secciones.forEach(s => s.style.display = 'block');
+            return;
           }
+
+          secciones.forEach(s => {
+            const texto = s.textContent.toLowerCase();
+            if (texto.includes(q)) {
+              s.style.display = 'block';
+            } else {
+              s.style.display = 'none';
+            }
+          });
         });
-      });
+      }
 
       // 6. Resaltado activo al hacer scroll
-      const observer = new IntersectionObserver(entries => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            const id = entry.target.id;
-            navLinks.forEach(link => {
-              if (link.getAttribute('href') === '#' + id) {
-                link.classList.add('activo');
-              } else {
-                link.classList.remove('activo');
-              }
-            });
-          }
-        });
-      }, { rootMargin: '-20% 0px -70% 0px' });
+      if ('IntersectionObserver' in window) {
+        const observer = new IntersectionObserver(entries => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              const id = entry.target.id;
+              navLinks.forEach(link => {
+                if (link.getAttribute('href') === '#' + id) {
+                  link.classList.add('activo');
+                } else {
+                  link.classList.remove('activo');
+                }
+              });
+            }
+          });
+        }, { rootMargin: '-20% 0px -70% 0px' });
 
-      secciones.forEach(s => observer.observe(s));
+        secciones.forEach(s => observer.observe(s));
+      }
     })();
   </script>
 </body>
