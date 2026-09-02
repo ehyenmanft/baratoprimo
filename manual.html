@@ -964,23 +964,400 @@
       }
     }
 
-    /* IMPRESIÓN */
+    /* Estilos pantalla para componentes de brochure (ocultos en web) */
+    .brochure-portada { display: none; }
+    .brochure-indice  { display: none; }
+
+    /* =====================================================================
+       SISTEMA VISUAL BROCHURE / MANUAL CORPORATIVO PARA PDF E IMPRESIÓN
+       ===================================================================== */
     @media print {
-      .sidebar, .btn-arriba, .barra-movil-manual, .velo-manual, .menu-movil-toggle, .btn-tema, .btn-imprimir, .sidebar__buscador {
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+      }
+
+      @page {
+        size: letter portrait;
+        margin: 12mm 14mm 14mm 14mm;
+      }
+
+      html, body {
+        background: #FFFFFF !important;
+        color: #1C1830 !important;
+        font-size: 13px !important;
+        line-height: 1.5 !important;
+      }
+
+      /* Ocultar elementos interactivos de pantalla */
+      .sidebar,
+      .btn-arriba,
+      .barra-movil-manual,
+      .velo-manual,
+      .menu-movil-toggle,
+      .btn-tema,
+      .btn-imprimir,
+      .sidebar__buscador,
+      .hero {
         display: none !important;
       }
-      body {
-        background: white !important;
-        color: black !important;
-      }
+
       .contenido {
+        width: 100% !important;
         max-width: 100% !important;
         padding: 0 !important;
+        margin: 0 !important;
       }
-      .tarjeta, .hero, .paso-item, .micro-card {
-        box-shadow: none !important;
-        border: 1px solid #ccc !important;
+
+      /* 1. PORTADA TIPO BROCHURE */
+      .brochure-portada {
+        display: flex !important;
+        flex-direction: column;
+        justify-content: space-between;
+        min-height: 94vh;
+        page-break-after: always;
+        break-after: page;
+        padding: 40px 36px;
+        background: linear-gradient(135deg, rgba(108, 59, 244, 0.08) 0%, rgba(11, 165, 199, 0.07) 100%), #FFFFFF !important;
+        border: 2px solid var(--violeta) !important;
+        border-radius: 24px !important;
+        box-sizing: border-box;
+      }
+
+      .brochure-portada__top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--linea);
+        padding-bottom: 14px;
+      }
+
+      .brochure-portada__tag {
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        color: var(--violeta);
+        text-transform: uppercase;
+      }
+
+      .brochure-portada__badge {
+        font-size: 11px;
+        font-weight: 700;
+        background: var(--violeta-piel) !important;
+        color: var(--violeta);
+        padding: 4px 14px;
+        border-radius: 999px;
+        border: 1px solid rgba(108, 59, 244, 0.2);
+      }
+
+      .brochure-portada__centro {
+        text-align: center;
+        padding: 24px 0;
+      }
+
+      .brochure-portada__logo-wrap {
+        width: 96px;
+        height: 96px;
+        margin: 0 auto 18px;
+        border-radius: 24px;
+        background: linear-gradient(135deg, #7B4DF7 0%, #6C3BF4 55%, #0BA5C7 100%) !important;
+        display: grid;
+        place-items: center;
+        box-shadow: 0 10px 25px rgba(108, 59, 244, 0.35);
+      }
+
+      .brochure-portada__logo-wrap img {
+        width: 76px;
+        height: 76px;
+      }
+
+      .brochure-portada__titulo {
+        font-size: 42px;
+        font-weight: 900;
+        color: var(--tinta);
+        letter-spacing: -0.04em;
+        margin-bottom: 6px;
+      }
+
+      .brochure-portada__subtitulo {
+        font-size: 17px;
+        font-weight: 700;
+        color: var(--violeta);
+        margin-bottom: 14px;
+      }
+
+      .brochure-portada__linea {
+        width: 60px;
+        height: 4px;
+        background: var(--violeta) !important;
+        border-radius: 4px;
+        margin: 0 auto 16px;
+      }
+
+      .brochure-portada__desc {
+        font-size: 14.5px;
+        color: var(--tinta-2);
+        max-width: 620px;
+        margin: 0 auto 28px;
+        line-height: 1.6;
+      }
+
+      .brochure-portada__features {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 14px;
+        text-align: left;
+        max-width: 660px;
+        margin: 0 auto;
+      }
+
+      .brochure-feat-pill {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 12px 16px;
+        background: var(--superficie-2) !important;
+        border: 1px solid var(--linea) !important;
+        border-radius: 12px;
+      }
+
+      .brochure-feat-pill .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        margin-top: 5px;
+        flex-shrink: 0;
+      }
+
+      .brochure-feat-pill strong {
+        display: block;
+        font-size: 13px;
+        color: var(--tinta);
+        margin-bottom: 2px;
+      }
+
+      .brochure-feat-pill span {
+        font-size: 11.5px;
+        color: var(--tinta-2);
+        line-height: 1.4;
+      }
+
+      .brochure-portada__pie {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-top: 1px solid var(--linea);
+        padding-top: 14px;
+        font-size: 11.5px;
+        color: var(--tinta-3);
+      }
+
+      .brochure-portada__pie strong {
+        color: var(--tinta);
+      }
+
+      /* 2. ÍNDICE MAQUETADO */
+      .brochure-indice {
+        display: block !important;
+        page-break-after: always;
+        break-after: page;
+        padding: 24px 20px;
+        border: 1px solid var(--linea) !important;
+        border-radius: 18px;
+        background: #FFFFFF !important;
+      }
+
+      .brochure-indice__header {
+        border-bottom: 2px solid var(--violeta);
+        padding-bottom: 10px;
+        margin-bottom: 18px;
+      }
+
+      .brochure-indice__eyebrow {
+        font-size: 10.5px;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        color: var(--violeta);
+        text-transform: uppercase;
+      }
+
+      .brochure-indice__header h2 {
+        font-size: 24px;
+        font-weight: 800;
+        color: var(--tinta);
+        margin: 0;
+      }
+
+      .brochure-indice__grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+      }
+
+      .brochure-indice__item {
+        display: flex;
+        gap: 12px;
+        padding: 9px 12px;
+        background: var(--superficie-2) !important;
+        border: 1px solid var(--linea-2) !important;
+        border-radius: 10px;
+      }
+
+      .brochure-indice__item .num {
+        font-size: 12px;
+        font-weight: 900;
+        color: var(--violeta);
+        background: var(--violeta-piel) !important;
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        flex-shrink: 0;
+      }
+
+      .brochure-indice__item strong {
+        display: block;
+        font-size: 12.5px;
+        color: var(--tinta);
+      }
+
+      .brochure-indice__item p {
+        font-size: 11px;
+        color: var(--tinta-2);
+        margin: 0;
+      }
+
+      /* 3. SECCIONES Y CONTENIDO DEL BROCHURE */
+      .seccion {
+        margin-bottom: 28px !important;
+        page-break-inside: auto;
+      }
+
+      .seccion__cabecera {
+        border-bottom: 2px solid var(--violeta) !important;
+        padding-bottom: 8px !important;
+        margin-bottom: 12px !important;
+        page-break-after: avoid;
+        break-after: avoid;
+      }
+
+      .seccion__cabecera h3 {
+        font-size: 17px !important;
+        color: var(--tinta) !important;
+      }
+
+      .seccion__icono {
+        width: 34px !important;
+        height: 34px !important;
+      }
+
+      .seccion__subtitulo {
+        font-size: 12.5px !important;
+        margin-bottom: 12px !important;
+        color: var(--tinta-2) !important;
+      }
+
+      .tarjeta {
+        background: #FFFFFF !important;
+        border: 1px solid var(--linea) !important;
+        border-radius: 12px !important;
+        padding: 16px 18px !important;
+        margin-bottom: 14px !important;
         page-break-inside: avoid;
+        break-inside: avoid;
+        box-shadow: none !important;
+      }
+
+      .tarjeta h4 {
+        font-size: 14.5px !important;
+        color: var(--tinta) !important;
+        margin-bottom: 8px !important;
+      }
+
+      .paso-item {
+        background: var(--superficie-2) !important;
+        border: 1px solid var(--linea-2) !important;
+        padding: 10px 14px !important;
+        border-radius: 8px !important;
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
+
+      .paso-numero {
+        width: 24px !important;
+        height: 24px !important;
+        font-size: 11.5px !important;
+        background: var(--violeta) !important;
+        color: #FFFFFF !important;
+      }
+
+      .paso-contenido h5 {
+        font-size: 13px !important;
+        margin-bottom: 2px !important;
+      }
+
+      .paso-contenido p {
+        font-size: 12px !important;
+      }
+
+      .tabla-visual-wrap {
+        border: 1px solid var(--linea) !important;
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
+
+      .tabla-visual th {
+        background: var(--superficie-2) !important;
+        color: var(--tinta-3) !important;
+        padding: 8px 10px !important;
+        font-size: 10.5px !important;
+      }
+
+      .tabla-visual td {
+        padding: 8px 10px !important;
+        font-size: 11.5px !important;
+      }
+
+      .nota-caja {
+        padding: 10px 14px !important;
+        font-size: 12px !important;
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
+
+      .nota-caja--tip   { background: var(--esmeralda-piel) !important; }
+      .nota-caja--aviso { background: var(--naranja-piel) !important; }
+      .nota-caja--info  { background: var(--violeta-piel) !important; }
+
+      .simulador-ticket {
+        page-break-inside: avoid;
+        break-inside: avoid;
+        border: 2px dashed #B8B2D0 !important;
+        background: #FAFAFD !important;
+        box-shadow: none !important;
+      }
+
+      .grilla-2, .grilla-3 {
+        gap: 12px !important;
+      }
+
+      .micro-card {
+        background: var(--superficie-2) !important;
+        border: 1px solid var(--linea) !important;
+        padding: 12px 14px !important;
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
+
+      footer {
+        border-top: 1px solid var(--linea) !important;
+        padding-top: 12px !important;
+        margin-top: 24px !important;
+        page-break-inside: avoid;
+        font-size: 11px !important;
+        color: var(--tinta-3) !important;
       }
     }
   </style>
@@ -1112,6 +1489,169 @@
   <!-- ==================== CONTENIDO DEL MANUAL ==================== -->
   <main class="contenido">
 
+    <!-- ==================== PORTADA TIPO BROCHURE (IMPRESIÓN / PDF) ==================== -->
+    <section class="brochure-portada">
+      <div class="brochure-portada__top">
+        <div class="brochure-portada__tag">DOCUMENTO CORPORATIVO OFICIAL · EDICIÓN 2026</div>
+        <div class="brochure-portada__badge">SISTEMA INTEGRAL POS & GESTIÓN</div>
+      </div>
+
+      <div class="brochure-portada__centro">
+        <div class="brochure-portada__logo-wrap">
+          <img src="img/logo.svg" alt="BaratoPrimo Logo">
+        </div>
+        <h1 class="brochure-portada__titulo">BaratoPrimo</h1>
+        <p class="brochure-portada__subtitulo">Manual de Operaciones Comerciales y Guía de Usuario</p>
+        <div class="brochure-portada__linea"></div>
+        <p class="brochure-portada__desc">
+          Punto de venta bimoneda de alta velocidad, facturación fiscal adaptada a Venezuela, control de inventario con kardex inmutable, ventas a crédito en divisas y cuadre de caja por turno.
+        </p>
+
+        <div class="brochure-portada__features">
+          <div class="brochure-feat-pill">
+            <span class="dot" style="background:#6C3BF4;"></span>
+            <div>
+              <strong>Punto de Venta</strong>
+              <span>Lector de barras, pagos mixtos y tickets térmicos</span>
+            </div>
+          </div>
+          <div class="brochure-feat-pill">
+            <span class="dot" style="background:#00A87E;"></span>
+            <div>
+              <strong>Tasa Oficial BCV</strong>
+              <span>Sincronización dual automática y Fecha Valor</span>
+            </div>
+          </div>
+          <div class="brochure-feat-pill">
+            <span class="dot" style="background:#F58309;"></span>
+            <div>
+              <strong>Crédito en USD</strong>
+              <span>Amortización inteligente en cuotas y abonos</span>
+            </div>
+          </div>
+          <div class="brochure-feat-pill">
+            <span class="dot" style="background:#0BA5C7;"></span>
+            <div>
+              <strong>Kardex Seguro</strong>
+              <span>Bloqueo estricto de stock negativo y trazabilidad</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="brochure-portada__pie">
+        <div>
+          <strong>BaratoPrimo Cloud POS</strong>
+          <p>Multi-sucursal · Multi-cajero · Funcionamiento Online / Offline</p>
+        </div>
+        <div style="text-align:right;">
+          <strong>Formatos de Impresión</strong>
+          <p>Ticket 58 mm · Ticket 80 mm · Página Carta</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== ÍNDICE TIPO BROCHURE (IMPRESIÓN / PDF) ==================== -->
+    <section class="brochure-indice">
+      <div class="brochure-indice__header">
+        <div class="brochure-indice__eyebrow">CONTENIDO DEL MANUAL</div>
+        <h2>Índice General de Operaciones</h2>
+      </div>
+      <div class="brochure-indice__grid">
+        <div class="brochure-indice__item">
+          <span class="num">01</span>
+          <div>
+            <strong>Introducción, Acceso y Seguridad</strong>
+            <p>Inicio de sesión, solicitud de cuenta y recuperación de clave.</p>
+          </div>
+        </div>
+        <div class="brochure-indice__item">
+          <span class="num">02</span>
+          <div>
+            <strong>Roles y Permisos del Negocio</strong>
+            <p>Matriz jerárquica de cajeros, encargados y administradores.</p>
+          </div>
+        </div>
+        <div class="brochure-indice__item">
+          <span class="num">03</span>
+          <div>
+            <strong>Tasa Oficial del BCV y Fecha Valor</strong>
+            <p>Manejo de divisas (USD/EUR) y trazabilidad cambiaria.</p>
+          </div>
+        </div>
+        <div class="brochure-indice__item">
+          <span class="num">04</span>
+          <div>
+            <strong>Tablero de Inicio (Puesto de Trabajo)</strong>
+            <p>Monitoreo en vivo de inventario, alertas y cobranzas activas.</p>
+          </div>
+        </div>
+        <div class="brochure-indice__item">
+          <span class="num">05</span>
+          <div>
+            <strong>Ventas y Facturación de Mostrador</strong>
+            <p>Cobro rápido, pagos mixtos, tickets térmicos y anulación.</p>
+          </div>
+        </div>
+        <div class="brochure-indice__item">
+          <span class="num">06</span>
+          <div>
+            <strong>Ventas a Crédito y Financiamiento</strong>
+            <p>Cuotas en USD, cálculo de inicial y recargos opcionales.</p>
+          </div>
+        </div>
+        <div class="brochure-indice__item">
+          <span class="num">07</span>
+          <div>
+            <strong>Cartera de Clientes y Búsqueda</strong>
+            <p>Autocompletado con "BUSCAR" y configuración de retenciones.</p>
+          </div>
+        </div>
+        <div class="brochure-indice__item">
+          <span class="num">08</span>
+          <div>
+            <strong>Catálogo y Ficha de Productos</strong>
+            <p>Márgenes de ganancia, alertas de reposición y cobertura.</p>
+          </div>
+        </div>
+        <div class="brochure-indice__item">
+          <span class="num">09</span>
+          <div>
+            <strong>Movimientos de Almacén y Kardex</strong>
+            <p>Entradas, salidas, ajustes y auditoría cronológica.</p>
+          </div>
+        </div>
+        <div class="brochure-indice__item">
+          <span class="num">10</span>
+          <div>
+            <strong>Gráficas y Analítica Comercial</strong>
+            <p>Ranking de ventas, rotación de mercancía y capital detenido.</p>
+          </div>
+        </div>
+        <div class="brochure-indice__item">
+          <span class="num">11</span>
+          <div>
+            <strong>Cuadre de Caja y Arqueo de Turno</strong>
+            <p>Conciliación de billetes, bancos, divisas y auditoría.</p>
+          </div>
+        </div>
+        <div class="brochure-indice__item">
+          <span class="num">12</span>
+          <div>
+            <strong>Mi Comercio y Ajustes de Tienda</strong>
+            <p>Datos fiscales, logotipo y administración de usuarios.</p>
+          </div>
+        </div>
+        <div class="brochure-indice__item">
+          <span class="num">13</span>
+          <div>
+            <strong>Preguntas Frecuentes y Buenas Prácticas</strong>
+            <p>Soporte sin conexión, lectores de barra y temas visuales.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- HERO HEADER -->
     <header class="hero">
       <span class="hero__etiqueta">Documentación Oficial</span>
@@ -1125,6 +1665,11 @@
         <div class="badge-feat"><span style="background:var(--rosa)"></span> Búsqueda ágil de clientes</div>
         <div class="badge-feat"><span style="background:var(--cian)"></span> Tickets térmicos 58mm / 80mm</div>
         <div class="badge-feat"><span style="background:var(--naranja)"></span> Control de crédito y cobranza</div>
+      </div>
+      <div style="margin-top: 22px;">
+        <button type="button" id="btn-hero-print" style="display:inline-flex; align-items:center; gap:8px; padding:11px 20px; background:var(--violeta); color:white; border:none; border-radius:var(--r-s); font-size:14px; font-weight:700; cursor:pointer; box-shadow:0 4px 16px rgba(108,59,244,0.35); font-family:inherit; transition:var(--trans);">
+          <span>🖨️ Imprimir / Guardar como PDF (Formato Brochure)</span>
+        </button>
       </div>
     </header>
 
@@ -1513,6 +2058,63 @@
             <div>
               <strong>Formato internacional automático:</strong> Si guardaste el teléfono como <code>0414-1234567</code>, el sistema lo normaliza a <code>+584141234567</code> para que WhatsApp lo reconozca sin errores.
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SIMULADOR VISUAL DE TICKET TÉRMICO -->
+      <div class="tarjeta" style="text-align:center;">
+        <h4 style="justify-content:center;"><span style="color:var(--cian)">🧾</span> Muestra de Ticket Térmico Fiscal (Ejemplo Visual)</h4>
+        <p style="font-size:13.5px; color:var(--tinta-2); max-width:540px; margin:0 auto 16px;">
+          Así se imprime el comprobante en impresoras térmicas de mostrador (80 mm) o portátiles (58 mm), con el desglose exacto de IVA, formas de pago recibidas y código QR de validación fiscal:
+        </p>
+
+        <div class="simulador-ticket">
+          <div class="centro" style="margin-bottom:8px;">
+            <div style="font-size:15px; font-weight:800; letter-spacing:0.04em;">DISTRIBUIDORA ANDINA C.A.</div>
+            <div style="font-size:11px; color:#555;">RIF: J-403118225</div>
+            <div style="font-size:10.5px; color:#666;">Av. Principal, Edif. Centro, Local 4, Caracas</div>
+            <div style="font-size:10.5px; color:#666;">Tel: 0212-5551234 · 0414-1234567</div>
+          </div>
+          <div class="linea-sep"></div>
+          <div class="fila-dato"><span>COMPROBANTE:</span><strong>F-000184</strong></div>
+          <div class="fila-dato"><span>FECHA:</span><span>24/AGO/2026 10:45 AM</span></div>
+          <div class="fila-dato"><span>CLIENTE:</span><span>Inversiones del Centro C.A.</span></div>
+          <div class="fila-dato"><span>RIF / CI:</span><span>J-309876541</span></div>
+          <div class="fila-dato"><span>CAJERO:</span><span>Ana Torres</span></div>
+          <div class="linea-sep"></div>
+          <div style="font-size:11px; margin-bottom:4px; text-align:left; font-weight:700;">DESCRIPCIÓN · CANT · PRECIO · TOTAL</div>
+          <div class="fila-dato" style="text-align:left;"><span>Aceite Motor 20W50 (x2)</span><span>Bs 1.480,00</span></div>
+          <div class="fila-dato" style="text-align:left;"><span>Filtro de Aire Universal (x1)</span><span>Bs 590,00</span></div>
+          <div class="fila-dato" style="text-align:left;"><span>Bujía Premium Iridium (x4)</span><span>Bs 1.120,00</span></div>
+          <div class="linea-sep"></div>
+          <div class="fila-dato"><span>SUBTOTAL:</span><span>Bs 3.190,00</span></div>
+          <div class="fila-dato"><span>BASE IMPONIBLE (16%):</span><span>Bs 3.190,00</span></div>
+          <div class="fila-dato"><span>IVA (16%):</span><span>Bs 510,40</span></div>
+          <div class="fila-dato" style="font-size:13.5px; font-weight:800; margin-top:4px;">
+            <span>TOTAL A PAGAR:</span><span>Bs 3.700,40</span>
+          </div>
+          <div class="fila-dato" style="font-size:11px; color:#555;">
+            <span>REF. USD (Tasa BCV 784,66):</span><span>$ 4,71</span>
+          </div>
+          <div class="linea-sep"></div>
+          <div style="font-size:11px; font-weight:700; text-align:left; margin-bottom:4px;">FORMAS DE PAGO RECIBIDAS:</div>
+          <div class="fila-dato"><span>· Pago Móvil (Ref: 984512):</span><span>Bs 2.500,00</span></div>
+          <div class="fila-dato"><span>· Efectivo USD ($ 1,53):</span><span>Bs 1.200,40</span></div>
+          <div class="linea-sep"></div>
+          <div class="centro" style="margin-top:10px;">
+            <svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="1.8" style="margin:0 auto 6px; display:block;">
+              <rect x="3" y="3" width="7" height="7" rx="1" fill="#111"/>
+              <rect x="14" y="3" width="7" height="7" rx="1" fill="#111"/>
+              <rect x="3" y="14" width="7" height="7" rx="1" fill="#111"/>
+              <rect x="14" y="14" width="3" height="3" fill="#111"/>
+              <rect x="18" y="18" width="3" height="3" fill="#111"/>
+              <line x1="14" y1="18" x2="14" y2="21" stroke="#111" stroke-width="2"/>
+              <line x1="18" y1="14" x2="21" y2="14" stroke="#111" stroke-width="2"/>
+            </svg>
+            <div style="font-size:9.5px; color:#555;">ESCANEE PARA VALIDAR FACTURA DIGITAL</div>
+            <div style="font-size:11px; font-weight:700; margin-top:6px;">¡Gracias por su compra!</div>
+            <div style="font-size:9.5px; color:#777;">Conserve este comprobante para cualquier cambio.</div>
           </div>
         </div>
       </div>
@@ -2076,10 +2678,12 @@
       btnTema.addEventListener('click', alternarTema);
       if (btnTemaMovil) btnTemaMovil.addEventListener('click', alternarTema);
 
-      // 2. Impresión rápida
-      document.getElementById('btn-imprimir-doc').addEventListener('click', () => {
-        window.print();
-      });
+      // 2. Impresión / Exportación a Brochure PDF
+      const dispararImpresion = () => window.print();
+      const btnImprimir = document.getElementById('btn-imprimir-doc');
+      const btnHeroPrint = document.getElementById('btn-hero-print');
+      if (btnImprimir) btnImprimir.addEventListener('click', dispararImpresion);
+      if (btnHeroPrint) btnHeroPrint.addEventListener('click', dispararImpresion);
 
       // 3. Botón flotante volver arriba
       const btnArriba = document.getElementById('btn-arriba');
