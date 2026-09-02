@@ -10,12 +10,13 @@
    que los dispositivos ya instalados se enteren de la actualización.
    ===================================================================== */
 
-const VERSION = 'baratoprimo-v2.3';
+const VERSION = 'baratoprimo-v2.4';
 
 /* El armazón: lo imprescindible para pintar la aplicación sin red. */
 const ARMAZON = [
   './',
   './index.html',
+  './manual.html',
   './manifest.webmanifest',
   './css/app.css',
   './img/logo.svg',

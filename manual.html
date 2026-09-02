@@ -1,0 +1,1901 @@
+<!DOCTYPE html>
+<html lang="es" data-tema="claro">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manual de Usuario — BaratoPrimo</title>
+  <link rel="icon" type="image/svg+xml" href="img/logo.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    /* =====================================================================
+       MANUAL DE USUARIO OFICIAL — BARATOPRIMO
+       Paleta de color y tokens del sistema visual de BaratoPrimo
+       ===================================================================== */
+    :root {
+      --fondo:         #F3F2F9;
+      --superficie:    #FFFFFF;
+      --superficie-2:  #F8F8FC;
+      --superficie-3:  #EEECF8;
+      --linea:         #E4E2F0;
+      --linea-2:       #EFEDF8;
+
+      --tinta:         #1C1830;
+      --tinta-2:       #5B5478;
+      --tinta-3:       #8F88AB;
+
+      --violeta:       #6C3BF4;
+      --violeta-alto:  #5A2AE0;
+      --violeta-piel:  #EDE6FF;
+
+      --esmeralda:     #00A87E;
+      --esmeralda-piel:#DDF7EF;
+
+      --rosa:          #F0356B;
+      --rosa-piel:     #FFE4EC;
+
+      --naranja:       #F58309;
+      --naranja-piel:  #FFF0DC;
+
+      --cian:          #0BA5C7;
+      --cian-piel:     #DEF4FA;
+
+      --sombra-suave:  0 2px 10px rgba(28, 24, 48, 0.05);
+      --sombra-tarjeta:0 8px 30px rgba(28, 24, 48, 0.07);
+      --sombra-elevada:0 20px 50px rgba(108, 59, 244, 0.15);
+
+      --r-xs:  6px;
+      --r-s:   10px;
+      --r:     16px;
+      --r-l:   24px;
+      --r-p:   999px;
+
+      --trans: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    html[data-tema="oscuro"] {
+      --fondo:         #120F1D;
+      --superficie:    #1B172B;
+      --superficie-2:  #231F36;
+      --superficie-3:  #2B2742;
+      --linea:         #332D4E;
+      --linea-2:       #2A2440;
+
+      --tinta:         #F5F3FF;
+      --tinta-2:       #B2ACD0;
+      --tinta-3:       #7B7598;
+
+      --violeta-piel:  #2D1F5E;
+      --esmeralda-piel:#0F3A2F;
+      --rosa-piel:     #421827;
+      --naranja-piel:  #442911;
+      --cian-piel:     #123542;
+
+      --sombra-suave:  0 2px 10px rgba(0, 0, 0, 0.3);
+      --sombra-tarjeta:0 8px 30px rgba(0, 0, 0, 0.4);
+      --sombra-elevada:0 20px 50px rgba(0, 0, 0, 0.6);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--fondo);
+      color: var(--tinta);
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      font-size: 15.5px;
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+      display: flex;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ==================== BARRA LATERAL ==================== */
+    .sidebar {
+      width: 310px;
+      background: var(--superficie);
+      border-right: 1px solid var(--linea);
+      height: 100vh;
+      position: sticky;
+      top: 0;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      z-index: 100;
+      transition: var(--trans);
+    }
+
+    .sidebar__marca {
+      padding: 24px 20px 18px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      border-bottom: 1px solid var(--linea-2);
+    }
+
+    .sidebar__logo {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #7B4DF7 0%, #6C3BF4 55%, #0BA5C7 100%);
+      display: grid;
+      place-items: center;
+      box-shadow: 0 4px 14px rgba(108, 59, 244, 0.35);
+    }
+
+    .sidebar__logo img {
+      width: 38px;
+      height: 38px;
+    }
+
+    .sidebar__info h1 {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--tinta);
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+    }
+
+    .sidebar__info span {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--violeta);
+      background: var(--violeta-piel);
+      padding: 2px 8px;
+      border-radius: var(--r-p);
+      display: inline-block;
+      margin-top: 4px;
+    }
+
+    .sidebar__buscador {
+      padding: 14px 20px 10px;
+    }
+
+    .busc-box {
+      position: relative;
+    }
+
+    .busc-box input {
+      width: 100%;
+      padding: 10px 14px 10px 38px;
+      background: var(--superficie-2);
+      border: 1px solid var(--linea);
+      border-radius: var(--r-s);
+      font-size: 13.5px;
+      color: var(--tinta);
+      outline: none;
+      transition: var(--trans);
+      font-family: inherit;
+    }
+
+    .busc-box input:focus {
+      border-color: var(--violeta);
+      background: var(--superficie);
+      box-shadow: 0 0 0 3px var(--violeta-piel);
+    }
+
+    .busc-box svg {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--tinta-3);
+      pointer-events: none;
+    }
+
+    .sidebar__menu {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px 12px 24px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--linea) transparent;
+    }
+
+    .menu-categoria {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--tinta-3);
+      padding: 14px 12px 6px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 9px 12px;
+      color: var(--tinta-2);
+      text-decoration: none;
+      font-size: 13.8px;
+      font-weight: 500;
+      border-radius: var(--r-s);
+      transition: var(--trans);
+      margin-bottom: 2px;
+    }
+
+    .nav-item:hover {
+      background: var(--superficie-2);
+      color: var(--tinta);
+      transform: translateX(3px);
+    }
+
+    .nav-item.activo {
+      background: var(--violeta-piel);
+      color: var(--violeta);
+      font-weight: 700;
+    }
+
+    .nav-item svg {
+      flex-shrink: 0;
+      opacity: 0.75;
+    }
+
+    .nav-item.activo svg {
+      opacity: 1;
+      stroke: var(--violeta);
+    }
+
+    .sidebar__pie {
+      padding: 16px 20px;
+      border-top: 1px solid var(--linea-2);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .btn-tema {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      background: var(--superficie-2);
+      border: 1px solid var(--linea);
+      border-radius: var(--r-s);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--tinta);
+      cursor: pointer;
+      transition: var(--trans);
+    }
+
+    .btn-tema:hover {
+      border-color: var(--violeta);
+      color: var(--violeta);
+    }
+
+    .btn-imprimir {
+      padding: 8px 12px;
+      background: var(--superficie-2);
+      border: 1px solid var(--linea);
+      border-radius: var(--r-s);
+      cursor: pointer;
+      color: var(--tinta-2);
+      transition: var(--trans);
+    }
+    .btn-imprimir:hover {
+      color: var(--violeta);
+      border-color: var(--violeta);
+    }
+
+    /* ==================== CONTENIDO PRINCIPAL ==================== */
+    .contenido {
+      flex: 1;
+      padding: 40px 60px 100px;
+      max-width: 1080px;
+      margin: 0 auto;
+    }
+
+    /* Encabezado hero */
+    .hero {
+      background: linear-gradient(135deg, rgba(108,59,244,0.12) 0%, rgba(11,165,199,0.1) 100%), var(--superficie);
+      border: 1px solid var(--linea);
+      border-radius: var(--r-l);
+      padding: 44px;
+      margin-bottom: 48px;
+      box-shadow: var(--sombra-tarjeta);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::after {
+      content: '';
+      position: absolute;
+      right: -40px;
+      bottom: -40px;
+      width: 220px;
+      height: 220px;
+      background: radial-gradient(circle, rgba(108,59,244,0.15) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero__etiqueta {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 14px;
+      background: var(--violeta);
+      color: white;
+      font-size: 12px;
+      font-weight: 700;
+      border-radius: var(--r-p);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+
+    .hero h2 {
+      font-size: 34px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.2;
+      color: var(--tinta);
+      margin-bottom: 14px;
+    }
+
+    .hero p {
+      font-size: 17px;
+      color: var(--tinta-2);
+      max-width: 720px;
+      line-height: 1.6;
+    }
+
+    .hero__badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 26px;
+    }
+
+    .badge-feat {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 14px;
+      background: var(--superficie-2);
+      border: 1px solid var(--linea);
+      border-radius: var(--r-p);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--tinta);
+    }
+
+    .badge-feat span {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    /* Secciones del manual */
+    .seccion {
+      margin-bottom: 64px;
+      scroll-margin-top: 32px;
+    }
+
+    .seccion__cabecera {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 20px;
+      padding-bottom: 14px;
+      border-bottom: 2px solid var(--linea-2);
+    }
+
+    .seccion__icono {
+      width: 44px;
+      height: 44px;
+      border-radius: var(--r);
+      display: grid;
+      place-items: center;
+      background: var(--violeta-piel);
+      color: var(--violeta);
+      flex-shrink: 0;
+    }
+
+    .seccion__icono.verde { background: var(--esmeralda-piel); color: var(--esmeralda); }
+    .seccion__icono.naranja { background: var(--naranja-piel); color: var(--naranja); }
+    .seccion__icono.rosa { background: var(--rosa-piel); color: var(--rosa); }
+    .seccion__icono.cian { background: var(--cian-piel); color: var(--cian); }
+
+    .seccion__cabecera h3 {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--tinta);
+    }
+
+    .seccion__subtitulo {
+      font-size: 16px;
+      color: var(--tinta-2);
+      margin-bottom: 24px;
+      line-height: 1.6;
+    }
+
+    /* Tarjetas micro-componentes */
+    .tarjeta {
+      background: var(--superficie);
+      border: 1px solid var(--linea);
+      border-radius: var(--r);
+      padding: 24px 28px;
+      margin-bottom: 22px;
+      box-shadow: var(--sombra-suave);
+      transition: var(--trans);
+    }
+
+    .tarjeta:hover {
+      border-color: rgba(108, 59, 244, 0.3);
+      box-shadow: var(--sombra-tarjeta);
+    }
+
+    .tarjeta h4 {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--tinta);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .tarjeta p {
+      color: var(--tinta-2);
+      margin-bottom: 14px;
+      line-height: 1.65;
+    }
+
+    .tarjeta p:last-child {
+      margin-bottom: 0;
+    }
+
+    /* Pasos guiados 1, 2, 3 */
+    .pasos-lista {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin: 20px 0;
+    }
+
+    .paso-item {
+      display: flex;
+      gap: 16px;
+      background: var(--superficie-2);
+      border: 1px solid var(--linea-2);
+      padding: 16px 20px;
+      border-radius: var(--r-s);
+      align-items: flex-start;
+    }
+
+    .paso-numero {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--violeta);
+      color: white;
+      font-size: 14px;
+      font-weight: 800;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+      box-shadow: 0 3px 8px rgba(108, 59, 244, 0.3);
+    }
+
+    .paso-contenido h5 {
+      font-size: 15.5px;
+      font-weight: 700;
+      color: var(--tinta);
+      margin-bottom: 4px;
+    }
+
+    .paso-contenido p {
+      font-size: 14px;
+      color: var(--tinta-2);
+      margin: 0;
+      line-height: 1.55;
+    }
+
+    /* Cajas de aviso / notas / tips */
+    .nota-caja {
+      padding: 16px 20px;
+      border-radius: var(--r-s);
+      margin: 20px 0;
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      font-size: 14.5px;
+      line-height: 1.55;
+    }
+
+    .nota-caja svg {
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .nota-caja--tip {
+      background: var(--esmeralda-piel);
+      border: 1px solid rgba(0, 168, 126, 0.35);
+      color: var(--tinta);
+    }
+    .nota-caja--tip svg { stroke: var(--esmeralda); }
+
+    .nota-caja--aviso {
+      background: var(--naranja-piel);
+      border: 1px solid rgba(245, 131, 9, 0.35);
+      color: var(--tinta);
+    }
+    .nota-caja--aviso svg { stroke: var(--naranja); }
+
+    .nota-caja--info {
+      background: var(--violeta-piel);
+      border: 1px solid rgba(108, 59, 244, 0.35);
+      color: var(--tinta);
+    }
+    .nota-caja--info svg { stroke: var(--violeta); }
+
+    /* Tablas visuales */
+    .tabla-visual-wrap {
+      overflow-x: auto;
+      margin: 20px 0;
+      border-radius: var(--r-s);
+      border: 1px solid var(--linea);
+      background: var(--superficie);
+    }
+
+    .tabla-visual {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 14px;
+    }
+
+    .tabla-visual th {
+      background: var(--superficie-2);
+      color: var(--tinta-3);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--linea);
+    }
+
+    .tabla-visual td {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--linea-2);
+      color: var(--tinta-2);
+      vertical-align: middle;
+    }
+
+    .tabla-visual tr:last-child td {
+      border-bottom: none;
+    }
+
+    .tabla-visual tr:hover td {
+      background: var(--superficie-2);
+      color: var(--tinta);
+    }
+
+    .pill-si {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: var(--r-p);
+      background: var(--esmeralda-piel);
+      color: var(--esmeralda);
+      font-weight: 700;
+      font-size: 12px;
+    }
+
+    .pill-no {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: var(--r-p);
+      background: var(--rosa-piel);
+      color: var(--rosa);
+      font-weight: 700;
+      font-size: 12px;
+    }
+
+    .pill-parcial {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: var(--r-p);
+      background: var(--naranja-piel);
+      color: var(--naranja);
+      font-weight: 700;
+      font-size: 12px;
+    }
+
+    /* Grilla de tarjetas (Grid) */
+    .grilla-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+      margin: 20px 0;
+    }
+
+    .grilla-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 18px;
+      margin: 20px 0;
+    }
+
+    .micro-card {
+      background: var(--superficie);
+      border: 1px solid var(--linea);
+      border-radius: var(--r-s);
+      padding: 20px;
+      position: relative;
+    }
+
+    .micro-card__header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .micro-card__titulo {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--tinta);
+    }
+
+    .micro-card__desc {
+      font-size: 13.5px;
+      color: var(--tinta-2);
+      line-height: 1.5;
+    }
+
+    /* Simulación de comprobante / ticket */
+    .simulador-ticket {
+      background: #FFFFFF;
+      color: #111111;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12.5px;
+      padding: 24px;
+      border-radius: var(--r-s);
+      border: 2px dashed #D0CCE0;
+      max-width: 380px;
+      margin: 20px auto;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.06);
+      line-height: 1.45;
+    }
+
+    .simulador-ticket .linea-sep {
+      border-top: 1px dashed #888;
+      margin: 10px 0;
+    }
+
+    .simulador-ticket .centro {
+      text-align: center;
+    }
+
+    .simulador-ticket .fila-dato {
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* Botón flotante para volver arriba */
+    .btn-arriba {
+      position: fixed;
+      bottom: 28px;
+      right: 28px;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--violeta);
+      color: white;
+      border: none;
+      box-shadow: var(--sombra-elevada);
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: var(--trans);
+      z-index: 99;
+    }
+
+    .btn-arriba.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* Menú móvil */
+    .menu-movil-toggle {
+      display: none;
+      position: fixed;
+      bottom: 24px;
+      left: 24px;
+      background: var(--violeta);
+      color: white;
+      padding: 12px 20px;
+      border-radius: var(--r-p);
+      font-size: 14px;
+      font-weight: 700;
+      border: none;
+      box-shadow: var(--sombra-elevada);
+      z-index: 101;
+      cursor: pointer;
+    }
+
+    /* RESPONSIVE */
+    @media (max-width: 980px) {
+      .sidebar {
+        position: fixed;
+        left: -320px;
+        top: 0;
+        bottom: 0;
+      }
+      .sidebar.abierta {
+        left: 0;
+      }
+      .contenido {
+        padding: 24px 20px 80px;
+      }
+      .menu-movil-toggle {
+        display: block;
+      }
+      .hero {
+        padding: 28px 24px;
+      }
+      .hero h2 {
+        font-size: 26px;
+      }
+      .grilla-2, .grilla-3 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* IMPRESIÓN */
+    @media print {
+      .sidebar, .btn-arriba, .menu-movil-toggle, .btn-tema, .btn-imprimir, .sidebar__buscador {
+        display: none !important;
+      }
+      body {
+        background: white !important;
+        color: black !important;
+      }
+      .contenido {
+        max-width: 100% !important;
+        padding: 0 !important;
+      }
+      .tarjeta, .hero, .paso-item, .micro-card {
+        box-shadow: none !important;
+        border: 1px solid #ccc !important;
+        page-break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==================== BARRA LATERAL ==================== -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar__marca">
+      <div class="sidebar__logo">
+        <img src="img/logo.svg" alt="BaratoPrimo Logo">
+      </div>
+      <div class="sidebar__info">
+        <h1>BaratoPrimo</h1>
+        <span>Manual de Usuario</span>
+      </div>
+    </div>
+
+    <div class="sidebar__buscador">
+      <div class="busc-box">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" id="buscador-manual" placeholder="Buscar función..." autocomplete="off">
+      </div>
+    </div>
+
+    <nav class="sidebar__menu" id="menu-nav">
+      <p class="menu-categoria">General</p>
+      <a href="#introduccion" class="nav-item activo">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+        <span>1. Introducción y Acceso</span>
+      </a>
+      <a href="#roles" class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span>2. Roles y Permisos</span>
+      </a>
+      <a href="#tasa-bcv" class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 18V6"/></svg>
+        <span>3. Tasa Oficial BCV</span>
+      </a>
+
+      <p class="menu-categoria">Operación Diaria</p>
+      <a href="#inicio" class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <span>4. Tablero de Inicio</span>
+      </a>
+      <a href="#ventas" class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+        <span>5. Ventas y Facturación</span>
+      </a>
+      <a href="#cobranza" class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+        <span>6. Créditos y Cobranzas</span>
+      </a>
+      <a href="#clientes" class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span>7. Cartera de Clientes y Búsqueda</span>
+      </a>
+
+      <p class="menu-categoria">Almacén e Inventario</p>
+      <a href="#productos" class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+        <span>8. Catálogo de Productos</span>
+      </a>
+      <a href="#movimientos" class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+        <span>9. Movimientos y Kardex</span>
+      </a>
+      <a href="#graficas" class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        <span>10. Gráficas y Analítica</span>
+      </a>
+
+      <p class="menu-categoria">Cierre y Ajustes</p>
+      <a href="#caja" class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+        <span>11. Cuadre de Caja</span>
+      </a>
+      <a href="#comercio" class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg>
+        <span>12. Mi Comercio y Ajustes</span>
+      </a>
+      <a href="#faq" class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <span>13. Preguntas Frecuentes</span>
+      </a>
+    </nav>
+
+    <div class="sidebar__pie">
+      <button type="button" class="btn-tema" id="btn-toggle-tema">
+        <span id="icono-tema">🌙</span>
+        <span id="texto-tema">Modo Oscuro</span>
+      </button>
+      <button type="button" class="btn-imprimir" id="btn-imprimir-doc" title="Imprimir o guardar PDF">
+        🖨️
+      </button>
+    </div>
+  </aside>
+
+  <button class="menu-movil-toggle" id="btn-menu-movil">
+    ☰ Menú del Manual
+  </button>
+
+  <button class="btn-arriba" id="btn-arriba" title="Volver arriba">
+    ↑
+  </button>
+
+  <!-- ==================== CONTENIDO DEL MANUAL ==================== -->
+  <main class="contenido">
+
+    <!-- HERO HEADER -->
+    <header class="hero">
+      <span class="hero__etiqueta">Documentación Oficial</span>
+      <h2>Manual de Usuario de BaratoPrimo</h2>
+      <p>
+        Guía integral paso a paso para el uso operativo de <strong>BaratoPrimo</strong>: punto de venta rápido, facturación con impuestos desglosados, inventario con kardex inmutable, ventas a crédito en divisas y cuadre de caja por turno.
+      </p>
+      <div class="hero__badges">
+        <div class="badge-feat"><span style="background:var(--esmeralda)"></span> Multi-moneda (Bs, USD, EUR)</div>
+        <div class="badge-feat"><span style="background:var(--violeta)"></span> Tasa oficial BCV automática</div>
+        <div class="badge-feat"><span style="background:var(--rosa)"></span> Búsqueda ágil de clientes</div>
+        <div class="badge-feat"><span style="background:var(--cian)"></span> Tickets térmicos 58mm / 80mm</div>
+        <div class="badge-feat"><span style="background:var(--naranja)"></span> Control de crédito y cobranza</div>
+      </div>
+    </header>
+
+    <!-- 1. INTRODUCCIÓN Y ACCESO -->
+    <section class="seccion" id="introduccion">
+      <div class="seccion__cabecera">
+        <div class="seccion__icono">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+        </div>
+        <div>
+          <h3>1. Introducción, Acceso y Recuperación</h3>
+        </div>
+      </div>
+      <p class="seccion__subtitulo">
+        BaratoPrimo está diseñado para funcionar de manera fluida y sin tropiezos en computadoras de caja, laptops, tabletas táctiles o teléfonos móviles.
+      </p>
+
+      <div class="tarjeta">
+        <h4><span style="color:var(--violeta)">✦</span> ¿Cómo iniciar sesión?</h4>
+        <p>Para ingresar al sistema sigue estos sencillos pasos:</p>
+        <div class="pasos-lista">
+          <div class="paso-item">
+            <div class="paso-numero">1</div>
+            <div class="paso-contenido">
+              <h5>Abre la aplicación</h5>
+              <p>Ingresa a la dirección web de tu negocio desde cualquier navegador moderno (Google Chrome, Safari, Microsoft Edge o Mozilla Firefox).</p>
+            </div>
+          </div>
+          <div class="paso-item">
+            <div class="paso-numero">2</div>
+            <div class="paso-contenido">
+              <h5>Escribe tus credenciales</h5>
+              <p>Coloca tu <strong>correo electrónico</strong> registrado y tu <strong>contraseña</strong>. Si deseas verificar que escribiste la clave correctamente, pulsa el icono del <strong>ojo</strong> a la derecha del campo.</p>
+            </div>
+          </div>
+          <div class="paso-item">
+            <div class="paso-numero">3</div>
+            <div class="paso-contenido">
+              <h5>Presiona "Entrar"</h5>
+              <p>El sistema validará tus permisos y abrirá la pantalla correspondiente a tu rol y al comercio asignado.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grilla-2">
+        <div class="tarjeta">
+          <h4>Solicitud de Cuenta Nueva</h4>
+          <p>
+            Si eres un empleado o cajero nuevo, pulsa en la pestaña superior <strong>"Crear cuenta"</strong>:
+          </p>
+          <ul style="padding-left:20px; color:var(--tinta-2); font-size:14px; line-height:1.6;">
+            <li>Ingresa tu nombre y apellido completo.</li>
+            <li>Coloca tu correo corporativo o personal.</li>
+            <li>Define tu contraseña secreta (mínimo 8 caracteres).</li>
+            <li>Escribe el nombre de la empresa o sucursal.</li>
+            <li>Selecciona el rol solicitado (facturador, inventario, etc.).</li>
+          </ul>
+          <p style="margin-top:10px; font-size:13px; color:var(--tinta-3);">
+            <em>Nota: Tu cuenta quedará en espera hasta que un Administrador la apruebe y te vincule al comercio.</em>
+          </p>
+        </div>
+
+        <div class="tarjeta">
+          <h4>¿Olvidaste tu contraseña?</h4>
+          <p>
+            Bajo el botón de inicio de sesión se encuentra el enlace <strong>"¿Olvidaste tu contraseña?"</strong>:
+          </p>
+          <p style="font-size:14px;">
+            Al pulsarlo y escribir tu correo, el sistema enviará un enlace de restablecimiento seguro directo a tu bandeja de entrada para que crees una nueva clave de acceso en pocos segundos.
+          </p>
+          <div class="nota-caja nota-caja--tip" style="margin-top:12px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+            <div><strong>Instalación como App:</strong> En Chrome o Edge en tu computadora, haz clic en el icono de instalación en la barra de direcciones para tener BaratoPrimo como ventana dedicada en tu escritorio sin barra de navegación.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. ROLES Y PERMISOS -->
+    <section class="seccion" id="roles">
+      <div class="seccion__cabecera">
+        <div class="seccion__icono naranja">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <div>
+          <h3>2. Roles y Permisos del Negocio</h3>
+        </div>
+      </div>
+      <p class="seccion__subtitulo">
+        BaratoPrimo cuenta con una estructura de permisos jerárquica para proteger el inventario y las finanzas del comercio. Cada miembro del equipo tiene acceso solo a lo que le compete.
+      </p>
+
+      <div class="tabla-visual-wrap">
+        <table class="tabla-visual">
+          <thead>
+            <tr>
+              <th>Rol de Usuario</th>
+              <th>Ver Inventario</th>
+              <th>Modificar Stock / Bajas</th>
+              <th>Punto de Venta / Facturar</th>
+              <th>Anular Facturas</th>
+              <th>Cuadre de Caja</th>
+              <th>Gestión de Personal</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Super Administrador</strong></td>
+              <td><span class="pill-si">Sí (Todos)</span></td>
+              <td><span class="pill-si">Sí</span></td>
+              <td><span class="pill-si">Sí</span></td>
+              <td><span class="pill-si">Sí</span></td>
+              <td><span class="pill-si">Global y por cajero</span></td>
+              <td><span class="pill-si">Total (Todos los comercios)</span></td>
+            </tr>
+            <tr>
+              <td><strong>Administrador</strong></td>
+              <td><span class="pill-si">Sí</span></td>
+              <td><span class="pill-si">Sí</span></td>
+              <td><span class="pill-si">Sí</span></td>
+              <td><span class="pill-si">Sí</span></td>
+              <td><span class="pill-si">Auditoría y propio</span></td>
+              <td><span class="pill-si">Operadores de su tienda</span></td>
+            </tr>
+            <tr>
+              <td><strong>Operador Facturador</strong></td>
+              <td><span class="pill-parcial">Solo Lectura</span></td>
+              <td><span class="pill-no">No</span></td>
+              <td><span class="pill-si">Sí</span></td>
+              <td><span class="pill-no">No</span></td>
+              <td><span class="pill-si">Solo su propia caja</span></td>
+              <td><span class="pill-no">No</span></td>
+            </tr>
+            <tr>
+              <td><strong>Operador de Inventario</strong></td>
+              <td><span class="pill-si">Sí</span></td>
+              <td><span class="pill-si">Sí</span></td>
+              <td><span class="pill-no">No</span></td>
+              <td><span class="pill-no">No</span></td>
+              <td><span class="pill-no">No</span></td>
+              <td><span class="pill-no">No</span></td>
+            </tr>
+            <tr>
+              <td><strong>Operador Mixto</strong></td>
+              <td><span class="pill-si">Sí</span></td>
+              <td><span class="pill-parcial">Solo Entradas/Ajustes</span></td>
+              <td><span class="pill-si">Sí</span></td>
+              <td><span class="pill-no">No</span></td>
+              <td><span class="pill-si">Solo su propia caja</span></td>
+              <td><span class="pill-no">No</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="nota-caja nota-caja--info">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        <div>
+          <strong>Aislamiento Multi-tienda:</strong> Si una empresa tiene varias sucursales (por ejemplo: Sede Centro y Sede Este), los operadores asignados a la Sede Centro <strong>nunca podrán ver ni alterar</strong> los clientes, ventas o inventario de la Sede Este. Cada sucursal maneja su propia numeración de facturas (desde F-000001).
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. TASA OFICIAL BCV -->
+    <section class="seccion" id="tasa-bcv">
+      <div class="seccion__cabecera">
+        <div class="seccion__icono verde">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 18V6"/></svg>
+        </div>
+        <div>
+          <h3>3. Tasa Oficial del Banco Central de Venezuela (BCV)</h3>
+        </div>
+      </div>
+      <p class="seccion__subtitulo">
+        En Venezuela el valor del bolívar frente al dólar y al euro cambia diariamente. BaratoPrimo sincroniza automáticamente la tasa oficial para evitar cálculos manuales erróneos.
+      </p>
+
+      <div class="grilla-2">
+        <div class="tarjeta">
+          <h4>¿Cómo funciona la sincronización?</h4>
+          <p>
+            El sistema consulta dos veces al día el portal oficial del BCV (a las <strong>8:30 am</strong> al abrir la jornada y a las <strong>2:30 pm</strong> tras la publicación vespertina).
+          </p>
+          <p>
+            En la barra superior de la aplicación siempre verás un cintillo informativo:
+          </p>
+          <div style="background:var(--superficie-2); padding:10px 14px; border-radius:var(--r-s); border:1px solid var(--linea); font-size:13.5px; margin:10px 0;">
+            💵 <strong>Tasa BCV:</strong> 784,66 Bs/USD · <em>Fecha valor lunes, 24 agosto</em>
+          </div>
+          <p style="font-size:13.5px;">
+            Si el portal principal del BCV tiene alguna interrupción técnica, BaratoPrimo consulta automáticamente fuentes espejo oficiales garantizando que nunca te quedes sin tasa.
+          </p>
+        </div>
+
+        <div class="tarjeta">
+          <h4>¿Qué significa "Fecha Valor"?</h4>
+          <p>
+            El Banco Central publica en la tarde de cada día hábil la tasa que entrará en vigor el día hábil siguiente (la publicada el viernes en la tarde rige para el lunes).
+          </p>
+          <p>
+            BaratoPrimo respeta estrictamente la <strong>Fecha Valor</strong>:
+          </p>
+          <ul style="padding-left:20px; color:var(--tinta-2); font-size:14px; line-height:1.6;">
+            <li>Evita confusiones al facturar entre lo publicado y lo exigido por la ley.</li>
+            <li>Cada factura guarda la tasa exacta con la que fue emitida.</li>
+            <li>Si un cliente consulta una factura emitida hace 15 días, el sistema desglosa los montos en base a la tasa de ese día específico.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. TABLERO DE INICIO -->
+    <section class="seccion" id="inicio">
+      <div class="seccion__cabecera">
+        <div class="seccion__icono">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        </div>
+        <div>
+          <h3>4. El Tablero de Inicio (Puesto de Trabajo)</h3>
+        </div>
+      </div>
+      <p class="seccion__subtitulo">
+        Al ingresar a BaratoPrimo, la pantalla de Inicio condensa la salud operativa de tu negocio en tiempo real en una sola vista limpia y clara.
+      </p>
+
+      <div class="grilla-3">
+        <div class="micro-card">
+          <div class="micro-card__header">
+            <span style="font-size:24px;">📦</span>
+            <span class="micro-card__titulo">Existencias Globales</span>
+          </div>
+          <p class="micro-card__desc">Total de unidades de mercancía disponibles en el almacén sumando todos los artículos activos.</p>
+        </div>
+        <div class="micro-card">
+          <div class="micro-card__header">
+            <span style="font-size:24px;">⚠️</span>
+            <span class="micro-card__titulo">Alertas de Stock</span>
+          </div>
+          <p class="micro-card__desc">Cantidad de productos que se han agotado por completo o han caído por debajo del mínimo de seguridad.</p>
+        </div>
+        <div class="micro-card">
+          <div class="micro-card__header">
+            <span style="font-size:24px;">💰</span>
+            <span class="micro-card__titulo">Valor del Almacén</span>
+          </div>
+          <p class="micro-card__desc">Capital invertido en inventario (Unidades en existencia × Costo de adquisición) calculado al instante.</p>
+        </div>
+      </div>
+
+      <div class="tarjeta">
+        <h4><span style="color:var(--esmeralda)">✦</span> Componentes Clave del Tablero</h4>
+        <div class="pasos-lista">
+          <div class="paso-item">
+            <div class="paso-numero">A</div>
+            <div class="paso-contenido">
+              <h5>Gráfica de Flujo de 30 Días</h5>
+              <p>Muestra el volumen de salidas y rotación de mercancía en el último mes. Permite identificar picos de venta y días lentos.</p>
+            </div>
+          </div>
+          <div class="paso-item">
+            <div class="paso-numero">B</div>
+            <div class="paso-contenido">
+              <h5>Panel de Existencias Críticas</h5>
+              <p>Lista interactiva que te avisa con etiquetas de color rojo (Agotado) o naranja (Bajo Mínimo). Al hacer clic sobre cualquier producto se abre su ficha para reponer mercancía con un botón.</p>
+            </div>
+          </div>
+          <div class="paso-item">
+            <div class="paso-numero">C</div>
+            <div class="paso-contenido">
+              <h5>Panel de Cobranza de Créditos</h5>
+              <p>Sección dedicada a las cuentas por cobrar pendientes. Te muestra el nombre del cliente, teléfono, comprobante, número de cuota, fecha de vencimiento y días de atraso, con botón directo de <strong>"Cobrar abono"</strong>.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. VENTAS Y FACTURACIÓN -->
+    <section class="seccion" id="ventas">
+      <div class="seccion__cabecera">
+        <div class="seccion__icono rosa">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+        </div>
+        <div>
+          <h3>5. Módulo de Ventas y Facturación (Punto de Venta)</h3>
+        </div>
+      </div>
+      <p class="seccion__subtitulo">
+        El corazón de tu mostrador. Diseñado para procesar cobros de forma ágil, precisa y sin fricciones, adaptado a las dinámicas del comercio venezolano.
+      </p>
+
+      <div class="tarjeta">
+        <h4>Paso a Paso: Cómo Emitir una Venta en Mostrador</h4>
+        <div class="pasos-lista">
+          <div class="paso-item">
+            <div class="paso-numero">1</div>
+            <div class="paso-contenido">
+              <h5>Selecciona o crea el Cliente</h5>
+              <p>Escribe el nombre o documento en el buscador. Si es un cliente nuevo, pulsa <strong>"+ Nuevo"</strong> y en 5 segundos quedará registrado.</p>
+            </div>
+          </div>
+          <div class="paso-item">
+            <div class="paso-numero">2</div>
+            <div class="paso-contenido">
+              <h5>Agrega los Productos al Carrito</h5>
+              <p>Puedes escanear con la <strong>pistola lectora de códigos de barra</strong> o escribir el nombre del artículo. Cada renglón te permite modificar la cantidad y, si tienes permiso, adaptar el precio de venta unitario.</p>
+            </div>
+          </div>
+          <div class="paso-item">
+            <div class="paso-numero">3</div>
+            <div class="paso-contenido">
+              <h5>Modalidad de IVA (Impuesto)</h5>
+              <p>El sistema soporta productos gravados (16%), productos <strong>Exentos de IVA</strong> (que se declaran en Base Exenta) y un interruptor <em>"El precio ya incluye IVA"</em> que desglosa el impuesto hacia atrás si manejas precios finales en catálogo.</p>
+            </div>
+          </div>
+          <div class="paso-item">
+            <div class="paso-numero">4</div>
+            <div class="paso-contenido">
+              <h5>Registra los Métodos de Pago (Pagos Mixtos)</h5>
+              <p>Una misma factura puede ser cancelada combinando diferentes vías de pago. El sistema actualiza en tiempo real lo recibido, lo restante y el vuelto a entregar.</p>
+            </div>
+          </div>
+          <div class="paso-item">
+            <div class="paso-numero">5</div>
+            <div class="paso-contenido">
+              <h5>Confirmación y Emisión</h5>
+              <p>Al pulsar <strong>"Emitir venta"</strong> verás una ventana de resumen. Al confirmar, el inventario se descuenta automáticamente, se genera el número correlativo fiscal y se muestra el ticket con su código QR.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tarjeta">
+        <h4>Métodos de Pago Soportados</h4>
+        <div class="grilla-3">
+          <div class="micro-card">
+            <strong>💳 Tarjeta de Débito:</strong>
+            <p class="micro-card__desc">Ingresa el monto y los últimos dígitos del lote o número de operación del punto de venta (POS físico).</p>
+          </div>
+          <div class="micro-card">
+            <strong>💵 Efectivo Bs:</strong>
+            <p class="micro-card__desc">Calcula el vuelto exacto a devolver al cliente en bolívares al ingresar el monto en efectivo entregado.</p>
+          </div>
+          <div class="micro-card">
+            <strong>💲 Efectivo USD / EUR:</strong>
+            <p class="micro-card__desc">Registra los billetes en divisas a la tasa pactada o del BCV, calculando el equivalente en Bs y el vuelto.</p>
+          </div>
+          <div class="micro-card">
+            <strong>📱 Pago Móvil:</strong>
+            <p class="micro-card__desc">Solicita banco de origen y los últimos 6 dígitos de la referencia para fácil conciliación bancaria.</p>
+          </div>
+          <div class="micro-card">
+            <strong>🏛️ Transferencia Bancaria:</strong>
+            <p class="micro-card__desc">Registro de transferencias del mismo banco o interbancarias inmediatas con su número de comprobante.</p>
+          </div>
+          <div class="micro-card">
+            <strong>📑 Retención IVA / ISLR:</strong>
+            <p class="micro-card__desc">Para clientes calificados como Contribuyentes Especiales SENIAT (permite descontar el 75% o 100% de retención).</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="grilla-2">
+        <div class="tarjeta">
+          <h4>Impresión de Tickets y Código QR</h4>
+          <p>Al terminar la venta o abrir cualquier comprobante histórico en <code>#/venta/ID</code>:</p>
+          <ul style="padding-left:20px; color:var(--tinta-2); font-size:14px; line-height:1.6;">
+            <li><strong>Impresión Térmica 58 mm:</strong> Ideal para impresoras portátiles bluetooth de pequeño formato.</li>
+            <li><strong>Impresión Térmica 80 mm:</strong> Estándar de la mayoría de impresoras de mostrador (Epson, Bixolon, Xprinter).</li>
+            <li><strong>Página Completa (Carta):</strong> Formato tradicional centrado con todos los desgloses para clientes corporativos.</li>
+            <li><strong>Código QR Dinámico:</strong> Al escanearlo con cualquier teléfono móvil abre la factura digitalmente o muestra el resumen verificado de la venta.</li>
+          </ul>
+        </div>
+
+        <div class="tarjeta">
+          <h4>Compartir por WhatsApp Directo</h4>
+          <p>
+            Junto a la opción de imprimir, tienes el botón <strong>"Compartir"</strong>:
+          </p>
+          <p style="font-size:14px;">
+            Si el cliente tiene su teléfono móvil registrado, BaratoPrimo abre instantáneamente el chat de WhatsApp con el mensaje listo: detalle de productos, subtotal, IVA, formas de pago y enlace de verificación digital.
+          </p>
+          <div class="nota-caja nota-caja--aviso" style="margin-top:10px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <div>
+              <strong>Formato internacional automático:</strong> Si guardaste el teléfono como <code>0414-1234567</code>, el sistema lo normaliza a <code>+584141234567</code> para que WhatsApp lo reconozca sin errores.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tarjeta">
+        <h4><span style="color:var(--rosa)">⛔</span> Proceso de Anulación de Facturas</h4>
+        <p>
+          En BaratoPrimo un comprobante emitido <strong>no se puede borrar ni alterar</strong> para garantizar la transparencia contable y evitar fraudes. En su lugar, se anula formalmente.
+        </p>
+        <p><strong>¿Cómo anular una venta?</strong> (Exclusivo para Administradores):</p>
+        <div class="pasos-lista">
+          <div class="paso-item">
+            <div class="paso-numero">1</div>
+            <div class="paso-contenido">
+              <h5>Abre el comprobante</h5>
+              <p>Busca la venta en la lista de Ventas y presiona <strong>"Ver detalle"</strong>.</p>
+            </div>
+          </div>
+          <div class="paso-item">
+            <div class="paso-numero">2</div>
+            <div class="paso-contenido">
+              <h5>Pulsa "Anular venta"</h5>
+              <p>Se abrirá una ventana de seguridad donde debes seleccionar el motivo obligatorio (Error de facturación, Devolución de cliente, Pago rechazado, Mercancía no entregada o Duplicada).</p>
+            </div>
+          </div>
+          <div class="paso-item">
+            <div class="paso-numero">3</div>
+            <div class="paso-contenido">
+              <h5>Confirmación por número</h5>
+              <p>El sistema te exigirá escribir manualmente el número de la factura (ej: <code>F-000125</code>) para evitar anulaciones accidentales.</p>
+            </div>
+          </div>
+          <div class="paso-item">
+            <div class="paso-numero">4</div>
+            <div class="paso-contenido">
+              <h5>Efecto inmediato en inventario y caja</h5>
+              <p>Todos los artículos de la factura <strong>regresan automáticamente al stock</strong> con un movimiento de entrada referenciado, la venta se excluye de los totales de facturación y se cancelan las deudas si era a crédito.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. CRÉDITOS Y COBRANZAS -->
+    <section class="seccion" id="cobranza">
+      <div class="seccion__cabecera">
+        <div class="seccion__icono naranja">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+        </div>
+        <div>
+          <h3>6. Ventas a Crédito y Gestión de Cobranza</h3>
+        </div>
+      </div>
+      <p class="seccion__subtitulo">
+        Vender a crédito en Venezuela requiere blindar el capital contra la devaluación. BaratoPrimo implementa un modelo de financiamiento en dólares con amortización flexible.
+      </p>
+
+      <div class="grilla-2">
+        <div class="tarjeta">
+          <h4>¿Cómo registrar una Venta a Crédito?</h4>
+          <p>Al seleccionar la forma de pago <strong>"Crédito"</strong> en el módulo de ventas:</p>
+          <div class="pasos-lista">
+            <div class="paso-item">
+              <div class="paso-numero">1</div>
+              <div class="paso-contenido">
+                <h5>Monto de Pago Inicial (Anticipo)</h5>
+                <p>Indica cuánto dinero cancela el cliente hoy (puede ser $0 o una inicial en cualquier método de pago).</p>
+              </div>
+            </div>
+            <div class="paso-item">
+              <div class="paso-numero">2</div>
+              <div class="paso-contenido">
+                <h5>Número y Frecuencia de Cuotas</h5>
+                <p>Elige en cuántas partes cancelará el saldo restante (ej: 2, 3 o 4 cuotas) y cada cuánto tiempo (semanal, quincenal o mensual).</p>
+              </div>
+            </div>
+            <div class="paso-item">
+              <div class="paso-numero">3</div>
+              <div class="paso-contenido">
+                <h5>Recargo por Crédito (%) Opcional</h5>
+                <p>Si tu negocio aplica una tasa de financiamiento (ej: 5% o 10%), el sistema lo calculará sin modificar el costo base de la mercancía.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tarjeta">
+          <h4>Blindaje Cambiario en Dólares</h4>
+          <div class="nota-caja nota-caja--tip">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+            <div>
+              <strong>Las cuotas se fijan en USD:</strong> El saldo pendiente se divide en cuotas en dólares (USD). De esta manera, aunque el bolívar cambie en dos semanas, el valor real de la deuda de tu cliente no se devalúa.
+            </div>
+          </div>
+          <p><strong>Cobro del abono:</strong></p>
+          <p style="font-size:14px;">
+            Al momento de cobrar la cuota, el sistema toma el monto en USD y lo multiplica por la <strong>tasa oficial del día</strong>. El cliente puede pagar en bolívares por pago móvil, en divisas en efectivo o por tarjeta.
+          </p>
+          <p><strong>Amortización inteligente:</strong></p>
+          <p style="font-size:14px;">
+            Si una cuota es de $25 y el cliente abona $50, el sistema cancela la cuota actual y adelanta automáticamente la siguiente cuota, recalculando el plan en vivo.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. CARTERA DE CLIENTES Y BÚSQUEDA -->
+    <section class="seccion" id="clientes">
+      <div class="seccion__cabecera">
+        <div class="seccion__icono cian">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+        <div>
+          <h3>7. Cartera de Clientes y Búsqueda por Documento (RIF / Cédula)</h3>
+        </div>
+      </div>
+      <p class="seccion__subtitulo">
+        Mantén tu base de clientes organizada y localiza rápidamente su información fiscal y de contacto al momento de vender o registrar.
+      </p>
+
+      <div class="tarjeta">
+        <h4><span style="color:var(--cian)">✦</span> Búsqueda Rápida de Clientes ("🔍 BUSCAR")</h4>
+        <p>
+          Al registrar o atender a un cliente, el botón <strong>"🔍 BUSCAR"</strong> junto al documento fiscal permite verificar si el cliente ya existe en el sistema o padrón comercial para autocompletar su ficha sin tener que escribir todo nuevamente:
+        </p>
+        <div class="pasos-lista">
+          <div class="paso-item">
+            <div class="paso-numero">1</div>
+            <div class="paso-contenido">
+              <h5>Selecciona el prefijo de documento</h5>
+              <p>Elige entre <strong>V-</strong> (Cédula venezolana), <strong>E-</strong> (Extranjero), <strong>J-</strong> (RIF Jurídico), <strong>G-</strong> (Gubernamental) o <strong>P-</strong> (Pasaporte).</p>
+            </div>
+          </div>
+          <div class="paso-item">
+            <div class="paso-numero">2</div>
+            <div class="paso-contenido">
+              <h5>Escribe el número y presiona "🔍 BUSCAR"</h5>
+              <p>Escribe el número del documento o RIF (por ejemplo: <code>403118225</code> con prefijo <code>J-</code>) y haz clic en el botón de búsqueda.</p>
+            </div>
+          </div>
+          <div class="paso-item">
+            <div class="paso-numero">3</div>
+            <div class="paso-contenido">
+              <h5>Carga inmediata de datos registrados</h5>
+              <p>Si el cliente ya tiene historial o registro en la base de datos, el sistema completará de inmediato su <strong>Nombre o Razón Social</strong>, teléfono y dirección fiscal, ahorrando tiempo en caja.</p>
+            </div>
+          </div>
+          <div class="paso-item">
+            <div class="paso-numero">4</div>
+            <div class="paso-contenido">
+              <h5>Registro de Clientes Nuevos</h5>
+              <p>Si es la primera compra de ese cliente o empresa, completa sus nombres y datos de contacto en el formulario. Al pulsar <strong>"Guardar"</strong> quedará archivado permanentemente en tu cartera.</p>
+            </div>
+          </div>
+          <div class="paso-item">
+            <div class="paso-numero">5</div>
+            <div class="paso-contenido">
+              <h5>Configuración de Agente de Retención</h5>
+              <p>Si el cliente es una empresa o Sujeto Pasivo Especial que aplica retenciones, activa la casilla <em>"Agente de Retención"</em> e indica el porcentaje correspondiente (<strong>75%</strong> o <strong>100%</strong>) para que sus facturas apliquen el descuento tributario exacto.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tarjeta">
+        <h4>Ficha Individual del Cliente</h4>
+        <p>Al hacer clic en cualquier cliente desde el menú <strong>Clientes</strong>, accedes a su historial comercial:</p>
+        <ul style="padding-left:20px; color:var(--tinta-2); font-size:14px; line-height:1.6;">
+          <li>Total acumulado comprado en bolívares y en dólares.</li>
+          <li>Total de IVA aportado y retenido.</li>
+          <li>Saldo pendiente de cobro en caso de tener compras a crédito activas.</li>
+          <li>Lista completa de todas sus facturas emitidas con acceso directo para ver o imprimir tickets.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 8. CATÁLOGO DE PRODUCTOS -->
+    <section class="seccion" id="productos">
+      <div class="seccion__cabecera">
+        <div class="seccion__icono verde">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+        </div>
+        <div>
+          <h3>8. Catálogo y Ficha de Productos</h3>
+        </div>
+      </div>
+      <p class="seccion__subtitulo">
+        El inventario de BaratoPrimo une el catálogo visual de artículos con las existencias reales, ordenado siempre por urgencia para que sepas qué reponer primero.
+      </p>
+
+      <div class="tarjeta">
+        <h4>Cómo Dar de Alta un Nuevo Producto</h4>
+        <div class="pasos-lista">
+          <div class="paso-item">
+            <div class="paso-numero">1</div>
+            <div class="paso-contenido">
+              <h5>Datos de Identificación</h5>
+              <p>Coloca el <strong>Nombre del producto</strong>, <strong>Código SKU / Código de barras</strong> (puedes disparar con la pistola lectora sobre el empaque para que se llene solo) y la <strong>Categoría</strong> (ej: Alimentos, Ferretería, Repuestos).</p>
+            </div>
+          </div>
+          <div class="paso-item">
+            <div class="paso-numero">2</div>
+            <div class="paso-contenido">
+              <h5>Stock Mínimo de Alerta</h5>
+              <p>Define cuántas unidades necesitas tener como reserva. Cuando el inventario caiga a este número o menos, el producto aparecerá destacado en color naranja.</p>
+            </div>
+          </div>
+          <div class="paso-item">
+            <div class="paso-numero">3</div>
+            <div class="paso-contenido">
+              <h5>Costo, Precio de Venta y Margen</h5>
+              <p>Escribe tu costo de compra y tu precio de venta. El sistema calcula en vivo tu <strong>margen de ganancia comercial en porcentaje (%)</strong> para que sepas exactamente cuánto ganas.</p>
+            </div>
+          </div>
+          <div class="paso-item">
+            <div class="paso-numero">4</div>
+            <div class="paso-contenido">
+              <h5>Condición de IVA (Exento o Gravado)</h5>
+              <p>Marca la casilla <strong>"Producto exento de IVA"</strong> si se trata de medicinas, alimentos básicos o rubros no gravados según la legislación venezolana.</p>
+            </div>
+          </div>
+          <div class="paso-item">
+            <div class="paso-numero">5</div>
+            <div class="paso-contenido">
+              <h5>Existencia Inicial y Fotografía</h5>
+              <p>Puedes subir una foto del producto (se optimiza sola) y colocar la existencia física con la que arrancas. BaratoPrimo creará un movimiento de entrada formal para que el kardex cuadre desde el primer minuto.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tarjeta">
+        <h4>La Ficha Detallada de Producto</h4>
+        <p>Al hacer clic sobre cualquier producto se despliega su ficha analítica:</p>
+        <div class="grilla-3">
+          <div class="micro-card">
+            <strong>📊 Días de Cobertura:</strong>
+            <p class="micro-card__desc">Calcula cuántos días te durará el stock actual según el promedio de ventas del último mes.</p>
+          </div>
+          <div class="micro-card">
+            <strong>📈 Curva de Saldo:</strong>
+            <p class="micro-card__desc">Gráfica que muestra la evolución de entradas y salidas en el tiempo para detectar estacionalidad.</p>
+          </div>
+          <div class="micro-card">
+            <strong>💵 Capital en Existencia:</strong>
+            <p class="micro-card__desc">Muestra la cantidad de dinero exacta inmovilizada en ese producto (Stock × Costo).</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 9. MOVIMIENTOS Y KARDEX -->
+    <section class="seccion" id="movimientos">
+      <div class="seccion__cabecera">
+        <div class="seccion__icono">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+        </div>
+        <div>
+          <h3>9. Movimientos de Almacén y Kardex Inmutable</h3>
+        </div>
+      </div>
+      <p class="seccion__subtitulo">
+        En BaratoPrimo el stock <strong>nunca se modifica escribiendo un número encima</strong>. Todo cambio de existencia queda auditado con fecha, hora, responsable y justificación.
+      </p>
+
+      <div class="tarjeta">
+        <h4>Los 3 Tipos de Movimientos</h4>
+        <div class="grilla-3">
+          <div class="micro-card" style="border-top:4px solid var(--esmeralda);">
+            <strong style="color:var(--esmeralda);">🟢 Entrada:</strong>
+            <p class="micro-card__desc">Suma unidades al almacén. Se utiliza cuando llega un pedido de proveedor, una compra de mercancía o una reposición.</p>
+          </div>
+          <div class="micro-card" style="border-top:4px solid var(--rosa);">
+            <strong style="color:var(--rosa);">🔴 Salida:</strong>
+            <p class="micro-card__desc">Resta unidades del almacén. Las ventas generan salidas automáticas con el número de factura. También se usa para mermas o roturas.</p>
+          </div>
+          <div class="micro-card" style="border-top:4px solid var(--violeta);">
+            <strong style="color:var(--violeta);">🟣 Ajuste:</strong>
+            <p class="micro-card__desc">Se utiliza tras realizar un conteo de inventario físico para corregir sobrantes o faltantes con su nota explicativa.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="grilla-2">
+        <div class="tarjeta">
+          <h4>Regla de Oro: Stock Negativo Bloqueado</h4>
+          <p>
+            BaratoPrimo tiene una protección estricta: <strong>es imposible vender o dar salida a mercancía que el sistema tenga en cero o insuficiente</strong>.
+          </p>
+          <p style="font-size:14px; color:var(--tinta-2);">
+            Esto evita descuadres en el inventario real y obliga a ingresar primero las notas de recepción o facturas de proveedores antes de facturar.
+          </p>
+        </div>
+
+        <div class="tarjeta">
+          <h4>Kardex Cronológico y Exportación</h4>
+          <p>
+            El Kardex es la hoja de vida inmutable de cada producto:
+          </p>
+          <ul style="padding-left:20px; color:var(--tinta-2); font-size:14px; line-height:1.6;">
+            <li>Detalla cada venta, entrada o ajuste ordenado por segundo.</li>
+            <li>Muestra el saldo resultante paso a paso.</li>
+            <li>Botón <strong>"Exportar CSV"</strong>: Genera un archivo de Excel con formato en español (punto y coma y acentos correctos) listo para contabilidad.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10. GRÁFICAS Y ANALÍTICA -->
+    <section class="seccion" id="graficas">
+      <div class="seccion__cabecera">
+        <div class="seccion__icono rosa">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        </div>
+        <div>
+          <h3>10. Gráficas y Análisis del Negocio</h3>
+        </div>
+      </div>
+      <p class="seccion__subtitulo">
+        Toma decisiones inteligentes basadas en datos reales. La sección de Gráficas te permite auditar el rendimiento comercial sin requerir hojas de cálculo externas.
+      </p>
+
+      <div class="grilla-2">
+        <div class="tarjeta">
+          <h4>Flujo Comercial y Compras vs Ventas</h4>
+          <p>
+            Visualiza las compras de mercancía frente a las ventas en periodos personalizables (diario, semanal, quincenal o mensual). Te permite saber si estás invirtiendo más en compras de lo que estás recuperando en caja.
+          </p>
+        </div>
+
+        <div class="tarjeta">
+          <h4>Ranking de Productos Estrella</h4>
+          <p>
+            Descubre cuáles son tus artículos más rentables en dos vistas:
+          </p>
+          <ul style="padding-left:20px; color:var(--tinta-2); font-size:14px; line-height:1.6;">
+            <li><strong>Por Ingresos generados:</strong> Los productos que más dinero neto han aportado a la facturación.</li>
+            <li><strong>Por Unidades vendidas:</strong> Los productos con mayor rotación de mostrador.</li>
+          </ul>
+        </div>
+
+        <div class="tarjeta">
+          <h4>Valor por Categorías</h4>
+          <p>
+            Un desglose gráfico del capital del almacén distribuido por departamentos o familias de productos para equilibrar tus compras.
+          </p>
+        </div>
+
+        <div class="tarjeta">
+          <h4>Capital Inmovilizado ("Hueso")</h4>
+          <p>
+            BaratoPrimo te alerta de los productos con cero ventas en el último mes para que puedas aplicar promociones, descuentos o liquidaciones y recuperar liquidez.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 11. CUADRE DE CAJA -->
+    <section class="seccion" id="caja">
+      <div class="seccion__cabecera">
+        <div class="seccion__icono verde">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+        </div>
+        <div>
+          <h3>11. Cuadre de Caja y Arqueo al Cierre de Turno</h3>
+        </div>
+      </div>
+      <p class="seccion__subtitulo">
+        Al finalizar la jornada o el turno de un cajero, el Cuadre de Caja concilia exactamente cuánto dinero ingresó por cada método de cobro y compara lo registrado contra lo físico.
+      </p>
+
+      <div class="tarjeta">
+        <h4>Cómo Hacer un Cuadre de Caja Paso a Paso</h4>
+        <div class="pasos-lista">
+          <div class="paso-item">
+            <div class="paso-numero">1</div>
+            <div class="paso-contenido">
+              <h5>Selecciona el Periodo</h5>
+              <p>Elige entre <strong>Hoy</strong> (el turno actual), <strong>Ayer</strong>, <strong>Semana</strong>, <strong>Quincena</strong>, <strong>Mes</strong> o fechas personalizadas.</p>
+            </div>
+          </div>
+          <div class="paso-item">
+            <div class="paso-numero">2</div>
+            <div class="paso-contenido">
+              <h5>Filtro por Cajero (Auditoría)</h5>
+              <p>Si eres un <em>Operador Facturador</em>, verás automáticamente tus cobros. Si eres un <em>Administrador</em>, puedes filtrar por cualquier cajero de la tienda o ver el consolidado global de todo el negocio.</p>
+            </div>
+          </div>
+          <div class="paso-item">
+            <div class="paso-numero">3</div>
+            <div class="paso-contenido">
+              <h5>Revisa el Desglose por Formas de Pago</h5>
+              <p>El sistema te muestra exactamente cuánto debes tener en cada bolsillo y cuenta:</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="grilla-3" style="margin-top:16px;">
+          <div class="micro-card">
+            <strong>💵 Billetes en Mano:</strong>
+            <p class="micro-card__desc">Efectivo en Bolívares y Efectivo físico en Dólares ($) y Euros (€) para contar en gaveta.</p>
+          </div>
+          <div class="micro-card">
+            <strong>🏦 Cuentas Bancarias:</strong>
+            <p class="micro-card__desc">Total acumulado en Pago Móvil, Puntos de Venta (Débito) y Transferencias para contrastar con los cierres de lote.</p>
+          </div>
+          <div class="micro-card">
+            <strong>📑 Retenciones y Crédito:</strong>
+            <p class="micro-card__desc">Total de comprobantes de retención IVA/ISLR recibidos y monto financiado a crédito en el turno.</p>
+          </div>
+        </div>
+
+        <div class="nota-caja nota-caja--tip" style="margin-top:20px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+          <div>
+            <strong>Auditoría de Anulaciones:</strong> Al final del reporte de caja verás las facturas que fueron anuladas durante el turno, con la hora, el operador que autorizó y el motivo, garantizando un control total contra pérdidas.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 12. MI COMERCIO Y AJUSTES -->
+    <section class="seccion" id="comercio">
+      <div class="seccion__cabecera">
+        <div class="seccion__icono">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg>
+        </div>
+        <div>
+          <h3>12. Configuración de Mi Comercio y Personal</h3>
+        </div>
+      </div>
+      <p class="seccion__subtitulo">
+        Personaliza los datos fiscales y la apariencia de los comprobantes que reciben tus clientes.
+      </p>
+
+      <div class="grilla-2">
+        <div class="tarjeta">
+          <h4>Datos Fiscales de Facturación</h4>
+          <p>En el menú <strong>Mi Comercio</strong> (solo accesible por Administradores):</p>
+          <ul style="padding-left:20px; color:var(--tinta-2); font-size:14px; line-height:1.6;">
+            <li><strong>Razón Social:</strong> Nombre legal de tu empresa que encabeza facturas y tickets.</li>
+            <li><strong>RIF:</strong> Registro de Información Fiscal de la empresa.</li>
+            <li><strong>Dirección Fiscal y Teléfonos:</strong> Datos de contacto impresos en cada ticket térmico.</li>
+            <li><strong>Mensaje de Cierre:</strong> Frase personalizada de agradecimiento (ej: <em>"¡Gracias por su compra! Conserve su ticket para cambios."</em>).</li>
+            <li><strong>Logo del Comercio:</strong> Carga el isotipo o logotipo de tu tienda para que se imprima y se vea en el sistema.</li>
+          </ul>
+        </div>
+
+        <div class="tarjeta">
+          <h4>Gestión de Operadores</h4>
+          <p>En el menú <strong>Operadores</strong>:</p>
+          <ul style="padding-left:20px; color:var(--tinta-2); font-size:14px; line-height:1.6;">
+            <li>Crea nuevos cajeros o encargados de almacén.</li>
+            <li>Asígnales o modifícales su contraseña en segundos.</li>
+            <li>Define su rol y cambia sus permisos según sus responsabilidades.</li>
+            <li>Desactiva operadores que ya no trabajen en la empresa sin perder su historial de ventas pasadas.</li>
+          </ul>
+          <div class="nota-caja nota-caja--aviso" style="margin-top:14px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <div><strong>Seguridad:</strong> El sistema nunca te permitirá eliminar al último Administrador activo para evitar que el negocio quede sin acceso directivo.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 13. PREGUNTAS FRECUENTES (FAQ) -->
+    <section class="seccion" id="faq">
+      <div class="seccion__cabecera">
+        <div class="seccion__icono cian">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <div>
+          <h3>13. Preguntas Frecuentes y Buenas Prácticas</h3>
+        </div>
+      </div>
+
+      <div class="tarjeta">
+        <h4>¿Qué sucede si se cae el internet en el negocio?</h4>
+        <p>
+          BaratoPrimo es una aplicación web progresiva (PWA). Si se interrumpe la conexión, la aplicación permanece abierta y te avisa mediante una franja superior. No pierdes la pantalla en la que estabas trabajando, pero por seguridad contable las ventas nuevas no se graban hasta restablecer la conexión para garantizar que el stock y la numeración fiscal no colisionen.
+        </p>
+      </div>
+
+      <div class="tarjeta">
+        <h4>¿Puedo utilizar cualquier lector de códigos de barra?</h4>
+        <p>
+          <strong>Sí.</strong> Cualquier lector de códigos de barra USB o Bluetooth estándar funciona con BaratoPrimo sin instalar controladores adicionales. Simplemente haz clic en el buscador de ventas o productos y dispara sobre el código de barras del producto.
+        </p>
+      </div>
+
+      <div class="tarjeta">
+        <h4>¿Cómo cambio entre el Modo Claro y el Modo Oscuro?</h4>
+        <p>
+          En la parte inferior de la barra lateral izquierda encontrarás el selector de tema con los iconos de Sol y Luna. Puedes cambiarlo según tu preferencia o la iluminación de tu mostrador. El sistema recordará tu elección en ese dispositivo.
+        </p>
+      </div>
+
+      <div class="tarjeta">
+        <h4>¿Cómo realizo un inventario físico al final del mes?</h4>
+        <p>
+          Entra a <strong>Movimientos → Registrar Movimiento</strong>, elige tipo <strong>Ajuste</strong>, selecciona el producto e introduce la diferencia encontrada tras el conteo físico, especificando en la nota <em>"Ajuste por toma física de fin de mes"</em>.
+        </p>
+      </div>
+    </section>
+
+    <!-- PIE DE PÁGINA DEL MANUAL -->
+    <footer style="margin-top:60px; padding-top:24px; border-top:1px solid var(--linea); text-align:center; color:var(--tinta-3); font-size:13px;">
+      <p><strong>BaratoPrimo</strong> — Sistema Integral de Inventario, Facturación y Cobranza Comercial.</p>
+      <p style="margin-top:4px;">Diseñado para el comercio ágil. Documentación para usuarios y personal operativo.</p>
+    </footer>
+
+  </main>
+
+  <script>
+    // =====================================================================
+    // INTERACTIVIDAD LIGERA DEL MANUAL
+    // =====================================================================
+    (function () {
+      // 1. Selector de Tema Claro / Oscuro
+      const btnTema = document.getElementById('btn-toggle-tema');
+      const iconoTema = document.getElementById('icono-tema');
+      const textoTema = document.getElementById('texto-tema');
+      const html = document.documentElement;
+
+      function aplicarTema(tema) {
+        html.setAttribute('data-tema', tema);
+        localStorage.setItem('bp_manual_tema', tema);
+        if (tema === 'oscuro') {
+          iconoTema.textContent = '☀️';
+          textoTema.textContent = 'Modo Claro';
+        } else {
+          iconoTema.textContent = '🌙';
+          textoTema.textContent = 'Modo Oscuro';
+        }
+      }
+
+      const temaGuardado = localStorage.getItem('bp_manual_tema') ||
+        (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro');
+      aplicarTema(temaGuardado);
+
+      btnTema.addEventListener('click', () => {
+        const actual = html.getAttribute('data-tema');
+        aplicarTema(actual === 'oscuro' ? 'claro' : 'oscuro');
+      });
+
+      // 2. Impresión rápida
+      document.getElementById('btn-imprimir-doc').addEventListener('click', () => {
+        window.print();
+      });
+
+      // 3. Botón flotante volver arriba
+      const btnArriba = document.getElementById('btn-arriba');
+      window.addEventListener('scroll', () => {
+        if (window.scrollY > 400) {
+          btnArriba.classList.add('visible');
+        } else {
+          btnArriba.classList.remove('visible');
+        }
+      });
+      btnArriba.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+
+      // 4. Menú móvil
+      const sidebar = document.getElementById('sidebar');
+      const btnMenuMovil = document.getElementById('btn-menu-movil');
+      btnMenuMovil.addEventListener('click', () => {
+        sidebar.classList.toggle('abierta');
+      });
+
+      // Cerrar menú móvil al hacer clic en enlace
+      document.querySelectorAll('.nav-item').forEach(link => {
+        link.addEventListener('click', () => {
+          sidebar.classList.remove('abierta');
+        });
+      });
+
+      // 5. Buscador de temas en el manual
+      const buscador = document.getElementById('buscador-manual');
+      const secciones = document.querySelectorAll('.seccion');
+      const navLinks = document.querySelectorAll('.nav-item');
+
+      buscador.addEventListener('input', e => {
+        const q = e.target.value.toLowerCase().trim();
+        if (!q) {
+          secciones.forEach(s => s.style.display = 'block');
+          return;
+        }
+
+        secciones.forEach(s => {
+          const texto = s.textContent.toLowerCase();
+          if (texto.includes(q)) {
+            s.style.display = 'block';
+          } else {
+            s.style.display = 'none';
+          }
+        });
+      });
+
+      // 6. Resaltado activo al hacer scroll
+      const observer = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            const id = entry.target.id;
+            navLinks.forEach(link => {
+              if (link.getAttribute('href') === '#' + id) {
+                link.classList.add('activo');
+              } else {
+                link.classList.remove('activo');
+              }
+            });
+          }
+        });
+      }, { rootMargin: '-20% 0px -70% 0px' });
+
+      secciones.forEach(s => observer.observe(s));
+    })();
+  </script>
+</body>
+</html>
