@@ -371,7 +371,7 @@
     /* Secciones del manual */
     .seccion {
       margin-bottom: 64px;
-      scroll-margin-top: 32px;
+      scroll-margin-top: 72px;
     }
 
     .seccion__cabecera {
@@ -703,55 +703,270 @@
       pointer-events: auto;
     }
 
-    /* Menú móvil */
+    /* ==================== COMPONENTES MÓVILES ==================== */
+    .barra-movil-manual {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      height: 56px;
+      background: var(--superficie);
+      border-bottom: 1px solid var(--linea);
+      position: sticky;
+      top: 0;
+      z-index: 90;
+      backdrop-filter: blur(10px);
+    }
+
+    .barra-movil-manual__marca {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--tinta);
+    }
+
+    .btn-abrir-sidebar {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      background: var(--violeta-piel);
+      color: var(--violeta);
+      border: 1px solid rgba(108, 59, 244, 0.2);
+      border-radius: var(--r-s);
+      font-size: 13.5px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      transition: var(--trans);
+    }
+
+    .btn-abrir-sidebar:hover {
+      background: var(--violeta);
+      color: white;
+    }
+
+    .btn-tema-movil {
+      width: 38px;
+      height: 38px;
+      border-radius: var(--r-s);
+      background: var(--superficie-2);
+      border: 1px solid var(--linea);
+      display: grid;
+      place-items: center;
+      font-size: 16px;
+      cursor: pointer;
+      transition: var(--trans);
+    }
+
+    .velo-manual {
+      position: fixed;
+      inset: 0;
+      background: rgba(18, 15, 29, 0.55);
+      backdrop-filter: blur(4px);
+      z-index: 98;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .velo-manual.activo {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .btn-cerrar-sidebar {
+      display: none;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--superficie-2);
+      border: 1px solid var(--linea);
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--tinta-2);
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
+      margin-left: auto;
+      transition: var(--trans);
+    }
+
+    .btn-cerrar-sidebar:hover {
+      background: var(--rosa-piel);
+      color: var(--rosa);
+      border-color: var(--rosa);
+    }
+
     .menu-movil-toggle {
       display: none;
       position: fixed;
-      bottom: 24px;
-      left: 24px;
+      bottom: 20px;
+      left: 20px;
       background: var(--violeta);
       color: white;
-      padding: 12px 20px;
+      padding: 10px 18px;
       border-radius: var(--r-p);
-      font-size: 14px;
+      font-size: 13.5px;
       font-weight: 700;
       border: none;
       box-shadow: var(--sombra-elevada);
-      z-index: 101;
+      z-index: 92;
       cursor: pointer;
+      display: none;
+      align-items: center;
+      gap: 8px;
     }
 
-    /* RESPONSIVE */
+    /* ==================== RESPONSIVE ==================== */
     @media (max-width: 980px) {
+      body {
+        flex-direction: column;
+      }
+
+      .barra-movil-manual {
+        display: flex;
+      }
+
       .sidebar {
         position: fixed;
-        left: -320px;
+        left: -330px;
         top: 0;
         bottom: 0;
+        width: 310px;
+        max-width: 85vw;
+        box-shadow: 0 0 40px rgba(0, 0, 0, 0.35);
+        z-index: 99;
       }
+
       .sidebar.abierta {
         left: 0;
       }
+
+      .btn-cerrar-sidebar {
+        display: flex;
+      }
+
       .contenido {
-        padding: 24px 20px 80px;
+        width: 100%;
+        max-width: 100%;
+        padding: 24px 18px 90px;
       }
-      .menu-movil-toggle {
-        display: block;
-      }
+
       .hero {
-        padding: 28px 24px;
+        padding: 28px 22px;
+        border-radius: var(--r);
+        margin-bottom: 36px;
       }
+
       .hero h2 {
-        font-size: 26px;
+        font-size: 25px;
       }
+
+      .hero p {
+        font-size: 15px;
+      }
+
       .grilla-2, .grilla-3 {
         grid-template-columns: 1fr;
+        gap: 16px;
+      }
+
+      .tarjeta {
+        padding: 20px 18px;
+        border-radius: var(--r-s);
+      }
+
+      .seccion__cabecera h3 {
+        font-size: 20px;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .contenido {
+        padding: 18px 14px 80px;
+      }
+
+      .hero {
+        padding: 22px 16px;
+      }
+
+      .hero h2 {
+        font-size: 21px;
+      }
+
+      .hero__etiqueta {
+        font-size: 11px;
+        padding: 4px 10px;
+      }
+
+      .seccion__cabecera {
+        gap: 10px;
+        margin-bottom: 16px;
+        padding-bottom: 10px;
+      }
+
+      .seccion__icono {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+      }
+
+      .seccion__cabecera h3 {
+        font-size: 18px;
+      }
+
+      .seccion__subtitulo {
+        font-size: 14.5px;
+        margin-bottom: 18px;
+      }
+
+      .tarjeta {
+        padding: 16px 14px;
+        margin-bottom: 16px;
+      }
+
+      .tarjeta h4 {
+        font-size: 16px;
+      }
+
+      .paso-item {
+        flex-direction: column;
+        gap: 8px;
+        padding: 12px 14px;
+      }
+
+      .paso-numero {
+        width: 26px;
+        height: 26px;
+        font-size: 12px;
+      }
+
+      .nota-caja {
+        padding: 12px 14px;
+        font-size: 13.5px;
+        gap: 10px;
+      }
+
+      .tabla-visual th, .tabla-visual td {
+        padding: 10px 12px;
+        font-size: 13px;
+        white-space: nowrap;
+      }
+
+      .btn-arriba {
+        bottom: 16px;
+        right: 16px;
+        width: 38px;
+        height: 38px;
       }
     }
 
     /* IMPRESIÓN */
     @media print {
-      .sidebar, .btn-arriba, .menu-movil-toggle, .btn-tema, .btn-imprimir, .sidebar__buscador {
+      .sidebar, .btn-arriba, .barra-movil-manual, .velo-manual, .menu-movil-toggle, .btn-tema, .btn-imprimir, .sidebar__buscador {
         display: none !important;
       }
       body {
@@ -772,6 +987,24 @@
 </head>
 <body>
 
+  <!-- ==================== BARRA MÓVIL SUPERIOR ==================== -->
+  <header class="barra-movil-manual">
+    <button type="button" class="btn-abrir-sidebar" id="btn-abrir-sidebar" aria-label="Abrir menú del manual">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      <span>Índice</span>
+    </button>
+    <div class="barra-movil-manual__marca">
+      <img src="img/logo.svg" alt="" width="26" height="26">
+      <span>BaratoPrimo</span>
+    </div>
+    <button type="button" class="btn-tema-movil" id="btn-tema-movil" title="Cambiar tema">
+      🌙
+    </button>
+  </header>
+
+  <!-- Velo de fondo oscuro para móvil -->
+  <div class="velo-manual" id="velo-manual"></div>
+
   <!-- ==================== BARRA LATERAL ==================== -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar__marca">
@@ -782,6 +1015,7 @@
         <h1>BaratoPrimo</h1>
         <span>Manual de Usuario</span>
       </div>
+      <button type="button" class="btn-cerrar-sidebar" id="btn-cerrar-sidebar" title="Cerrar índice" aria-label="Cerrar índice">✕</button>
     </div>
 
     <div class="sidebar__buscador">
@@ -1813,16 +2047,34 @@
           iconoTema.textContent = '🌙';
           textoTema.textContent = 'Modo Oscuro';
         }
+      // Sincronizar botón de tema móvil
+      const btnTemaMovil = document.getElementById('btn-tema-movil');
+
+      function aplicarTema(tema) {
+        html.setAttribute('data-tema', tema);
+        localStorage.setItem('bp_manual_tema', tema);
+        if (tema === 'oscuro') {
+          iconoTema.textContent = '☀️';
+          textoTema.textContent = 'Modo Claro';
+          if (btnTemaMovil) btnTemaMovil.textContent = '☀️';
+        } else {
+          iconoTema.textContent = '🌙';
+          textoTema.textContent = 'Modo Oscuro';
+          if (btnTemaMovil) btnTemaMovil.textContent = '🌙';
+        }
       }
 
       const temaGuardado = localStorage.getItem('bp_manual_tema') ||
         (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro');
       aplicarTema(temaGuardado);
 
-      btnTema.addEventListener('click', () => {
+      const alternarTema = () => {
         const actual = html.getAttribute('data-tema');
         aplicarTema(actual === 'oscuro' ? 'claro' : 'oscuro');
-      });
+      };
+
+      btnTema.addEventListener('click', alternarTema);
+      if (btnTemaMovil) btnTemaMovil.addEventListener('click', alternarTema);
 
       // 2. Impresión rápida
       document.getElementById('btn-imprimir-doc').addEventListener('click', () => {
@@ -1842,18 +2094,33 @@
         window.scrollTo({ top: 0, behavior: 'smooth' });
       });
 
-      // 4. Menú móvil
+      // 4. Menú móvil interactivo (Sidebar + Velo + Botones)
       const sidebar = document.getElementById('sidebar');
-      const btnMenuMovil = document.getElementById('btn-menu-movil');
-      btnMenuMovil.addEventListener('click', () => {
-        sidebar.classList.toggle('abierta');
-      });
+      const velo = document.getElementById('velo-manual');
+      const btnAbrirSidebar = document.getElementById('btn-abrir-sidebar');
+      const btnCerrarSidebar = document.getElementById('btn-cerrar-sidebar');
 
-      // Cerrar menú móvil al hacer clic en enlace
+      const abrirMenu = () => {
+        sidebar.classList.add('abierta');
+        if (velo) velo.classList.add('activo');
+        document.body.style.overflow = 'hidden';
+      };
+
+      const cerrarMenu = () => {
+        sidebar.classList.remove('abierta');
+        if (velo) velo.classList.remove('activo');
+        document.body.style.overflow = '';
+      };
+
+      const btnMenuMovil = document.getElementById('btn-menu-movil');
+      if (btnAbrirSidebar) btnAbrirSidebar.addEventListener('click', abrirMenu);
+      if (btnMenuMovil) btnMenuMovil.addEventListener('click', abrirMenu);
+      if (btnCerrarSidebar) btnCerrarSidebar.addEventListener('click', cerrarMenu);
+      if (velo) velo.addEventListener('click', cerrarMenu);
+
+      // Cerrar menú móvil al hacer clic en cualquier enlace
       document.querySelectorAll('.nav-item').forEach(link => {
-        link.addEventListener('click', () => {
-          sidebar.classList.remove('abierta');
-        });
+        link.addEventListener('click', cerrarMenu);
       });
 
       // 5. Buscador de temas en el manual
