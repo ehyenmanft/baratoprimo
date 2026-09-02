@@ -9,6 +9,17 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="icon" type="image/svg+xml" href="img/logo.svg">
 <link rel="stylesheet" href="css/app.css">
+<script>
+  (function () {
+    var t;
+    try { t = localStorage.getItem('inventario-tema'); } catch (e) {}
+    if (!t) {
+      try { t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro'; }
+      catch (e) { t = 'claro'; }
+    }
+    document.documentElement.dataset.tema = t;
+  })();
+</script>
 <style>
   body{ padding:28px 20px 64px; }
   .caja{ width:min(760px,100%); margin:0 auto; }

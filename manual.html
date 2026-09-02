@@ -1043,6 +1043,43 @@
        SISTEMA VISUAL BROCHURE / MANUAL CORPORATIVO PARA PDF E IMPRESIÓN
        ===================================================================== */
     @media print {
+      /* Neutralizar variables de modo oscuro durante la impresión para que la tinta siempre sea nítida y oscura */
+      :root,
+      html,
+      body,
+      html[data-tema="oscuro"],
+      html[data-tema="claro"] {
+        --fondo:          #FFFFFF !important;
+        --superficie:     #FFFFFF !important;
+        --superficie-2:   #F8F8FC !important;
+        --superficie-3:   #F0EEF8 !important;
+        --linea:          #D8D3EB !important;
+        --linea-2:        #EAE7F6 !important;
+
+        --tinta:          #140E29 !important;
+        --tinta-2:        #443C64 !important;
+        --tinta-3:        #6C658D !important;
+
+        --violeta:        #6C3BF4 !important;
+        --violeta-alto:   #5A2AE0 !important;
+        --violeta-piel:   #EDE6FF !important;
+
+        --esmeralda:      #00A87E !important;
+        --esmeralda-piel: #DDF7EF !important;
+
+        --rosa:           #F0356B !important;
+        --rosa-piel:      #FFE4EC !important;
+
+        --naranja:        #F58309 !important;
+        --naranja-piel:   #FFF0DC !important;
+
+        --cian:           #0BA5C7 !important;
+        --cian-piel:      #DEF4FA !important;
+
+        background:       #FFFFFF !important;
+        color:            #140E29 !important;
+      }
+
       * {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
@@ -1052,11 +1089,38 @@
       @page {
         size: letter portrait;
         margin: 12mm 14mm 14mm 14mm;
+        @top-left {
+          content: "BaratoPrimo · Manual Oficial de Usuario";
+          font-family: 'Inter', sans-serif;
+          font-size: 8.5pt;
+          font-weight: 700;
+          color: #6C3BF4;
+        }
+        @top-right {
+          content: "Edición Comercial 2026";
+          font-family: 'Inter', sans-serif;
+          font-size: 8.5pt;
+          font-weight: 500;
+          color: #6C658D;
+        }
+        @bottom-left {
+          content: "Sistema POS, Inventario, Facturación y Cobranza en Divisas";
+          font-family: 'Inter', sans-serif;
+          font-size: 8.5pt;
+          color: #6C658D;
+        }
+        @bottom-right {
+          content: "Pág. " counter(page);
+          font-family: 'Inter', sans-serif;
+          font-size: 8.5pt;
+          font-weight: 700;
+          color: #6C3BF4;
+        }
       }
 
       html, body {
         background: #FFFFFF !important;
-        color: #1C1830 !important;
+        color: #140E29 !important;
         font-size: 13px !important;
         line-height: 1.5 !important;
       }
@@ -1091,7 +1155,7 @@
         break-after: page;
         padding: 40px 36px;
         background: linear-gradient(135deg, rgba(108, 59, 244, 0.08) 0%, rgba(11, 165, 199, 0.07) 100%), #FFFFFF !important;
-        border: 2px solid var(--violeta) !important;
+        border: 2.5px solid #6C3BF4 !important;
         border-radius: 24px !important;
         box-sizing: border-box;
       }
@@ -1100,7 +1164,7 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        border-bottom: 1px solid var(--linea);
+        border-bottom: 1.5px solid #D8D3EB;
         padding-bottom: 14px;
       }
 
@@ -1108,18 +1172,18 @@
         font-size: 11px;
         font-weight: 800;
         letter-spacing: 0.12em;
-        color: var(--violeta);
+        color: #6C3BF4 !important;
         text-transform: uppercase;
       }
 
       .brochure-portada__badge {
         font-size: 11px;
-        font-weight: 700;
-        background: var(--violeta-piel) !important;
-        color: var(--violeta);
-        padding: 4px 14px;
+        font-weight: 800;
+        background: #EDE6FF !important;
+        color: #5A2AE0 !important;
+        padding: 5px 14px;
         border-radius: 999px;
-        border: 1px solid rgba(108, 59, 244, 0.2);
+        border: 1px solid rgba(108, 59, 244, 0.25);
       }
 
       .brochure-portada__centro {
@@ -1128,8 +1192,8 @@
       }
 
       .brochure-portada__logo-wrap {
-        width: 96px;
-        height: 96px;
+        width: 100px;
+        height: 100px;
         margin: 0 auto 18px;
         border-radius: 24px;
         background: linear-gradient(135deg, #7B4DF7 0%, #6C3BF4 55%, #0BA5C7 100%) !important;
@@ -1139,36 +1203,41 @@
       }
 
       .brochure-portada__logo-wrap img {
-        width: 76px;
-        height: 76px;
+        width: 80px;
+        height: 80px;
       }
 
+      /* TÍTULO PRINCIPAL: ULTRA LEGIBLE, OSCURO Y DESTACADO */
       .brochure-portada__titulo {
-        font-size: 42px;
-        font-weight: 900;
-        color: var(--tinta);
-        letter-spacing: -0.04em;
-        margin-bottom: 6px;
+        font-size: 48px !important;
+        font-weight: 900 !important;
+        color: #120D26 !important;
+        letter-spacing: -0.04em !important;
+        margin-bottom: 6px !important;
+        line-height: 1.1 !important;
+        display: block !important;
       }
 
       .brochure-portada__subtitulo {
-        font-size: 17px;
-        font-weight: 700;
-        color: var(--violeta);
-        margin-bottom: 14px;
+        font-size: 19px !important;
+        font-weight: 800 !important;
+        color: #6C3BF4 !important;
+        margin-bottom: 14px !important;
+        display: block !important;
       }
 
       .brochure-portada__linea {
-        width: 60px;
+        width: 64px;
         height: 4px;
-        background: var(--violeta) !important;
+        background: #6C3BF4 !important;
         border-radius: 4px;
         margin: 0 auto 16px;
       }
 
       .brochure-portada__desc {
-        font-size: 14.5px;
-        color: var(--tinta-2);
+        font-size: 15px !important;
+        font-weight: 500 !important;
+        color: #3C3558 !important;
         max-width: 620px;
         margin: 0 auto 28px;
         line-height: 1.6;
@@ -2180,10 +2249,11 @@
 
         <div class="simulador-ticket">
           <div class="centro" style="margin-bottom:8px;">
-            <div style="font-size:15px; font-weight:800; letter-spacing:0.04em;">DISTRIBUIDORA ANDINA C.A.</div>
-            <div style="font-size:11px; color:#555;">RIF: J-403118225</div>
-            <div style="font-size:10.5px; color:#666;">Av. Principal, Edif. Centro, Local 4, Caracas</div>
-            <div style="font-size:10.5px; color:#666;">Tel: 0212-5551234 · 0414-1234567</div>
+            <div style="font-size:11px; font-weight:800; color:#6C3BF4; letter-spacing:0.08em; margin-bottom:2px;">✦ BARATOPRIMO POS ✦</div>
+            <div style="font-size:15px; font-weight:800; letter-spacing:0.04em; color:#111;">DISTRIBUIDORA ANDINA C.A.</div>
+            <div style="font-size:11px; color:#444;">RIF: J-403118225</div>
+            <div style="font-size:10.5px; color:#555;">Av. Principal, Edif. Centro, Local 4, Caracas</div>
+            <div style="font-size:10.5px; color:#555;">Tel: 0212-5551234 · 0414-1234567</div>
           </div>
           <div class="linea-sep"></div>
           <div class="fila-dato"><span>COMPROBANTE:</span><strong>F-000184</strong></div>
@@ -2224,6 +2294,7 @@
             <div style="font-size:9.5px; color:#555;">ESCANEE PARA VALIDAR FACTURA DIGITAL</div>
             <div style="font-size:11px; font-weight:700; margin-top:6px;">¡Gracias por su compra!</div>
             <div style="font-size:9.5px; color:#777;">Conserve este comprobante para cualquier cambio.</div>
+            <div style="font-size:9px; color:#6C3BF4; font-weight:700; margin-top:5px; letter-spacing:0.04em;">SISTEMA BARATOPRIMO · WWW.BARATOPRIMO.COM</div>
           </div>
         </div>
       </div>
