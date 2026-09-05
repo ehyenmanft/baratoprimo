@@ -215,9 +215,19 @@
     return d.equivalente || '';
   }
 
+  /* Sincroniza la tasa en vivo consultando al BCV mediante el backend */
+  async function sincronizar() {
+    if (INV.db && INV.db.tasas && INV.db.tasas.sincronizar) {
+      await INV.db.tasas.sincronizar();
+      await cargar();
+    }
+    return actual();
+  }
+
   INV.tasas = {
     cargar, actual, usd, aBolivares, aDolares, dual, texto, html, antiguedad,
     simbolo, catalogoEnDolares, aFactura, enlazarEquivalente, equivalente, eur,
+    sincronizar,
     oficial: () => oficial,
     oficialEur: () => oficialEur,
   };

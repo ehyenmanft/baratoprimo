@@ -141,11 +141,21 @@
                 </div>
 
                 <div class="campo">
-                  <label class="rol-opcion" style="cursor:pointer">
-                    <input type="checkbox" id="co-tasa-auto" ${c.tasa_automatica !== false ? 'checked' : ''}>
-                    <span><b>Seguir la tasa oficial del BCV</b>
-                      <span class="lista__sub" id="co-tasa-estado"></span></span>
-                  </label>
+                  <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; flex-wrap:wrap;">
+                    <label class="rol-opcion" style="cursor:pointer; margin:0; flex:1; min-width:240px;">
+                      <input type="checkbox" id="co-tasa-auto" ${c.tasa_automatica !== false ? 'checked' : ''}>
+                      <span><b>Seguir la tasa oficial del BCV</b>
+                        <span class="lista__sub" id="co-tasa-estado"></span></span>
+                    </label>
+                    <button type="button" class="btn btn--secundario btn--s" id="co-sync-bcv" style="margin-top:2px;" title="Consultar el portal del BCV ahora mismo">
+                      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px; vertical-align:-2px;">
+                        <polyline points="23 4 23 10 17 10"></polyline>
+                        <polyline points="1 20 1 14 7 14"></polyline>
+                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                      </svg>
+                      Actualizar del BCV ahora
+                    </button>
+                  </div>
                 </div>
 
                 <div class="campos-fila">
@@ -297,10 +307,44 @@
           return;
         }
         const dias = t.dias || 0;
-        caja.textContent = dias === 0
-          ? `Tasa de hoy: ${numero(t.tasa, 2)} Bs/$ · fuente ${t.fuente}`
-          : `Última tasa: ${numero(t.tasa, 2)} Bs/$ de hace ${dias} día${dias > 1 ? 's' : ''} · fuente ${t.fuente}`;
-        caja.style.color = dias === 0 ? 'var(--esmeralda)' : 'var(--naranja)';
+        const ahoraCaracas = new Date(Date.now() - 4 * 3600 * 1000);
+        const diaSem = ahoraCaracas.getUTCDay();
+        const esFinde = diaSem === 0 || diaSem === 6;
+
+        if (dias < 0) {
+          const fValor = new Date(t.fecha + 'T00:00:00')
+            .toLocaleDateString('es-VE', { weekday: 'long', day: '2-digit', month: 'short' });
+          caja.textContent = esFinde
+            ? `Tasa oficial: ${numero(t.tasa, 4)} Bs/$ · Vigente fin de semana (Valor ${fValor}) · fuente ${t.fuente}`
+            : `Tasa oficial: ${numero(t.tasa, 4)} Bs/$ · Valor ${fValor} · fuente ${t.fuente}`;
+          caja.style.color = 'var(--esmeralda)';
+        } else if (dias === 0) {
+          caja.textContent = `Tasa de hoy: ${numero(t.tasa, 4)} Bs/$ · fuente ${t.fuente}`;
+          caja.style.color = 'var(--esmeralda)';
+        } else {
+          caja.textContent = `Última tasa: ${numero(t.tasa, 4)} Bs/$ de hace ${dias} día${dias > 1 ? 's' : ''} · fuente ${t.fuente}`;
+          caja.style.color = 'var(--naranja)';
+        }
+      }
+
+      const btnCoSync = $('#co-sync-bcv');
+      if (btnCoSync) {
+        btnCoSync.addEventListener('click', async () => {
+          btnCoSync.disabled = true;
+          const textoOrig = btnCoSync.innerHTML;
+          btnCoSync.textContent = 'Consultando BCV…';
+          try {
+            const res = await INV.tasas.sincronizar();
+            avisar(`Tasa BCV actualizada: ${numero(res.tasa, 4)} Bs/$`);
+            pintarEstadoTasa();
+            if (INV.app && INV.app.pintarCintaTasa) INV.app.pintarCintaTasa('comercio');
+          } catch (e) {
+            avisar(e.message || 'No se pudo consultar el BCV', 'error');
+          } finally {
+            btnCoSync.disabled = false;
+            btnCoSync.innerHTML = textoOrig;
+          }
+        });
       }
 
       $('#co-tasa-auto').addEventListener('change', pintarEstadoTasa);

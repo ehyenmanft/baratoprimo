@@ -155,13 +155,13 @@
   /* Cintillo con la tasa que se está aplicando ahora mismo. Se pinta en
      las pantallas donde se manejan precios: ver el número antes de
      teclear evita cargar un producto con la tasa de la semana pasada. */
-  const VISTAS_CON_TASA = ['inicio', 'ventas', 'venta', 'productos', 'producto', 'movimientos'];
+  const VISTAS_CON_TASA = ['inicio', 'ventas', 'venta', 'productos', 'producto', 'movimientos', 'comercio'];
 
   function pintarCintaTasa(vista) {
     const caja = $('#cinta-tasa');
     if (!caja || !INV.tasas) return;
 
-    if (!VISTAS_CON_TASA.includes(vista)) { caja.hidden = true; return; }
+    if (vista && !VISTAS_CON_TASA.includes(vista)) { caja.hidden = true; return; }
 
     const t = INV.tasas.actual();
     const n = INV.ui.numero;
@@ -182,23 +182,72 @@
     const futura = t.origen === 'oficial' && dias < 0;
     caja.className = 'cinta-tasa' + (vieja ? ' cinta-tasa--vieja' : '');
 
-    const cuando = t.origen !== 'oficial' ? 'tasa propia del comercio'
-      : futura ? `fecha valor ${new Date(t.fecha + 'T00:00:00')
-          .toLocaleDateString('es', { weekday: 'long', day: '2-digit', month: 'long' })}`
-      : dias === 0 ? 'de hoy'
-      : dias === 1 ? 'de ayer'
-      : `de hace ${dias} días`;
+    // Detección de fin de semana en hora Caracas (UTC-4)
+    const ahoraCaracas = new Date(Date.now() - 4 * 3600 * 1000);
+    const diaSemanaCaracas = ahoraCaracas.getUTCDay(); // 0 = Domingo, 6 = Sábado
+    const esFinDeSemana = diaSemanaCaracas === 0 || diaSemanaCaracas === 6;
+
+    let cuando = 'tasa propia del comercio';
+    if (t.origen === 'oficial') {
+      if (futura) {
+        const fechaFormateada = new Date(t.fecha + 'T00:00:00')
+          .toLocaleDateString('es-VE', { weekday: 'long', day: '2-digit', month: 'short' });
+        cuando = esFinDeSemana
+          ? `vigente fin de semana (valor ${fechaFormateada})`
+          : `valor ${fechaFormateada}`;
+      } else if (dias === 0) {
+        cuando = 'de hoy';
+      } else if (dias === 1) {
+        cuando = 'de ayer';
+      } else {
+        cuando = `de hace ${dias} días`;
+      }
+    }
 
     const eur = INV.tasas.eur();
+    const botonSync = t.origen === 'oficial' ? `
+      <button class="cinta-tasa__sync" id="btn-sync-tasa-bcv" title="Consultar última tasa oficial en el portal del BCV" type="button">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <polyline points="1 20 1 14 7 14"></polyline>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+        <span>Sincronizar BCV</span>
+      </button>` : '';
 
     caja.innerHTML =
       `<span class="cinta-tasa__etiqueta">Tasa ${t.origen === 'oficial' ? 'BCV' : 'manual'}</span>` +
       `<span class="cinta-tasa__valor">${n(t.tasa, 4)}</span>` +
       `<span>Bs por dólar · ${cuando}</span>` +
       (eur > 0 ? `<span class="cinta-tasa__euro">€ ${n(eur, 4)}</span>` : '') +
-      (t.fuente ? `<span class="cinta-tasa__nota">fuente: ${t.fuente}</span>` : '');
+      (t.fuente ? `<span class="cinta-tasa__nota">fuente: ${t.fuente}</span>` : '') +
+      botonSync;
     caja.hidden = false;
+
+    const btnSync = $('#btn-sync-tasa-bcv');
+    if (btnSync) {
+      btnSync.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        btnSync.classList.add('cinta-tasa__sync--cargando');
+        btnSync.disabled = true;
+        try {
+          const res = await INV.tasas.sincronizar();
+          INV.ui.avisar(`Tasa BCV sincronizada: ${n(res.tasa, 4)} Bs/$`);
+          pintarCintaTasa(vista);
+          window.dispatchEvent(new Event('tasa-actualizada'));
+        } catch (err) {
+          INV.ui.avisar(err.message || 'No se pudo sincronizar con el BCV', 'error');
+        } finally {
+          btnSync.classList.remove('cinta-tasa__sync--cargando');
+          btnSync.disabled = false;
+        }
+      });
+    }
   }
+
+  INV.app = INV.app || {};
+  INV.app.pintarCintaTasa = pintarCintaTasa;
 
   /* ---------------- Menú lateral en móvil ----------------
      En pantallas estrechas el menú se retira fuera de la vista y entra al

@@ -1211,6 +1211,24 @@
       fijar: (fecha, tasa, moneda = 'USD') => sb.from('tasas_cambio').upsert({
         moneda, fecha, tasa, fuente: 'manual', obtenida_en: new Date().toISOString(),
       }, { onConflict: 'moneda,fecha' }).select().single().then(ok),
+      sincronizar: async () => {
+        const url = INV.config.FUNCION_TASA_BCV || (INV.config.SUPABASE_URL ? `${INV.config.SUPABASE_URL}/functions/v1/tasa-bcv` : null);
+        if (!url) throw new Error('No hay URL configurada para la función de tasa');
+        const token = INV.config.SUPABASE_ANON;
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({}),
+        });
+        const d = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(d.error || 'Error al consultar la tasa del BCV (' + res.status + ')');
+        }
+        return d;
+      },
     },
 
     cajas: {
